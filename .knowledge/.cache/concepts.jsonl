@@ -1,0 +1,60 @@
+{"category": "concept", "id": "concept:assistive-ai-experience", "path": ".knowledge/concept/assistive-ai-experience.md", "role": "supporting", "title": "Assistive AI Experience", "type": "concept"}
+{"category": "concept", "id": "concept:design-ide", "path": ".knowledge/concept/design-ide.md", "role": "supporting", "title": "Design IDE", "type": "concept"}
+{"category": "concept", "id": "concept:design-pattern-catalog", "path": ".knowledge/concept/design-pattern-catalog.md", "role": "supporting", "title": "Design Pattern Catalog", "type": "concept"}
+{"category": "concept", "id": "concept:intent-based-navigation", "path": ".knowledge/concept/intent-based-navigation.md", "role": "supporting", "title": "Intent Based Navigation", "type": "concept"}
+{"category": "concept", "id": "concept:model-growth", "path": ".knowledge/concept/model-growth.md", "role": "supporting", "title": "Model Growth", "type": "concept"}
+{"category": "concept", "id": "concept:model-layer", "path": ".knowledge/concept/model-layer.md", "role": "supporting", "title": "Model Layer", "type": "concept"}
+{"category": "concept", "id": "concept:pattern-discovery", "path": ".knowledge/concept/pattern-discovery.md", "role": "supporting", "title": "Pattern Discovery", "type": "concept"}
+{"category": "concept", "id": "concept:pattern-heuristic", "path": ".knowledge/concept/pattern-heuristic.md", "role": "supporting", "title": "Pattern Heuristic", "type": "concept"}
+{"category": "structure", "id": "data:attribute", "path": ".knowledge/data/attribute.md", "role": "supporting", "title": "Attribute", "type": "data"}
+{"category": "structure", "id": "data:concept-projection", "path": ".knowledge/data/concept-projection.md", "role": "supporting", "title": "Concept Projection", "type": "data"}
+{"category": "structure", "id": "data:correction-pattern", "path": ".knowledge/data/correction-pattern.md", "role": "supporting", "title": "Correction Pattern", "type": "data"}
+{"category": "structure", "id": "data:data-domain", "path": ".knowledge/data/data-domain.md", "role": "supporting", "title": "Data Domain", "type": "data"}
+{"category": "structure", "id": "data:data-flow", "path": ".knowledge/data/data-flow.md", "role": "supporting", "title": "Data Flow", "type": "data"}
+{"category": "structure", "id": "data:data-lifecycle", "path": ".knowledge/data/data-lifecycle.md", "role": "supporting", "title": "Data Lifecycle", "type": "data"}
+{"category": "structure", "id": "data:data-ownership", "path": ".knowledge/data/data-ownership.md", "role": "supporting", "title": "Data Ownership", "type": "data"}
+{"category": "structure", "id": "data:dependent-entity", "path": ".knowledge/data/dependent-entity.md", "role": "supporting", "title": "Dependent Entity", "type": "data"}
+{"category": "structure", "id": "data:design-pattern", "path": ".knowledge/data/design-pattern.md", "role": "supporting", "title": "Design Pattern", "type": "data"}
+{"category": "structure", "id": "data:entity", "path": ".knowledge/data/entity.md", "role": "supporting", "title": "Entity", "type": "data"}
+{"category": "structure", "id": "data:governance-metadata", "path": ".knowledge/data/governance-metadata.md", "role": "supporting", "title": "Governance Metadata", "type": "data"}
+{"category": "structure", "id": "data:master-data-distribution", "path": ".knowledge/data/master-data-distribution.md", "role": "supporting", "title": "Master Data Distribution", "type": "data"}
+{"category": "structure", "id": "data:model-seed", "path": ".knowledge/data/model-seed.md", "role": "supporting", "title": "Model Seed", "type": "data"}
+{"category": "structure", "id": "data:model-transformation", "path": ".knowledge/data/model-transformation.md", "role": "supporting", "title": "Model Transformation", "type": "data"}
+{"category": "structure", "id": "data:query-profile", "path": ".knowledge/data/query-profile.md", "role": "supporting", "title": "Query Profile", "type": "data"}
+{"category": "structure", "id": "data:reconciliation-pattern", "path": ".knowledge/data/reconciliation-pattern.md", "role": "supporting", "title": "Reconciliation Pattern", "type": "data"}
+{"category": "structure", "id": "data:reference-actual-value", "path": ".knowledge/data/reference-actual-value.md", "role": "supporting", "title": "Reference Value and Actual Value", "type": "data"}
+{"category": "structure", "id": "data:reference-implementation", "path": ".knowledge/data/reference-implementation.md", "role": "supporting", "title": "Reference Implementation", "type": "data"}
+{"category": "structure", "id": "data:relationship", "path": ".knowledge/data/relationship.md", "role": "supporting", "title": "Relationship", "type": "data"}
+{"category": "structure", "id": "data:snapshot-reference", "path": ".knowledge/data/snapshot-reference.md", "role": "supporting", "title": "Snapshot Reference", "type": "data"}
+{"category": "structure", "id": "data:state-transition", "path": ".knowledge/data/state-transition.md", "role": "supporting", "title": "State Transition", "type": "data"}
+{"category": "structure", "id": "data:system-boundary-pattern", "path": ".knowledge/data/system-boundary-pattern.md", "role": "supporting", "title": "System Boundary Pattern", "type": "data"}
+{"category": "structure", "id": "data:time-characteristic", "path": ".knowledge/data/time-characteristic.md", "role": "supporting", "title": "Time Characteristic", "type": "data"}
+{"category": "structure", "id": "data:value-object", "path": ".knowledge/data/value-object.md", "role": "supporting", "title": "Value Object", "type": "data"}
+{"category": "structure", "id": "data:volume-estimate", "path": ".knowledge/data/volume-estimate.md", "role": "supporting", "title": "Volume Estimate", "type": "data"}
+{"category": "interface", "id": "event:data-change-event", "path": ".knowledge/event/data-change-event.md", "role": "supporting", "title": "Data Change Event", "type": "event"}
+{"category": "behavior", "id": "flow:dfd-first-modeling", "path": ".knowledge/flow/dfd-first-modeling.md", "role": "primary", "title": "DFD First Modeling", "type": "flow"}
+{"category": "behavior", "id": "flow:modeling-lifecycle", "path": ".knowledge/flow/modeling-lifecycle.md", "role": "primary", "title": "Modeling Lifecycle", "type": "flow"}
+{"category": "constraint", "id": "policy:deletion-policy", "path": ".knowledge/policy/deletion-policy.md", "role": "supporting", "title": "Deletion Policy", "type": "policy"}
+{"category": "objective", "id": "requirement:ai-review", "path": ".knowledge/requirement/ai-review.md", "role": "primary", "title": "AI Review", "type": "requirement"}
+{"category": "objective", "id": "requirement:design-decision-history", "path": ".knowledge/requirement/design-decision-history.md", "role": "primary", "title": "Design Decision History", "type": "requirement"}
+{"category": "objective", "id": "requirement:entity-management", "path": ".knowledge/requirement/entity-management.md", "role": "primary", "title": "Entity Management", "type": "requirement"}
+{"category": "objective", "id": "requirement:future-extensions", "path": ".knowledge/requirement/future-extensions.md", "role": "primary", "title": "Future Extensions", "type": "requirement"}
+{"category": "objective", "id": "requirement:normalization-support", "path": ".knowledge/requirement/normalization-support.md", "role": "primary", "title": "Normalization Support", "type": "requirement"}
+{"category": "objective", "id": "requirement:pattern-library-experience", "path": ".knowledge/requirement/pattern-library-experience.md", "role": "primary", "title": "Pattern Library Experience", "type": "requirement"}
+{"category": "objective", "id": "requirement:performance-design", "path": ".knowledge/requirement/performance-design.md", "role": "primary", "title": "Performance Design", "type": "requirement"}
+{"category": "constraint", "id": "rule:entity-classification", "path": ".knowledge/rule/entity-classification.md", "role": "supporting", "title": "Entity Classification", "type": "rule"}
+{"category": "constraint", "id": "rule:model-seed-labels", "path": ".knowledge/rule/model-seed-labels.md", "role": "supporting", "title": "Model Seed Structured Hints", "type": "rule"}
+{"category": "external", "id": "system:storage-target", "path": ".knowledge/system/storage-target.md", "role": "supporting", "title": "Storage Target", "type": "system"}
+{"category": "vocabulary", "id": "term:relationship-vocabulary", "path": ".knowledge/term/relationship-vocabulary.md", "role": "supporting", "title": "Relationship Vocabulary", "type": "term"}
+{"category": "vocabulary", "id": "term:vocabulary", "path": ".knowledge/term/vocabulary.md", "role": "supporting", "title": "Vocabulary", "type": "term"}
+{"category": "interface", "id": "ui:entity-candidate-view", "path": ".knowledge/ui/entity-candidate-view.md", "role": "primary", "title": "Entity Candidate View", "type": "ui"}
+{"category": "interface", "id": "ui:erd-sketch-canvas", "path": ".knowledge/ui/erd-sketch-canvas.md", "role": "primary", "title": "ERD Sketch Canvas", "type": "ui"}
+{"category": "interface", "id": "ui:lifecycle-view", "path": ".knowledge/ui/lifecycle-view.md", "role": "primary", "title": "Lifecycle View", "type": "ui"}
+{"category": "interface", "id": "ui:normalization-view", "path": ".knowledge/ui/normalization-view.md", "role": "primary", "title": "Normalization View", "type": "ui"}
+{"category": "interface", "id": "ui:pattern-library-view", "path": ".knowledge/ui/pattern-library-view.md", "role": "primary", "title": "Pattern Library View", "type": "ui"}
+{"category": "interface", "id": "ui:relationship-view", "path": ".knowledge/ui/relationship-view.md", "role": "primary", "title": "Relationship View", "type": "ui"}
+{"category": "interface", "id": "ui:storage-view", "path": ".knowledge/ui/storage-view.md", "role": "primary", "title": "Storage View", "type": "ui"}
+{"category": "interface", "id": "ui:transformation-view", "path": ".knowledge/ui/transformation-view.md", "role": "primary", "title": "Transformation View", "type": "ui"}
+{"category": "interface", "id": "ui:vocabulary-view", "path": ".knowledge/ui/vocabulary-view.md", "role": "primary", "title": "Vocabulary View", "type": "ui"}
+{"category": "interface", "id": "ui:volume-view", "path": ".knowledge/ui/volume-view.md", "role": "primary", "title": "Volume View", "type": "ui"}
+{"category": "objective", "id": "vision:modeling-workbench", "path": ".knowledge/vision/modeling-workbench.md", "role": "primary", "title": "Modeling Workbench", "type": "vision"}
