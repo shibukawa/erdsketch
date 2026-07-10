@@ -1,0 +1,11 @@
+id: seed:customer
+kind: model-seed
+title: Customer
+matured_level: 0.5
+position:
+  x: 430
+  y: 70
+role: master
+dependency: independent
+privacy: true
+note: Master candidate. Ownership and distribution pattern are still open.

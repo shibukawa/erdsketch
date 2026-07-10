@@ -14,6 +14,7 @@ fields:
   - text
   - position
   - roughness
+  - state
   - role
   - dependency
   - privacy
@@ -21,6 +22,14 @@ fields:
   - linked_attributes
   - linked_relationships
   - source_notes
+  - business_name
+  - system_name
+  - indexes
+state:
+  type: reference
+  target: data:model-state
+  default: seed_model
+  manual_change: true
 position:
   x: number
   y: number
@@ -36,6 +45,7 @@ visual_style:
       - 1.25
       - 3.5
       - 6.0
+    state_mapping: data:model-state
   roughness_representation:
     - roughjs_rectangle
     - roughjs_path_for_links
@@ -81,6 +91,8 @@ constraints:
   - Linked state is shown visually through lines or model references, not a "Linked" text label.
 related:
   - ui:erd-sketch-canvas
+  - data:model-state
+  - requirement:model-state-management
   - data:entity
   - data:value-object
   - data:data-domain

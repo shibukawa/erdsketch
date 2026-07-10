@@ -8,13 +8,12 @@ Models grow from rough business knowledge into logical and physical models.
 
 ```yaml
 growth_path:
-  - model_seeds
+  - seed_model
   - spatial_arrangement
   - rough_relationships
-  - business_concepts
-  - entity_candidates
-  - patterns
+  - conceptual_model
   - logical_model
+  - matured_model
   - physical_model
   - ddl
   - database

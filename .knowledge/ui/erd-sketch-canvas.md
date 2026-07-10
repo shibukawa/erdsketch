@@ -20,11 +20,14 @@ ui:
       - drag_and_drop_to_move
       - click_title_to_edit
       - click_description_to_edit
+      - open_field_list_from_card_menu
+      - switch_card_content_from_sidebar
       - inline_rename
       - multi_select
       - pan_canvas
       - zoom_canvas
       - adjust_roughness_slider
+      - choose_model_state
       - choose_seed_role
       - choose_seed_dependency
       - toggle_seed_privacy
@@ -46,6 +49,11 @@ ui:
           - 1.25
           - 3.5
           - 6.0
+        state_mapping:
+          matured_model: 0.5
+          logical_model: 1.25
+          conceptual_model: 3.5
+          seed_model: 6.0
       role_color:
         master: green_reference_tone
         transaction: blue_flow_tone
@@ -75,6 +83,17 @@ ui:
       relationship:
         interaction: draw_line_between_models
         not_a_card_tag: true
+      fields:
+        interaction: ui:field-list-dialog
+      model_state:
+        interaction: manual_select
+        source: data:model-state
+        automatic_update: deferred
+    card_content:
+      control: ui:model-card-display-mode
+      modes:
+        - description
+        - primary_and_important_fields
     viewport:
       pan: drag_empty_space_or_trackpad_scroll
       zoom: trackpad_pinch_or_ctrl_wheel
@@ -87,6 +106,8 @@ constraints:
   - Users decide placement and grouping.
   - The app should not mechanically grid seeds.
   - Roughness expresses maturity and sketch state.
+  - State and roughness use the exact mapping in data:model-state.
+  - State changes are manual; readiness criteria are advisory.
   - New seeds start at maximum roughness.
   - Roughness labels are not displayed on cards.
   - Role, dependency, and privacy are not multi-tag fields.
@@ -96,4 +117,10 @@ related:
   - data:model-seed
   - concept:model-growth
   - requirement:design-decision-history
+  - requirement:field-list-management
+  - requirement:model-card-field-summary
+  - ui:field-list-dialog
+  - ui:model-card-display-mode
+  - data:model-state
+  - requirement:model-state-management
 ```

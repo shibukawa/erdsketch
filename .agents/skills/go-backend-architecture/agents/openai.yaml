@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go Backend Architecture"
+  short_description: "Keep erdsketch Go backend modular and WASM-ready"
+  default_prompt: "Use $go-backend-architecture to structure this Go backend change with clear web, storage, and WASM boundaries."

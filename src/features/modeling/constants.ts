@@ -1,0 +1,119 @@
+import type { Dependency, EntityRole, ModelSeed } from "./types";
+
+export const roleOptions: EntityRole[] = ["master", "transaction", "summary", "history", "work"];
+export const dependencyOptions: Dependency[] = ["independent", "dependent"];
+
+export const roleMeta: Record<EntityRole, { label: string; fill: string; stroke: string; chip: string }> = {
+  master: {
+    label: "master",
+    fill: "rgba(236,253,245,0.96)",
+    stroke: "#059669",
+    chip: "border-emerald-200 bg-emerald-50 text-emerald-800"
+  },
+  transaction: {
+    label: "transaction",
+    fill: "rgba(239,246,255,0.96)",
+    stroke: "#2563eb",
+    chip: "border-blue-200 bg-blue-50 text-blue-800"
+  },
+  summary: {
+    label: "summary",
+    fill: "rgba(254,252,232,0.96)",
+    stroke: "#ca8a04",
+    chip: "border-yellow-200 bg-yellow-50 text-yellow-800"
+  },
+  history: {
+    label: "history",
+    fill: "rgba(245,243,255,0.96)",
+    stroke: "#7c3aed",
+    chip: "border-violet-200 bg-violet-50 text-violet-800"
+  },
+  work: {
+    label: "work",
+    fill: "rgba(248,250,252,0.96)",
+    stroke: "#64748b",
+    chip: "border-slate-200 bg-slate-50 text-slate-700"
+  }
+};
+
+export const maturedLevelSteps = [0.5, 1.25, 3.5, 6];
+export const cardWidth = 270;
+export const cardHeight = 214;
+
+export const initialSeeds: ModelSeed[] = [
+  {
+    id: "order",
+    title: "Order",
+    description: "Transaction root. Grow lifecycle, state, and line items from here.",
+    fields: [
+      { id: "order-id", name: "id", primaryKey: true, important: false },
+      { id: "order-number", name: "order_number", primaryKey: false, important: true },
+      { id: "ordered-at", name: "ordered_at", primaryKey: false, important: true }
+    ],
+    x: 80,
+    y: 40,
+    role: "transaction",
+    dependency: "independent",
+    hasPrivacy: false,
+    maturedLevel: 1.25,
+    rotation: -0.5
+  },
+  {
+    id: "customer",
+    title: "Customer",
+    description: "Master candidate. Ownership and distribution pattern are still open.",
+    fields: [
+      { id: "customer-id", name: "id", primaryKey: true, important: false },
+      { id: "customer-name", name: "name", primaryKey: false, important: true }
+    ],
+    x: 430,
+    y: 70,
+    role: "master",
+    dependency: "independent",
+    hasPrivacy: true,
+    maturedLevel: 0.5,
+    rotation: 0.4
+  },
+  {
+    id: "product",
+    title: "Product",
+    description: "Reference data. Could be snapshot at order time.",
+    fields: [
+      { id: "product-id", name: "id", primaryKey: true, important: false },
+      { id: "product-name", name: "name", primaryKey: false, important: true }
+    ],
+    x: 760,
+    y: 120,
+    role: "master",
+    dependency: "independent",
+    hasPrivacy: false,
+    maturedLevel: 3.5,
+    rotation: -0.8
+  },
+  {
+    id: "order-item",
+    title: "Order Item",
+    description: "Likely dependent entity extracted from repeated product fields.",
+    fields: [{ id: "order-item-id", name: "id", primaryKey: true, important: false }],
+    x: 230,
+    y: 320,
+    role: "transaction",
+    dependency: "dependent",
+    hasPrivacy: false,
+    maturedLevel: 6,
+    rotation: 0.7
+  },
+  {
+    id: "shipping-address",
+    title: "Shipping Address",
+    description: "May grow as Value Object or transaction snapshot.",
+    fields: [{ id: "postal-code", name: "postal_code", primaryKey: false, important: true }],
+    x: 610,
+    y: 390,
+    role: "transaction",
+    dependency: "dependent",
+    hasPrivacy: true,
+    maturedLevel: 6,
+    rotation: -0.3
+  }
+];

@@ -1,0 +1,11 @@
+id: seed:order
+kind: model-seed
+title: Order
+matured_level: 1.25
+position:
+  x: 80
+  y: 40
+role: transaction
+dependency: independent
+privacy: false
+note: Transaction root. Grow lifecycle, state, and line items from here.

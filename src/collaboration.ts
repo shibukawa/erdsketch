@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 
 export type Collaborator = {
   id: string;
@@ -56,48 +56,63 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[]) {
   const savingSeedsRef = useRef(new Set<string>());
 
   const applyServerState = useCallback((incoming: CollaborationState<T>) => {
-    setState(() => {
-      const serverIDs = new Set(incoming.seeds.map((seed) => seed.id));
-      const seeds = incoming.seeds.map((serverSeed) => {
-        const pending = pendingSeedsRef.current.get(serverSeed.id);
-        if (!pending) return serverSeed;
-        if (JSON.stringify(pending) === JSON.stringify(serverSeed)) {
-          pendingSeedsRef.current.delete(serverSeed.id);
-          return serverSeed;
+    startTransition(() => {
+      setState(() => {
+        const serverIDs = new Set(incoming.seeds.map((seed) => seed.id));
+        const seeds = incoming.seeds.map((serverSeed) => {
+          const pending = pendingSeedsRef.current.get(serverSeed.id);
+          if (!pending) return serverSeed;
+          if (JSON.stringify(pending) === JSON.stringify(serverSeed)) {
+            pendingSeedsRef.current.delete(serverSeed.id);
+            return serverSeed;
+          }
+          return pending;
+        });
+        for (const pending of pendingSeedsRef.current.values()) {
+          if (!serverIDs.has(pending.id)) seeds.push(pending);
         }
-        return pending;
+        return { ...incoming, seeds };
       });
-      for (const pending of pendingSeedsRef.current.values()) {
-        if (!serverIDs.has(pending.id)) seeds.push(pending);
-      }
-      return { ...incoming, seeds };
     });
   }, []);
+
+  const getSessionUser = useEffectEvent(() => me);
+  const handleIncomingState = useEffectEvent((incoming: CollaborationState<T>) => {
+    applyServerState(incoming);
+  });
+  const handleServerMessage = useEffectEvent((event: MessageEvent<string>) => {
+    handleIncomingState(JSON.parse(event.data) as CollaborationState<T>);
+  });
+  const handleConnectionOpen = useEffectEvent(() => {
+    setConnected(true);
+  });
+  const handleConnectionError = useEffectEvent(() => {
+    setConnected(false);
+  });
 
   useEffect(() => {
     let events: EventSource | undefined;
     let cancelled = false;
-    void post("/api/collaboration/join", { user: me, seeds: initialSeeds })
+    const sessionUser = getSessionUser();
+    void post("/api/collaboration/join", { user: sessionUser, seeds: initialSeeds })
       .then(async (response) => {
         if (!response.ok) throw new Error("Could not join collaboration session");
         const joinedState = (await response.json()) as CollaborationState<T>;
         if (cancelled) return;
         joinedRef.current = true;
-        applyServerState(joinedState);
-        events = new EventSource(`/api/collaboration/events?clientId=${encodeURIComponent(me.id)}`);
-        events.onopen = () => setConnected(true);
-        events.onmessage = (event) => applyServerState(JSON.parse(event.data) as CollaborationState<T>);
-        events.onerror = () => setConnected(false);
+        handleIncomingState(joinedState);
+        events = new EventSource(`/api/collaboration/events?clientId=${encodeURIComponent(sessionUser.id)}`);
+        events.onopen = handleConnectionOpen;
+        events.onmessage = handleServerMessage;
+        events.onerror = handleConnectionError;
       })
-      .catch(() => setConnected(false));
+      .catch(handleConnectionError);
     return () => {
       cancelled = true;
       events?.close();
       if (cursorFrameRef.current !== undefined) cancelAnimationFrame(cursorFrameRef.current);
     };
-    // The identity and initial document are intentionally fixed for this tab session.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applyServerState]);
+  }, [initialSeeds, me.id]);
 
   const rename = useCallback(
     async (name: string) => {
@@ -130,10 +145,12 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[]) {
     async (seedId: string) => {
       const response = await post("/api/collaboration/lock", { clientId: me.id, seedId, action: "lock" });
       if (response.ok) {
-        setState((current) => {
-          const locks = Object.fromEntries(Object.entries(current.locks).filter(([, owner]) => owner.id !== me.id));
-          locks[seedId] = me;
-          return { ...current, locks };
+        startTransition(() => {
+          setState((current) => {
+            const locks = Object.fromEntries(Object.entries(current.locks).filter(([, owner]) => owner.id !== me.id));
+            locks[seedId] = me;
+            return { ...current, locks };
+          });
         });
       }
       return response.ok;
@@ -145,10 +162,12 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[]) {
     async (seedId: string) => {
       const response = await post("/api/collaboration/lock", { clientId: me.id, seedId, action: "unlock" });
       if (response.ok) {
-        setState((current) => {
-          const locks = { ...current.locks };
-          delete locks[seedId];
-          return { ...current, locks };
+        startTransition(() => {
+          setState((current) => {
+            const locks = { ...current.locks };
+            delete locks[seedId];
+            return { ...current, locks };
+          });
         });
       }
     },
@@ -187,6 +206,10 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[]) {
     [me.id]
   );
 
+  const setLocalSeeds = useCallback((seeds: T[]) => {
+    setState((current) => ({ ...current, seeds }));
+  }, []);
+
   return {
     me,
     seeds: state.seeds,
@@ -198,6 +221,6 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[]) {
     lock,
     unlock,
     saveSeed,
-    setLocalSeeds: (seeds: T[]) => setState((current) => ({ ...current, seeds }))
+    setLocalSeeds
   };
 }

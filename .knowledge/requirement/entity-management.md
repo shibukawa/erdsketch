@@ -25,8 +25,13 @@ attributes:
     - required
     - unique
     - description
+    - primary_key
+    - important
+  quick_entry: requirement:field-list-management
 related:
   - data:entity
   - data:attribute
   - ui:entity-candidate-view
+  - requirement:field-list-management
+  - requirement:model-card-field-summary
 ```

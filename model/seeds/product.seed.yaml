@@ -1,0 +1,11 @@
+id: seed:product
+kind: model-seed
+title: Product
+matured_level: 3.5
+position:
+  x: 760
+  y: 120
+role: master
+dependency: independent
+privacy: false
+note: Reference data. Could be snapshot at order time.

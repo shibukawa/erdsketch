@@ -1,0 +1,11 @@
+id: seed:order-item
+kind: model-seed
+title: Order Item
+matured_level: 6.0
+position:
+  x: 230
+  y: 320
+role: transaction
+dependency: dependent
+privacy: false
+note: Likely dependent entity extracted from repeated product fields.
