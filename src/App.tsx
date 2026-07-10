@@ -2,6 +2,7 @@ import {
   Braces,
   Database,
   Focus,
+  Lock,
   LocateFixed,
   MousePointer2,
   Move,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import rough from "roughjs/bundled/rough.esm";
 import { PointerEvent, WheelEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useCollaboration } from "./collaboration";
 
 type EntityRole = "master" | "transaction" | "summary" | "history" | "work";
 type Dependency = "independent" | "dependent";
@@ -221,11 +223,13 @@ function RoughLink({ path, roughness }: RoughLinkProps) {
 }
 
 export function App() {
-  const [seeds, setSeeds] = useState(initialSeeds);
+  const { me, seeds, users, locks, connected, rename, moveCursor, lock, unlock, saveSeed, setLocalSeeds } = useCollaboration(initialSeeds);
   const [query, setQuery] = useState("");
   const [viewport, setViewport] = useState<Viewport>({ x: 260, y: 140, scale: 1 });
   const [dragState, setDragState] = useState<DragState>(null);
   const [selectedId, setSelectedId] = useState("order");
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(me.name);
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
   const visibleSeeds = useMemo(() => {
@@ -239,7 +243,10 @@ export function App() {
   const selectedSeed = seeds.find((seed) => seed.id === selectedId) ?? seeds[0];
 
   const updateSeed = (seedId: string, patch: Partial<ModelSeed>) => {
-    setSeeds((current) => current.map((seed) => (seed.id === seedId ? { ...seed, ...patch } : seed)));
+    const nextSeeds = seeds.map((seed) => (seed.id === seedId ? { ...seed, ...patch } : seed));
+    const nextSeed = nextSeeds.find((seed) => seed.id === seedId);
+    setLocalSeeds(nextSeeds);
+    if (nextSeed) void saveSeed(nextSeed);
   };
 
   const screenToWorld = (clientX: number, clientY: number) => {
@@ -249,6 +256,15 @@ export function App() {
       x: (clientX - rect.left - viewport.x) / viewport.scale,
       y: (clientY - rect.top - viewport.y) / viewport.scale
     };
+  };
+
+  const cursorToWorld = (clientX: number, clientY: number) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    return screenToWorld(
+      Math.min(rect.right - 1, Math.max(rect.left + 1, clientX)),
+      Math.min(rect.bottom - 1, Math.max(rect.top + 1, clientY))
+    );
   };
 
   const addSeedAt = (clientX?: number, clientY?: number) => {
@@ -267,7 +283,10 @@ export function App() {
       roughness: 6,
       rotation: index % 2 === 0 ? 0.6 : -0.6
     };
-    setSeeds((current) => [...current, seed]);
+    setLocalSeeds([...seeds, seed]);
+    void saveSeed(seed, true).then((created) => {
+      if (created) void lock(seed.id);
+    });
     setSelectedId(seed.id);
   };
 
@@ -303,7 +322,7 @@ export function App() {
   };
 
   const handleCanvasPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget) return;
+    if ((event.target as HTMLElement).closest("article, button, input, textarea, [data-no-pan='true']")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     setDragState({
       type: "pan",
@@ -314,12 +333,31 @@ export function App() {
     });
   };
 
-  const handleSeedPointerDown = (event: PointerEvent<HTMLElement>, seed: ModelSeed) => {
-    if ((event.target as HTMLElement).closest("[data-no-drag='true']")) return;
+  const handleSeedPointerDown = async (event: PointerEvent<HTMLElement>, seed: ModelSeed) => {
     event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
+    const owner = locks[seed.id];
+    if (owner && owner.id !== me.id) return;
+    const target = event.target as HTMLElement;
+    const noDrag = !!target.closest("[data-no-drag='true']");
     const point = screenToWorld(event.clientX, event.clientY);
+    if (!noDrag) {
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        return;
+      }
+    }
+    if (!owner && !(await lock(seed.id))) {
+      if (!noDrag && event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      return;
+    }
     setSelectedId(seed.id);
+    if (noDrag) {
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) target.focus();
+      return;
+    }
     setDragState({
       type: "seed",
       pointerId: event.pointerId,
@@ -330,6 +368,8 @@ export function App() {
   };
 
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const cursor = cursorToWorld(event.clientX, event.clientY);
+    moveCursor(cursor.x, cursor.y);
     if (!dragState || dragState.pointerId !== event.pointerId) return;
 
     if (dragState.type === "pan") {
@@ -342,8 +382,7 @@ export function App() {
     }
 
     const point = screenToWorld(event.clientX, event.clientY);
-    setSeeds((current) =>
-      current.map((seed) =>
+    const nextSeeds = seeds.map((seed) =>
         seed.id === dragState.seedId
           ? {
               ...seed,
@@ -351,8 +390,15 @@ export function App() {
               y: point.y - dragState.offsetY
             }
           : seed
-      )
-    );
+      );
+    setLocalSeeds(nextSeeds);
+    const movedSeed = nextSeeds.find((seed) => seed.id === dragState.seedId);
+    if (movedSeed) void saveSeed(movedSeed);
+  };
+
+  const handlePointerLeave = (event: PointerEvent<HTMLDivElement>) => {
+    const cursor = cursorToWorld(event.clientX, event.clientY);
+    moveCursor(cursor.x, cursor.y);
   };
 
   const stopDragging = (event: PointerEvent<HTMLDivElement>) => {
@@ -361,6 +407,14 @@ export function App() {
   };
 
   const resetView = () => setViewport({ x: 260, y: 140, scale: 1 });
+
+  const selectedLock = selectedSeed ? locks[selectedSeed.id] : undefined;
+  const canEditSelected = !!selectedSeed && selectedLock?.id === me.id;
+  const otherUsers = users.filter((user) => user.id !== me.id);
+
+  const saveName = async () => {
+    if (await rename(nameDraft)) setEditingName(false);
+  };
 
   return (
     <main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
@@ -417,6 +471,15 @@ export function App() {
             <section className="mt-5 min-h-[320px] overflow-auto rounded-lg border border-slate-200 bg-white p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Selected model seed</p>
               <h2 className="mt-1 truncate text-lg font-bold">{selectedSeed.title}</h2>
+
+              <div className={`mt-3 flex items-center gap-2 rounded-md px-2.5 py-2 text-xs font-semibold ${
+                canEditSelected ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-600"
+              }`}>
+                <Lock size={13} />
+                {canEditSelected ? "Locked by you — editing enabled" : selectedLock ? `Locked by ${selectedLock.name}` : "Click the card to lock and edit"}
+              </div>
+
+              <fieldset disabled={!canEditSelected} className="disabled-controls">
 
               <label className="mt-4 block">
                 <span className="text-sm font-bold text-slate-600">Rough.js roughness</span>
@@ -493,6 +556,7 @@ export function App() {
                   />
                 </label>
               </div>
+              </fieldset>
             </section>
           )}
 
@@ -512,6 +576,50 @@ export function App() {
               <h2 className="text-2xl font-bold">Place model seeds anywhere</h2>
             </div>
             <div className="flex items-center gap-2">
+              <div className="mr-1 flex -space-x-2" aria-label={`${users.length} collaborators online`}>
+                {otherUsers.slice(0, 4).map((user) => (
+                  <span
+                    key={user.id}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-xs font-bold text-white"
+                    style={{ backgroundColor: user.color }}
+                    title={user.name}
+                  >
+                    {user.name.slice(0, 1).toUpperCase()}
+                  </span>
+                ))}
+              </div>
+              <span className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-amber-500"}`} title={connected ? "Connected" : "Connecting"} />
+              {editingName ? (
+                <form
+                  className="flex items-center gap-1"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void saveName();
+                  }}
+                >
+                  <input
+                    autoFocus
+                    className="input input-bordered input-sm w-28 rounded-lg"
+                    value={nameDraft}
+                    maxLength={24}
+                    onChange={(event) => setNameDraft(event.target.value)}
+                    onBlur={() => void saveName()}
+                    aria-label="Your collaborator name"
+                  />
+                </form>
+              ) : (
+                <button
+                  className="btn btn-ghost btn-sm rounded-lg px-2"
+                  onClick={() => {
+                    setNameDraft(me.name);
+                    setEditingName(true);
+                  }}
+                  title="Change your name"
+                >
+                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: me.color }} />
+                  {me.name}
+                </button>
+              )}
               <button className="btn btn-outline btn-sm rounded-lg gap-2" onClick={resetView}>
                 <LocateFixed size={16} />
                 Reset
@@ -540,10 +648,11 @@ export function App() {
               dragState?.type === "pan" ? "cursor-grabbing" : "cursor-grab"
             }`}
             onDoubleClick={(event) => {
-              if (event.target === event.currentTarget) addSeedAt(event.clientX, event.clientY);
+              if (!(event.target as HTMLElement).closest("article, button, input, textarea")) addSeedAt(event.clientX, event.clientY);
             }}
             onPointerDown={handleCanvasPointerDown}
             onPointerMove={handlePointerMove}
+            onPointerLeave={handlePointerLeave}
             onPointerUp={stopDragging}
             onPointerCancel={stopDragging}
             onWheel={handleWheel}
@@ -562,10 +671,15 @@ export function App() {
 
               {visibleSeeds.map((seed) => {
                 const meta = roleMeta[seed.role];
+                const owner = locks[seed.id];
+                const lockedByMe = owner?.id === me.id;
+                const lockedByOther = !!owner && !lockedByMe;
                 return (
                   <article
                     key={seed.id}
-                    className={`model-seed-card absolute w-[270px] select-none p-4 ${selectedId === seed.id ? "is-selected" : ""}`}
+                    className={`model-seed-card absolute w-[270px] select-none p-4 ${selectedId === seed.id ? "is-selected" : ""} ${
+                      lockedByOther ? "is-locked" : ""
+                    }`}
                     style={{
                       left: seed.x,
                       top: seed.y,
@@ -583,6 +697,22 @@ export function App() {
                     />
 
                     <div className="relative">
+                      {owner && (
+                        <button
+                          data-no-drag="true"
+                          type="button"
+                          className="absolute -right-1 -top-9 z-10 flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold text-white shadow-sm"
+                          style={{ backgroundColor: owner.color }}
+                          onPointerDown={(event) => event.stopPropagation()}
+                          onClick={() => {
+                            if (lockedByMe) void unlock(seed.id);
+                          }}
+                          title={lockedByMe ? "Click to unlock" : `Locked by ${owner.name}`}
+                        >
+                          <Lock size={11} />
+                          {lockedByMe ? "You" : owner.name}
+                        </button>
+                      )}
                       <div className="flex items-start gap-3">
                         <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/80 text-slate-800">
                           <Database size={18} strokeWidth={2.1} />
@@ -591,10 +721,13 @@ export function App() {
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Model Seed</p>
                           <input
                             data-no-drag="true"
+                            readOnly={!lockedByMe}
                             className="w-full rounded-md bg-transparent text-xl font-bold leading-tight outline-none focus:bg-white/80 focus:px-1"
                             value={seed.title}
                             onChange={(event) => updateSeed(seed.id, { title: event.target.value })}
-                            onPointerDown={(event) => event.stopPropagation()}
+                            onPointerDown={(event) => {
+                              if (lockedByMe) event.stopPropagation();
+                            }}
                             aria-label={`${seed.title} title`}
                           />
                         </div>
@@ -602,10 +735,13 @@ export function App() {
 
                       <textarea
                         data-no-drag="true"
+                        readOnly={!lockedByMe}
                         className="mt-3 h-16 w-full resize-none rounded-md bg-transparent text-sm leading-5 text-slate-700 outline-none focus:bg-white/80 focus:px-1"
                         value={seed.description}
                         onChange={(event) => updateSeed(seed.id, { description: event.target.value })}
-                        onPointerDown={(event) => event.stopPropagation()}
+                        onPointerDown={(event) => {
+                          if (lockedByMe) event.stopPropagation();
+                        }}
                         aria-label={`${seed.title} description`}
                       />
 
@@ -625,6 +761,19 @@ export function App() {
                   </article>
                 );
               })}
+
+              {otherUsers
+                .filter((user) => user.x !== 0 || user.y !== 0)
+                .map((user) => (
+                  <div
+                    key={user.id}
+                    className="remote-cursor pointer-events-none absolute z-50"
+                    style={{ left: user.x, top: user.y, color: user.color }}
+                  >
+                    <MousePointer2 size={24} fill="currentColor" strokeWidth={1.5} />
+                    <span style={{ backgroundColor: user.color }}>{user.name}</span>
+                  </div>
+                ))}
             </div>
           </div>
         </section>

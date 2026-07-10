@@ -17,6 +17,7 @@ input {
 }
 
 .erd-canvas {
+  touch-action: none;
   background-color: #f8fafc;
   background-image:
     radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.16) 1px, transparent 0),
@@ -35,6 +36,7 @@ input {
 .model-seed-card {
   min-height: 214px;
   cursor: grab;
+  touch-action: none;
 }
 
 .model-seed-card:active {
@@ -43,4 +45,32 @@ input {
 
 .model-seed-card.is-selected {
   filter: drop-shadow(0 18px 34px rgba(37, 99, 235, 0.18));
+}
+
+.model-seed-card.is-locked {
+  cursor: not-allowed;
+  filter: saturate(0.7) opacity(0.82);
+}
+
+.disabled-controls:disabled {
+  opacity: 0.48;
+}
+
+.remote-cursor {
+  filter: drop-shadow(0 2px 2px rgb(255 255 255 / 0.9));
+  transition: left 70ms linear, top 70ms linear;
+}
+
+.remote-cursor > span {
+  display: block;
+  width: max-content;
+  margin-left: 18px;
+  margin-top: -3px;
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 0.18);
 }
