@@ -6,14 +6,18 @@ import {
   type KeyboardEvent,
   type MouseEvent
 } from "react";
-import type { ModelField } from "../../features/modeling/types";
+import type { DataDomain, ModelField } from "../../features/modeling/types";
+import { expandDomainField } from "../../features/modeling/utils";
 
 type FieldListRowProps = {
   field: ModelField;
   selected: boolean;
   dragging: boolean;
   dropTarget: boolean;
+  domainDropTarget: boolean;
   canEdit: boolean;
+  domain?: DataDomain;
+  domains: DataDomain[];
   onSelect: (fieldId: string) => void;
   onNameChange: (fieldId: string, name: string) => void;
   onTogglePrimaryKey: (fieldId: string) => void;
@@ -23,6 +27,7 @@ type FieldListRowProps = {
   onDragOver: (event: DragEvent<HTMLElement>, fieldId: string) => void;
   onDrop: (event: DragEvent<HTMLElement>, fieldId: string) => void;
   onDragEnd: () => void;
+  onDomainDrop: (fieldId: string, domainId: string) => void;
 };
 
 export function FieldListRow({
@@ -30,7 +35,10 @@ export function FieldListRow({
   selected,
   dragging,
   dropTarget,
+  domainDropTarget,
   canEdit,
+  domain,
+  domains,
   onSelect,
   onNameChange,
   onTogglePrimaryKey,
@@ -39,9 +47,11 @@ export function FieldListRow({
   onDragStart,
   onDragOver,
   onDrop,
-  onDragEnd
+  onDragEnd,
+  onDomainDrop
 }: FieldListRowProps) {
   const effectiveImportant = field.important || field.primaryKey;
+  const expandedNames = expandDomainField(field, domains).map((item) => item.name);
   const handleSelect = useCallback(() => {
     if (canEdit) onSelect(field.id);
   }, [canEdit, field.id, onSelect]);
@@ -107,16 +117,23 @@ export function FieldListRow({
 
   const handleDrop = useCallback(
     (event: DragEvent<HTMLLIElement>) => {
+      const domainId = event.dataTransfer.getData("application/x-erdsketch-domain-id");
+      if (domainId) {
+        event.preventDefault();
+        event.stopPropagation();
+        onDomainDrop(field.id, domainId);
+        return;
+      }
       onDrop(event, field.id);
     },
-    [field.id, onDrop]
+    [field.id, onDomainDrop, onDrop]
   );
 
   return (
     <li
-      className={`field-list-row grid h-10 grid-cols-[30px_minmax(180px,1fr)_78px_70px_44px_40px] items-center border-b border-slate-100 text-sm transition-colors ${
+      className={`field-list-row grid h-10 grid-cols-[30px_minmax(140px,1fr)_120px_78px_70px_44px_40px] items-center border-b border-slate-100 text-sm transition-colors ${
         selected ? "bg-blue-50" : "hover:bg-slate-50"
-      } ${dragging ? "opacity-35" : ""} ${dropTarget ? "field-list-row-drop-target" : ""}`}
+      } ${dragging ? "opacity-35" : ""} ${dropTarget ? "field-list-row-drop-target" : ""} ${domainDropTarget ? "bg-blue-100 ring-2 ring-inset ring-blue-400" : ""}`}
       role="row"
       tabIndex={canEdit ? 0 : -1}
       aria-selected={selected}
@@ -151,6 +168,10 @@ export function FieldListRow({
           <span className="block truncate px-2 font-mono text-[13px] font-semibold text-slate-700">{field.name || "Untitled field"}</span>
         )}
       </div>
+
+      <span className={`truncate rounded px-2 py-1 font-mono text-[10px] font-semibold ${domainDropTarget ? "bg-blue-600 text-white ring-2 ring-blue-300" : "bg-slate-100 text-slate-600"}`} title={domain ? `Domain: ${domain.name}${domain.shape === "composite" ? `\nExpands to: ${expandedNames.join(", ")}` : ""}` : "No domain assigned"}>
+        {domain?.shape === "composite" ? `${domain.name} · ${expandedNames.length}` : domain?.name ?? "—"}
+      </span>
 
       <button
         type="button"

@@ -13,21 +13,26 @@ import {
   type WheelEvent
 } from "react";
 import { createPortal } from "react-dom";
-import type { ModelField, Relationship, RelationshipReference } from "../../features/modeling/types";
+import type { DataDomain, DomainCategory, ModelField, Relationship, RelationshipReference } from "../../features/modeling/types";
 import { sortFieldListItems } from "../../features/modeling/utils";
 import { FieldListRow } from "./FieldListRow";
 import { RelationshipReferenceRow } from "./RelationshipReferenceRow";
+import { DomainDictionaryPanel } from "./DomainDictionaryPanel";
 
 type FieldListDialogProps = {
   modelTitle: string;
   modelMaturedLevel: number;
   fields: ModelField[];
+  domains: DataDomain[];
+  domainCategories: DomainCategory[];
   relationshipReferences: Array<{ relationship: Relationship; reference: RelationshipReference }>;
   canEdit: boolean;
   onChange: (fields: ModelField[]) => void;
   onClose: () => void;
   onUpdateReference: (relationshipId: string, patch: Partial<RelationshipReference>) => void;
   onDeleteReference: (relationshipId: string) => void;
+  onCreateDomain: (name: string) => void;
+  onOpenDomainDictionary: (fieldId?: string) => void;
 };
 
 function replaceField(fields: ModelField[], fieldId: string, patch: Partial<ModelField>) {
@@ -44,7 +49,7 @@ function reorderFields(fields: ModelField[], sourceId: string, targetId: string)
   return [...remaining.slice(0, targetIndex), source, ...remaining.slice(targetIndex)];
 }
 
-export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, relationshipReferences, canEdit, onChange, onClose, onUpdateReference, onDeleteReference }: FieldListDialogProps) {
+export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, domains, domainCategories, relationshipReferences, canEdit, onChange, onClose, onUpdateReference, onDeleteReference, onCreateDomain, onOpenDomainDictionary }: FieldListDialogProps) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const quickEntryRef = useRef<HTMLInputElement | null>(null);
   const fieldsRef = useRef(fields);
@@ -53,6 +58,7 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, relatio
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
   const [draggingFieldId, setDraggingFieldId] = useState<string | null>(null);
   const [dropTargetFieldId, setDropTargetFieldId] = useState<string | null>(null);
+  const [domainDropTargetFieldId, setDomainDropTargetFieldId] = useState<string | null>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -177,13 +183,21 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, relatio
   const handleDragOver = useCallback((event: DragEvent<HTMLElement>, fieldId: string) => {
     event.preventDefault();
     event.stopPropagation();
-    event.dataTransfer.dropEffect = "move";
-    setDropTargetFieldId(fieldId);
+    if (event.dataTransfer.types.includes("application/x-erdsketch-domain-id")) {
+      event.dataTransfer.dropEffect = "copy";
+      setDropTargetFieldId(null);
+      setDomainDropTargetFieldId(fieldId);
+    } else {
+      event.dataTransfer.dropEffect = "move";
+      setDomainDropTargetFieldId(null);
+      setDropTargetFieldId(fieldId);
+    }
   }, []);
 
   const clearDragState = useCallback(() => {
     setDraggingFieldId(null);
     setDropTargetFieldId(null);
+    setDomainDropTargetFieldId(null);
   }, []);
 
   const handleDrop = useCallback(
@@ -195,6 +209,15 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, relatio
       clearDragState();
     },
     [clearDragState, commitFields, draggingFieldId]
+  );
+
+  const handleDomainAssign = useCallback(
+    (fieldId: string, domainId: string) => {
+      if (!canEdit || !domains.some((domain) => domain.id === domainId)) return;
+      commitFields(replaceField(fieldsRef.current, fieldId, { domainId }));
+      clearDragState();
+    },
+    [canEdit, clearDragState, commitFields, domains]
   );
 
   const relationshipReferenceByID = new Map(relationshipReferences.map((item) => [item.reference.id, item]));
@@ -211,7 +234,7 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, relatio
   return createPortal(
     <dialog
       ref={dialogRef}
-      className="field-list-dialog m-auto h-[min(90vh,860px)] w-[min(96vw,1040px)] rounded-xl border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl"
+      className="field-list-dialog m-auto h-[min(90vh,860px)] w-[min(98vw,1380px)] rounded-xl border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl"
       aria-labelledby="field-list-title"
       onCancel={handleCancel}
       onClose={onClose}
@@ -277,13 +300,15 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, relatio
           )}
         </header>
 
-        <div className="field-list-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-3">
+        <div className="flex min-h-0 flex-1">
+        <div className="field-list-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-3">
           <div
-            className="sticky top-0 z-10 grid h-8 grid-cols-[30px_minmax(180px,1fr)_78px_70px_44px_40px] items-center border-b border-slate-200 bg-white/95 text-[10px] font-bold uppercase tracking-wider text-slate-400 backdrop-blur"
+            className="sticky top-0 z-10 grid h-8 grid-cols-[30px_minmax(140px,1fr)_120px_78px_70px_44px_40px] items-center border-b border-slate-200 bg-white/95 text-[10px] font-bold uppercase tracking-wider text-slate-400 backdrop-blur"
             role="row"
           >
             <span aria-hidden="true" />
             <span className="px-2">Field name</span>
+            <span className="px-2">Domain</span>
             <span className="text-center">Primary key</span>
             <span className="text-center">Foreign key</span>
             <span className="text-center">Fav</span>
@@ -297,13 +322,15 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, relatio
               {sortedItems.map((item) => {
                 if (item.type === "field") {
                   const field = item.item;
-                  return <FieldListRow key={field.id} field={field} selected={editingFieldId === field.id && canEdit} dragging={draggingFieldId === field.id} dropTarget={dropTargetFieldId === field.id && draggingFieldId !== field.id} canEdit={canEdit} onSelect={handleSelectField} onNameChange={handleFieldNameChange} onTogglePrimaryKey={handleTogglePrimaryKey} onToggleImportant={handleToggleImportant} onDelete={handleDelete} onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={clearDragState} />;
+                  return <FieldListRow key={field.id} field={field} domain={domains.find((domain) => domain.id === field.domainId)} domains={domains} selected={editingFieldId === field.id && canEdit} dragging={draggingFieldId === field.id} dropTarget={dropTargetFieldId === field.id && draggingFieldId !== field.id} domainDropTarget={domainDropTargetFieldId === field.id} canEdit={canEdit} onSelect={handleSelectField} onNameChange={handleFieldNameChange} onTogglePrimaryKey={handleTogglePrimaryKey} onToggleImportant={handleToggleImportant} onDelete={handleDelete} onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={clearDragState} onDomainDrop={handleDomainAssign} />;
                 }
                 const referenceItem = relationshipReferenceByID.get(item.item.id);
                 return referenceItem ? <RelationshipReferenceRow key={item.item.id} relationship={referenceItem.relationship} reference={referenceItem.reference} canEdit={canEdit} onTogglePrimaryKey={handleToggleReferencePrimaryKey} onToggleForeignKey={handleToggleReferenceForeignKey} onDelete={onDeleteReference} /> : null;
               })}
             </ul>
           )}
+        </div>
+        <DomainDictionaryPanel domains={domains} categories={domainCategories} canEdit={canEdit} onCreate={onCreateDomain} onOpen={() => onOpenDomainDictionary(editingFieldId ?? undefined)} />
         </div>
       </div>
     </dialog>,

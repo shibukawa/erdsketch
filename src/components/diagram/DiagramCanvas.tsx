@@ -5,7 +5,7 @@ import type {
   WheelEventHandler
 } from "react";
 import type { Collaborator } from "../../collaboration";
-import type { CardDisplayMode, DragState, ModelSeed, Relationship, RelationshipReference, Viewport } from "../../features/modeling/types";
+import type { CardDisplayMode, DataDomain, DomainCategory, DragState, ModelSeed, Relationship, RelationshipReference, Viewport } from "../../features/modeling/types";
 import { getCardBoundaryPoint, getRelationshipDropTarget } from "../../features/modeling/utils";
 import { ModelSeedCard } from "./ModelSeedCard";
 import { RemoteCursor } from "./RemoteCursor";
@@ -20,6 +20,8 @@ type DiagramCanvasProps = {
   allSeeds: ModelSeed[];
   relationships: Relationship[];
   relationshipReferences: RelationshipReference[];
+  domains: DataDomain[];
+  domainCategories: DomainCategory[];
   selectedId: string;
   displayMode: CardDisplayMode;
   locks: Record<string, Collaborator>;
@@ -38,6 +40,8 @@ type DiagramCanvasProps = {
   onEditRelationship: (relationshipId: string) => void;
   onUpdateRelationshipReference: (relationshipId: string, patch: Partial<RelationshipReference>) => void;
   onDeleteRelationship: (relationshipId: string) => void;
+  onCreateDomain: (name: string) => void;
+  onOpenDomainDictionary: (seedId: string, fieldId?: string) => void;
 };
 
 export function DiagramCanvas({
@@ -48,6 +52,8 @@ export function DiagramCanvas({
   allSeeds,
   relationships,
   relationshipReferences,
+  domains,
+  domainCategories,
   selectedId,
   displayMode,
   locks,
@@ -65,7 +71,9 @@ export function DiagramCanvas({
   onRelationshipPointerDown,
   onEditRelationship,
   onUpdateRelationshipReference,
-  onDeleteRelationship
+  onDeleteRelationship,
+  onCreateDomain,
+  onOpenDomainDictionary
 }: DiagramCanvasProps) {
   const relationshipDropTargetId = dragState?.type === "relationship"
     ? getRelationshipDropTarget(dragState.sourceId, dragState, allSeeds)?.id
@@ -117,8 +125,12 @@ export function DiagramCanvas({
             onRelationshipPointerDown={onRelationshipPointerDown}
             relationships={relationships}
             relationshipReferences={relationshipReferences}
+            domains={domains}
+            domainCategories={domainCategories}
             onUpdateRelationshipReference={onUpdateRelationshipReference}
             onDeleteRelationship={onDeleteRelationship}
+            onCreateDomain={onCreateDomain}
+            onOpenDomainDictionary={onOpenDomainDictionary}
           />
         ))}
 

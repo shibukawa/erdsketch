@@ -39,6 +39,8 @@ operations:
 constraints:
   - When domain is assigned, its definition is authoritative over an independently entered data_type.
   - Composite domain assignment remains one logical attribute and expands through rule:domain-expansion.
+  - Domain shape does not change the attribute count in logical editing or model-card display.
+  - A key flag belongs to the logical attribute and projects to physical columns through rule:domain-key-projection.
   - Attribute records and data:relationship-reference records use separate collections and persistence schemas.
   - Attribute never stores a relationship reference discriminator or relationship ID.
   - important has no SQL or schema-generation semantics.
@@ -58,4 +60,5 @@ related:
   - data:relationship-reference
   - data:data-domain
   - rule:domain-expansion
+  - rule:domain-key-projection
 ```

@@ -33,6 +33,7 @@ requirements:
     stores_reference_to: data:data-domain
     composite_display: one_logical_row
     physical_projection: rule:domain-expansion
+    key_projection: rule:domain-key-projection
   relationship_reference:
     item: data:relationship-reference
     source: data:relationship
@@ -89,6 +90,7 @@ acceptance:
   - Removing a projected relationship reference requires confirmation because it removes the relationship.
   - A domain can be assigned to an attribute from the adjacent dictionary panel.
   - A composite domain remains one field-list row.
+  - Domain shape and completeness never restrict assignment.
 related:
   - data:attribute
   - data:relationship

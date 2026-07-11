@@ -1,4 +1,4 @@
-import type { ModelSeed, Multiplicity, Relationship, RelationshipDirection, RelationshipReference } from "./types";
+import type { DataDomain, ExpandedDomainField, ModelField, ModelSeed, Multiplicity, Relationship, RelationshipDirection, RelationshipReference } from "./types";
 import { cardHeight, cardWidth } from "./constants";
 
 export const clampScale = (scale: number) => Math.min(2.4, Math.max(0.35, scale));
@@ -29,6 +29,20 @@ export function relationshipDisplaySeedIDs(relationship: Relationship) {
 
 export function getRelationshipReference(relationshipReferences: RelationshipReference[], relationshipId: string) {
   return relationshipReferences.find((reference) => reference.relationshipId === relationshipId);
+}
+
+export function expandDomainField(field: ModelField, domains: DataDomain[]): ExpandedDomainField[] {
+  const domain = domains.find((item) => item.id === field.domainId);
+  if (!domain || domain.shape !== "composite") return [{ name: field.name, domainId: field.domainId ?? "" }];
+  return domain.components.map((component) => ({
+    name: `${field.name}${component.name.replace(/\s+/g, "")}`,
+    domainId: component.domainId ?? "",
+    componentId: component.id
+  }));
+}
+
+export function isAssignableDomain(domain: DataDomain | undefined) {
+  return !!domain;
 }
 
 export function sortFieldListItems(fields: ModelSeed["fields"], references: RelationshipReference[]) {

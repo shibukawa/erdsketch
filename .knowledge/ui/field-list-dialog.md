@@ -42,7 +42,7 @@ ui:
         rows:
           attribute:
             item_interaction: click_to_edit
-            domain_drop_target: ui:domain-dictionary-panel
+            domain_drop_target: ui:domain-dictionary-dialog
             controls:
               - name
               - primary_key
@@ -67,6 +67,8 @@ constraints:
   - Favorite cannot be effectively disabled while primary key remains selected.
   - Preserve Japanese IME composition behavior.
   - Composite domain assignments render as one logical attribute row.
+  - ui:domain-dictionary-panel provides only quick name capture and launch.
+  - Detailed domain assignment is performed in ui:domain-dictionary-dialog.
 related:
   - requirement:field-list-management
   - data:attribute
@@ -74,6 +76,7 @@ related:
   - data:relationship-reference
   - rule:field-list-sort
   - ui:domain-dictionary-panel
+  - ui:domain-dictionary-dialog
   - data:data-domain
   - rule:domain-expansion
 ```

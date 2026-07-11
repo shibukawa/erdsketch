@@ -1,4 +1,4 @@
-import type { Dependency, EntityRole, ModelSeed, Relationship, RelationshipReference } from "./types";
+import type { DataDomain, Dependency, DomainCategory, EntityRole, ModelSeed, Relationship, RelationshipReference } from "./types";
 
 export const roleOptions: EntityRole[] = ["master", "transaction", "summary", "history", "work"];
 export const dependencyOptions: Dependency[] = ["independent", "dependent"];
@@ -39,6 +39,26 @@ export const roleMeta: Record<EntityRole, { label: string; fill: string; stroke:
 export const maturedLevelSteps = [0.5, 1.25, 3.5, 6];
 export const cardWidth = 270;
 export const cardHeight = 214;
+
+export const initialDomainCategories: DomainCategory[] = [
+  { id: "primitive", name: "Primitive", system: true },
+  { id: "user-defined", name: "User Defined" }
+];
+
+export const initialDomains: DataDomain[] = [
+  { id: "primitive-integer", name: "Integer", categoryId: "primitive", shape: "primitive", primitiveType: "integer", bits: 32, components: [], system: true },
+  { id: "primitive-decimal", name: "Decimal", categoryId: "primitive", shape: "primitive", primitiveType: "decimal", precision: 18, scale: 2, components: [], system: true },
+  { id: "primitive-floating-point", name: "Floating point", categoryId: "primitive", shape: "primitive", primitiveType: "floating_point", bits: 64, components: [], system: true },
+  { id: "primitive-varchar", name: "Varchar", categoryId: "primitive", shape: "primitive", primitiveType: "varchar", length: 255, components: [], system: true },
+  { id: "primitive-text", name: "Text", categoryId: "primitive", shape: "primitive", primitiveType: "text", components: [], system: true },
+  { id: "primitive-blob", name: "Blob", categoryId: "primitive", shape: "primitive", primitiveType: "blob", components: [], system: true },
+  { id: "primitive-date", name: "Date", categoryId: "primitive", shape: "primitive", primitiveType: "date", components: [], system: true },
+  { id: "primitive-time", name: "Time", categoryId: "primitive", shape: "primitive", primitiveType: "time", components: [], system: true },
+  { id: "primitive-datetime", name: "Datetime", categoryId: "primitive", shape: "primitive", primitiveType: "datetime", components: [], system: true },
+  { id: "primitive-datetime-with-timezone", name: "Datetime with timezone", categoryId: "primitive", shape: "primitive", primitiveType: "datetime_with_timezone", components: [], system: true },
+  { id: "primitive-boolean", name: "Boolean", categoryId: "primitive", shape: "primitive", primitiveType: "boolean", components: [], system: true },
+  { id: "primitive-uuid", name: "UUID", categoryId: "primitive", shape: "primitive", primitiveType: "uuid", components: [], system: true }
+];
 
 export const initialSeeds: ModelSeed[] = [
   {

@@ -1,4 +1,4 @@
-import { AlignLeft, Braces, KeyRound, MousePointer2, Move, Plus, Search, Sparkles, ZoomIn } from "lucide-react";
+import { AlignLeft, BookOpen, Braces, KeyRound, MousePointer2, Move, Plus, Search, Sparkles, ZoomIn } from "lucide-react";
 import { useCallback, type ChangeEvent, type MouseEvent } from "react";
 import type { Collaborator } from "../../collaboration";
 import type { CardDisplayMode, ModelSeed } from "../../features/modeling/types";
@@ -14,6 +14,7 @@ type SidebarProps = {
   onCardDisplayModeChange: (mode: CardDisplayMode) => void;
   onAddSeed: () => void;
   onUpdateSeed: (seedId: string, patch: Partial<ModelSeed>) => void;
+  onOpenDomainDictionary: () => void;
 };
 
 export function Sidebar({
@@ -25,7 +26,8 @@ export function Sidebar({
   onQueryChange,
   onCardDisplayModeChange,
   onAddSeed,
-  onUpdateSeed
+  onUpdateSeed,
+  onOpenDomainDictionary
 }: SidebarProps) {
   const handleAddSeed = useCallback(() => {
     onAddSeed();
@@ -44,6 +46,10 @@ export function Sidebar({
     },
     [onCardDisplayModeChange]
   );
+
+  const handleOpenDomainDictionary = useCallback(() => {
+    onOpenDomainDictionary();
+  }, [onOpenDomainDictionary]);
 
   return (
     <aside className="z-20 flex w-[330px] shrink-0 flex-col overflow-y-auto border-r border-slate-200 bg-white px-5 py-5 shadow-sm">
@@ -133,6 +139,12 @@ export function Sidebar({
         </div>
         <p className="mt-2 text-sm leading-5">New models start at level 6. Lower values move through conceptual and logical stages toward matured.</p>
       </section>
+
+      <div className="mt-auto pt-6">
+        <button type="button" className="btn btn-outline w-full justify-start gap-2" onClick={handleOpenDomainDictionary}>
+          <BookOpen size={17} />Domain dictionary
+        </button>
+      </div>
     </aside>
   );
 }

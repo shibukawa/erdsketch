@@ -7,6 +7,64 @@ export type ModelField = {
   name: string;
   primaryKey: boolean;
   important: boolean;
+  domainId?: string;
+};
+
+export type PrimitiveType =
+  | "integer"
+  | "decimal"
+  | "floating_point"
+  | "varchar"
+  | "text"
+  | "blob"
+  | "date"
+  | "time"
+  | "datetime"
+  | "datetime_with_timezone"
+  | "boolean"
+  | "uuid";
+
+export type DomainShape = "primitive" | "unresolved" | "scalar" | "composite";
+
+export type DomainComponent = {
+  id: string;
+  name: string;
+  domainId?: string;
+  required: boolean;
+  description?: string;
+};
+
+export type DomainCategory = {
+  id: string;
+  name: string;
+  system?: boolean;
+};
+
+export type DataDomain = {
+  id: string;
+  name: string;
+  categoryId: string;
+  shape: DomainShape;
+  primitiveType?: PrimitiveType;
+  bits?: 8 | 16 | 32 | 64;
+  unsigned?: boolean;
+  length?: number;
+  precision?: number;
+  scale?: number;
+  components: DomainComponent[];
+  system?: boolean;
+};
+
+export type DomainCategoryBundle = {
+  version: 1;
+  category: Pick<DomainCategory, "name">;
+  domains: DataDomain[];
+};
+
+export type ExpandedDomainField = {
+  name: string;
+  domainId: string;
+  componentId?: string;
 };
 
 export type Multiplicity = "0..1" | "1" | "0..*" | "1..*";

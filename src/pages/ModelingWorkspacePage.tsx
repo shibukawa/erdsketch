@@ -14,8 +14,9 @@ import { DiagramCanvas } from "../components/diagram/DiagramCanvas";
 import { Sidebar } from "../components/layout/Sidebar";
 import { WorkspaceHeader } from "../components/layout/WorkspaceHeader";
 import { RelationshipEditorDialog } from "../components/diagram/RelationshipEditorDialog";
-import { initialRelationshipReferences, initialRelationships, initialSeeds } from "../features/modeling/constants";
-import type { CardDisplayMode, DragState, ModelSeed, Relationship, RelationshipReference, Viewport } from "../features/modeling/types";
+import { DomainDictionaryDialog } from "../components/diagram/DomainDictionaryDialog";
+import { initialDomainCategories, initialDomains, initialRelationshipReferences, initialRelationships, initialSeeds } from "../features/modeling/constants";
+import type { CardDisplayMode, DataDomain, DomainCategory, DomainCategoryBundle, DragState, ModelSeed, Relationship, RelationshipReference, Viewport } from "../features/modeling/types";
 import { clampScale, flattenLabels, getRelatedDragSeedIDs, getRelationshipDropTarget, getRelationshipReference } from "../features/modeling/utils";
 
 export function ModelingWorkspacePage() {
@@ -24,6 +25,8 @@ export function ModelingWorkspacePage() {
     seeds,
     relationships,
     relationshipReferences,
+    domains,
+    domainCategories,
     users,
     locks,
     connected,
@@ -35,15 +38,20 @@ export function ModelingWorkspacePage() {
     unlockAll,
     saveSeed,
     saveRelationship,
+    saveDomain,
+    saveDomainCategory,
     setLocalSeeds,
-    setLocalRelationships
-  } = useCollaboration(initialSeeds, initialRelationships, initialRelationshipReferences);
+    setLocalRelationships,
+    setLocalDomains,
+    setLocalDomainCategories
+  } = useCollaboration(initialSeeds, initialRelationships, initialRelationshipReferences, initialDomains, initialDomainCategories);
   const [query, setQuery] = useState("");
   const [cardDisplayMode, setCardDisplayMode] = useState<CardDisplayMode>("description");
   const [viewport, setViewport] = useState<Viewport>({ x: 260, y: 140, scale: 1 });
   const [dragState, setDragState] = useState<DragState>(null);
   const [selectedId, setSelectedId] = useState("order");
   const [editingRelationship, setEditingRelationship] = useState<{ relationship: Relationship; create: boolean } | null>(null);
+  const [domainDictionaryContext, setDomainDictionaryContext] = useState<{ seedId?: string; fieldId?: string; label?: string } | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const historyRef = useRef<Record<string, { x: number; y: number }>[] >([]);
 
@@ -73,6 +81,145 @@ export function ModelingWorkspacePage() {
       if (nextSeed) void saveSeed(nextSeed);
     },
     [saveSeed, seeds, setLocalSeeds]
+  );
+
+  const createDomain = useCallback(
+    async (name: string, categoryId = "user-defined") => {
+      const normalized = name.trim();
+      if (!normalized) return;
+      const domain: DataDomain = {
+        id: crypto.randomUUID(),
+        name: normalized,
+        categoryId,
+        shape: "unresolved",
+        components: []
+      };
+      if (await saveDomain(domain, { create: true })) {
+        setLocalDomains([...domains, domain]);
+      } else {
+        window.alert("The domain could not be created. Domain names must be unique.");
+      }
+    },
+    [domains, saveDomain, setLocalDomains]
+  );
+
+  const createDomainCategory = useCallback(
+    async (name: string) => {
+      const normalized = name.trim();
+      if (!normalized) return;
+      const category: DomainCategory = { id: crypto.randomUUID(), name: normalized };
+      if (await saveDomainCategory(category, true)) {
+        setLocalDomainCategories([...domainCategories, category]);
+      } else {
+        window.alert("The category could not be created. Category names must be unique.");
+      }
+    },
+    [domainCategories, saveDomainCategory, setLocalDomainCategories]
+  );
+
+  const changeDomainCategory = useCallback(
+    async (category: DomainCategory) => {
+      if (await saveDomainCategory(category)) {
+        setLocalDomainCategories(domainCategories.map((item) => (item.id === category.id ? category : item)));
+      } else {
+        window.alert("The category could not be renamed. Category names must be unique.");
+      }
+    },
+    [domainCategories, saveDomainCategory, setLocalDomainCategories]
+  );
+
+  const importDomainCategory = useCallback(
+    async (bundle: DomainCategoryBundle) => {
+      const occupiedCategoryNames = new Set(domainCategories.map((item) => item.name.toLowerCase()));
+      const baseCategoryName = bundle.category.name.trim();
+      let categoryName = baseCategoryName;
+      for (let suffix = 2; occupiedCategoryNames.has(categoryName.toLowerCase()); suffix += 1) categoryName = `${baseCategoryName} ${suffix}`;
+      const category: DomainCategory = { id: crypto.randomUUID(), name: categoryName };
+      if (!(await saveDomainCategory(category, true))) {
+        window.alert("The category could not be imported.");
+        return;
+      }
+
+      const idMap = new Map(bundle.domains.map((domain) => [domain.id, crypto.randomUUID()]));
+      const occupiedDomainNames = new Set(domains.map((item) => item.name.toLowerCase()));
+      const imported: DataDomain[] = [];
+      const orderedDomains = [...bundle.domains].sort((left, right) => Number(left.shape === "composite") - Number(right.shape === "composite"));
+      for (const source of orderedDomains) {
+        const baseName = source.name.trim() || "Imported domain";
+        let name = baseName;
+        for (let suffix = 2; occupiedDomainNames.has(name.toLowerCase()); suffix += 1) name = `${baseName} ${suffix}`;
+        occupiedDomainNames.add(name.toLowerCase());
+        const domain: DataDomain = {
+          ...source,
+          id: idMap.get(source.id) ?? crypto.randomUUID(),
+          name,
+          categoryId: category.id,
+          system: false,
+          shape: source.shape === "primitive" ? "scalar" : source.shape,
+          components: source.components.map((component) => ({
+            ...component,
+            id: crypto.randomUUID(),
+            domainId: component.domainId ? idMap.get(component.domainId) ?? component.domainId : undefined
+          }))
+        };
+        if (!(await saveDomain(domain, { create: true }))) {
+          window.alert(`The category was created, but domain “${name}” could not be imported.`);
+          break;
+        }
+        imported.push(domain);
+      }
+      startTransition(() => {
+        setLocalDomainCategories([...domainCategories, category]);
+        setLocalDomains([...domains, ...imported]);
+      });
+    },
+    [domainCategories, domains, saveDomain, saveDomainCategory, setLocalDomainCategories, setLocalDomains]
+  );
+
+  const changeDomain = useCallback(
+    async (domain: DataDomain) => {
+      if (await saveDomain(domain)) {
+        setLocalDomains(domains.map((item) => (item.id === domain.id ? domain : item)));
+      } else {
+        window.alert("The domain could not be updated. Check that names are non-empty and unique, and that component types are undefined, primitive, or single-field domains.");
+      }
+    },
+    [domains, saveDomain, setLocalDomains]
+  );
+
+  const deleteDomain = useCallback(
+    async (domain: DataDomain) => {
+      if (!window.confirm(`Delete domain \"${domain.name}\"? Domains assigned to fields cannot be deleted.`)) return;
+      if (await saveDomain(domain, { delete: true })) {
+        setLocalDomains(domains.filter((item) => item.id !== domain.id));
+      } else {
+        window.alert("The domain is still assigned to a field or cannot be deleted.");
+      }
+    },
+    [domains, saveDomain, setLocalDomains]
+  );
+
+  const openDomainDictionary = useCallback(
+    (seedId?: string, fieldId?: string) => {
+      const seed = seedId ? seeds.find((item) => item.id === seedId) : undefined;
+      const field = seed && fieldId ? seed.fields.find((item) => item.id === fieldId) : undefined;
+      setDomainDictionaryContext({ seedId: field ? seedId : undefined, fieldId: field?.id, label: field?.name });
+    },
+    [seeds]
+  );
+
+  const closeDomainDictionary = useCallback(() => {
+    setDomainDictionaryContext(null);
+  }, []);
+
+  const assignDomainFromDictionary = useCallback(
+    (domainId: string) => {
+      if (!domainDictionaryContext?.seedId || !domainDictionaryContext.fieldId) return;
+      const seed = seeds.find((item) => item.id === domainDictionaryContext.seedId);
+      if (!seed) return;
+      updateSeed(seed.id, { fields: seed.fields.map((field) => (field.id === domainDictionaryContext.fieldId ? { ...field, domainId } : field)) });
+    },
+    [domainDictionaryContext, seeds, updateSeed]
   );
 
   const saveRelationshipChange = useCallback(
@@ -433,6 +580,7 @@ export function ModelingWorkspacePage() {
           onCardDisplayModeChange={setCardDisplayMode}
           onAddSeed={addSeedAt}
           onUpdateSeed={updateSeed}
+          onOpenDomainDictionary={() => openDomainDictionary()}
         />
 
         <section className="flex min-w-0 flex-1 flex-col">
@@ -453,6 +601,8 @@ export function ModelingWorkspacePage() {
             allSeeds={seeds}
             relationships={relationships}
             relationshipReferences={relationshipReferences}
+            domains={domains}
+            domainCategories={domainCategories}
             selectedId={selectedId}
             displayMode={cardDisplayMode}
             locks={locks}
@@ -474,6 +624,8 @@ export function ModelingWorkspacePage() {
               const relationship = relationships.find((item) => item.id === relationshipId);
               if (relationship) void deleteRelationship(relationship);
             }}
+            onCreateDomain={(name) => void createDomain(name)}
+            onOpenDomainDictionary={openDomainDictionary}
           />
         </section>
       </div>
@@ -486,6 +638,22 @@ export function ModelingWorkspacePage() {
           onSave={(relationship) => void saveRelationshipChange(relationship, editingRelationship.create)}
           onDelete={() => void deleteRelationship(editingRelationship.relationship)}
           onClose={() => setEditingRelationship(null)}
+        />
+      )}
+      {domainDictionaryContext && (
+        <DomainDictionaryDialog
+          domains={domains}
+          categories={domainCategories}
+          canEdit
+          assignmentTarget={domainDictionaryContext.fieldId && domainDictionaryContext.label ? { fieldId: domainDictionaryContext.fieldId, label: domainDictionaryContext.label } : undefined}
+          onChange={(domain) => void changeDomain(domain)}
+          onCreateDomain={(name, categoryId) => void createDomain(name, categoryId)}
+          onCreateCategory={(name) => void createDomainCategory(name)}
+          onChangeCategory={(category) => void changeDomainCategory(category)}
+          onImportCategory={(bundle) => void importDomainCategory(bundle)}
+          onDelete={(domain) => void deleteDomain(domain)}
+          onAssign={assignDomainFromDictionary}
+          onClose={closeDomainDictionary}
         />
       )}
     </main>

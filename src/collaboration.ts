@@ -1,5 +1,5 @@
 import { startTransition, useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
-import type { Relationship, RelationshipReference } from "./features/modeling/types";
+import type { DataDomain, DomainCategory, Relationship, RelationshipReference } from "./features/modeling/types";
 
 export type Collaborator = {
   id: string;
@@ -14,6 +14,8 @@ type CollaborationState<T> = {
   seeds: T[];
   relationships: Relationship[];
   relationshipReferences: RelationshipReference[];
+  domains: DataDomain[];
+  domainCategories: DomainCategory[];
   users: Collaborator[];
   locks: Record<string, Collaborator>;
 };
@@ -47,12 +49,14 @@ async function post(path: string, body: unknown) {
   });
 }
 
-export function useCollaboration<T extends { id: string }>(initialSeeds: T[], initialRelationships: Relationship[] = [], initialReferences: RelationshipReference[] = []) {
+export function useCollaboration<T extends { id: string }>(initialSeeds: T[], initialRelationships: Relationship[] = [], initialReferences: RelationshipReference[] = [], initialDomains: DataDomain[] = [], initialDomainCategories: DomainCategory[] = []) {
   const [me, setMe] = useState<Collaborator>(() => getIdentity());
   const [state, setState] = useState<CollaborationState<T>>({
     seeds: initialSeeds,
     relationships: initialRelationships,
     relationshipReferences: initialReferences,
+    domains: initialDomains,
+    domainCategories: initialDomainCategories,
     users: [],
     locks: {}
   });
@@ -107,7 +111,8 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[], in
       user: sessionUser,
       seeds: initialSeeds,
       relationships: initialRelationships,
-      relationshipReferences: initialReferences
+      relationshipReferences: initialReferences,
+      domains: initialDomains
     })
       .then(async (response) => {
         if (!response.ok) throw new Error("Could not join collaboration session");
@@ -126,7 +131,7 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[], in
       events?.close();
       if (cursorFrameRef.current !== undefined) cancelAnimationFrame(cursorFrameRef.current);
     };
-  }, [initialReferences, initialRelationships, initialSeeds, me.id]);
+  }, [initialDomainCategories, initialDomains, initialReferences, initialRelationships, initialSeeds, me.id]);
 
   const rename = useCallback(
     async (name: string) => {
@@ -263,6 +268,35 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[], in
     setState((current) => ({ ...current, relationships, relationshipReferences }));
   }, []);
 
+  const setLocalDomains = useCallback((domains: DataDomain[]) => {
+    setState((current) => ({ ...current, domains }));
+  }, []);
+
+  const setLocalDomainCategories = useCallback((domainCategories: DomainCategory[]) => {
+    setState((current) => ({ ...current, domainCategories }));
+  }, []);
+
+  const saveDomain = useCallback(
+    async (domain: DataDomain, options: { create?: boolean; delete?: boolean } = {}) => {
+      const response = await post("/api/collaboration/domain", {
+        clientId: me.id,
+        domain,
+        create: options.create ?? false,
+        delete: options.delete ?? false
+      });
+      return response.ok;
+    },
+    [me.id]
+  );
+
+  const saveDomainCategory = useCallback(
+    async (category: DomainCategory, create = false) => {
+      const response = await post("/api/collaboration/domain-category", { clientId: me.id, category, create });
+      return response.ok;
+    },
+    [me.id]
+  );
+
   const saveRelationship = useCallback(
     async (relationship: Relationship, reference: RelationshipReference, options: { create?: boolean; delete?: boolean } = {}) => {
       const response = await post("/api/collaboration/relationship", {
@@ -284,6 +318,8 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[], in
     locks: state.locks,
     relationships: state.relationships,
     relationshipReferences: state.relationshipReferences,
+    domains: state.domains,
+    domainCategories: state.domainCategories,
     connected,
     rename,
     moveCursor,
@@ -293,7 +329,11 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[], in
     unlockAll,
     saveSeed,
     saveRelationship,
+    saveDomain,
+    saveDomainCategory,
     setLocalSeeds,
-    setLocalRelationships
+    setLocalRelationships,
+    setLocalDomains,
+    setLocalDomainCategories
   };
 }

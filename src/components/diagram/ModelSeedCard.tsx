@@ -2,7 +2,7 @@ import { Database, KeyRound, Link2, Lock, Menu, Star } from "lucide-react";
 import { useCallback, useState, type ChangeEvent, type PointerEvent } from "react";
 import type { Collaborator } from "../../collaboration";
 import { cardHeight, cardWidth, roleMeta } from "../../features/modeling/constants";
-import type { CardDisplayMode, ModelField, ModelSeed, Relationship, RelationshipReference } from "../../features/modeling/types";
+import type { CardDisplayMode, DataDomain, DomainCategory, ModelField, ModelSeed, Relationship, RelationshipReference } from "../../features/modeling/types";
 import { flattenLabels, getModelStageLabel, relationshipDisplaySeedIDs } from "../../features/modeling/utils";
 import { FieldListDialog } from "./FieldListDialog";
 import { RoughShape } from "./RoughShape";
@@ -20,11 +20,15 @@ type ModelSeedCardProps = {
   onRelationshipPointerDown: (event: PointerEvent<HTMLButtonElement>, seed: ModelSeed) => void;
   relationships: Relationship[];
   relationshipReferences: RelationshipReference[];
+  domains: DataDomain[];
+  domainCategories: DomainCategory[];
   onUpdateRelationshipReference: (relationshipId: string, patch: Partial<RelationshipReference>) => void;
   onDeleteRelationship: (relationshipId: string) => void;
+  onCreateDomain: (name: string) => void;
+  onOpenDomainDictionary: (seedId: string, fieldId?: string) => void;
 };
 
-export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayMode, owner, me, onPointerDown, onUpdate, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, onUpdateRelationshipReference, onDeleteRelationship }: ModelSeedCardProps) {
+export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayMode, owner, me, onPointerDown, onUpdate, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, domains, domainCategories, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary }: ModelSeedCardProps) {
   const meta = roleMeta[seed.role];
   const lockedByMe = owner?.id === me.id;
   const lockedByOther = !!owner && !lockedByMe;
@@ -95,6 +99,13 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
       onUpdate(seed.id, { fields: nextFields });
     },
     [onUpdate, seed.id]
+  );
+
+  const handleOpenDomainDictionary = useCallback(
+    (fieldId?: string) => {
+      onOpenDomainDictionary(seed.id, fieldId);
+    },
+    [onOpenDomainDictionary, seed.id]
   );
 
   const handleEditablePointerDown = useCallback(
@@ -240,11 +251,15 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
           modelTitle={seed.title}
           modelMaturedLevel={seed.maturedLevel}
           fields={fields}
+          domains={domains}
+          domainCategories={domainCategories}
           relationshipReferences={visibleRelationshipReferences}
           canEdit={lockedByMe}
           onChange={handleFieldsChange}
           onUpdateReference={onUpdateRelationshipReference}
           onDeleteReference={onDeleteRelationship}
+          onCreateDomain={onCreateDomain}
+          onOpenDomainDictionary={handleOpenDomainDictionary}
           onClose={handleCloseFieldList}
         />
       )}
