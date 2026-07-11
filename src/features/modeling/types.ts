@@ -8,6 +8,7 @@ export type ModelField = {
   primaryKey: boolean;
   important: boolean;
   domainId?: string;
+  useDomainName?: boolean;
 };
 
 export type PrimitiveType =
@@ -32,6 +33,7 @@ export type DomainComponent = {
   domainId?: string;
   required: boolean;
   description?: string;
+  partitionKey?: boolean;
 };
 
 export type DomainCategory = {
@@ -52,6 +54,7 @@ export type DataDomain = {
   precision?: number;
   scale?: number;
   components: DomainComponent[];
+  partitionKey?: boolean;
   system?: boolean;
 };
 
@@ -65,6 +68,7 @@ export type ExpandedDomainField = {
   name: string;
   domainId: string;
   componentId?: string;
+  partitionKey: boolean;
 };
 
 export type Multiplicity = "0..1" | "1" | "0..*" | "1..*";

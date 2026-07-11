@@ -21,16 +21,74 @@ func (h *Handler) join(w http.ResponseWriter, r *http.Request) {
 		Seeds                  []collaboration.ModelSeed             `json:"seeds"`
 		Relationships          []collaboration.Relationship          `json:"relationships"`
 		RelationshipReferences []collaboration.RelationshipReference `json:"relationshipReferences"`
+		Domains                []collaboration.DataDomain            `json:"domains"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.User.ID == "" || request.User.Name == "" {
 		http.Error(w, "invalid join request", http.StatusBadRequest)
 		return
 	}
-	result := h.hub.Join(request.User, request.Seeds, request.Relationships, request.RelationshipReferences)
+	result := h.hub.Join(request.User, request.Seeds, request.Relationships, request.RelationshipReferences, request.Domains)
 	if !result.AlreadyJoined {
 		h.logger.Printf("[collab] join user=%q client=%s online=%d", request.User.Name, request.User.ID, result.Online)
 	}
 	writeJSON(w, result.State)
+}
+
+func (h *Handler) updateDomain(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var request struct {
+		ClientID string                   `json:"clientId"`
+		Domain   collaboration.DataDomain `json:"domain"`
+		Create   bool                     `json:"create"`
+		Delete   bool                     `json:"delete"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.ClientID == "" || request.Domain.ID == "" {
+		http.Error(w, "invalid domain update", http.StatusBadRequest)
+		return
+	}
+	result, err := h.hub.UpdateDomain(request.ClientID, request.Domain, request.Create, request.Delete)
+	if err != nil {
+		writeCollaborationError(w, err)
+		return
+	}
+	if result.Deleted {
+		h.logger.Printf("[collab] delete domain user=%q client=%s domain=%s", result.User.Name, request.ClientID, result.Domain.ID)
+	} else if result.Created {
+		h.logger.Printf("[collab] create domain user=%q client=%s domain=%s", result.User.Name, request.ClientID, result.Domain.ID)
+	} else {
+		h.logger.Printf("[collab] edit domain user=%q client=%s domain=%s", result.User.Name, request.ClientID, result.Domain.ID)
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) updateDomainCategory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var request struct {
+		ClientID string                       `json:"clientId"`
+		Category collaboration.DomainCategory `json:"category"`
+		Create   bool                         `json:"create"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.ClientID == "" || request.Category.ID == "" {
+		http.Error(w, "invalid domain category update", http.StatusBadRequest)
+		return
+	}
+	result, err := h.hub.UpdateCategory(request.ClientID, request.Category, request.Create)
+	if err != nil {
+		writeCollaborationError(w, err)
+		return
+	}
+	if result.Created {
+		h.logger.Printf("[collab] create domain category user=%q client=%s category=%s", result.User.Name, request.ClientID, result.Category.ID)
+	} else {
+		h.logger.Printf("[collab] edit domain category user=%q client=%s category=%s", result.User.Name, request.ClientID, result.Category.ID)
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) events(w http.ResponseWriter, r *http.Request) {
@@ -222,11 +280,11 @@ func writeEvent(w http.ResponseWriter, state collaboration.State) bool {
 func writeCollaborationError(w http.ResponseWriter, err error) {
 	status := http.StatusInternalServerError
 	switch {
-	case errors.Is(err, collaboration.ErrUnknownClient), errors.Is(err, collaboration.ErrSeedNotFound), errors.Is(err, collaboration.ErrRelationshipNotFound):
+	case errors.Is(err, collaboration.ErrUnknownClient), errors.Is(err, collaboration.ErrSeedNotFound), errors.Is(err, collaboration.ErrRelationshipNotFound), errors.Is(err, collaboration.ErrDomainNotFound), errors.Is(err, collaboration.ErrCategoryNotFound):
 		status = http.StatusNotFound
-	case errors.Is(err, collaboration.ErrSeedExists), errors.Is(err, collaboration.ErrLockRequired), errors.Is(err, collaboration.ErrLockConflict):
+	case errors.Is(err, collaboration.ErrSeedExists), errors.Is(err, collaboration.ErrLockRequired), errors.Is(err, collaboration.ErrLockConflict), errors.Is(err, collaboration.ErrDomainExists), errors.Is(err, collaboration.ErrDomainInUse), errors.Is(err, collaboration.ErrCategoryExists):
 		status = http.StatusConflict
-	case errors.Is(err, collaboration.ErrRelationshipInvalid):
+	case errors.Is(err, collaboration.ErrRelationshipInvalid), errors.Is(err, collaboration.ErrDomainInvalid), errors.Is(err, collaboration.ErrCategoryInvalid):
 		status = http.StatusBadRequest
 	}
 	http.Error(w, err.Error(), status)

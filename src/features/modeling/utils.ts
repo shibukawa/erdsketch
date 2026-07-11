@@ -33,12 +33,25 @@ export function getRelationshipReference(relationshipReferences: RelationshipRef
 
 export function expandDomainField(field: ModelField, domains: DataDomain[]): ExpandedDomainField[] {
   const domain = domains.find((item) => item.id === field.domainId);
-  if (!domain || domain.shape !== "composite") return [{ name: field.name, domainId: field.domainId ?? "" }];
+  const logicalName = getFieldEffectiveName(field, domains);
+  if (!domain || domain.shape !== "composite") {
+    return [{ name: logicalName, domainId: field.domainId ?? "", partitionKey: domain?.partitionKey ?? false }];
+  }
   return domain.components.map((component) => ({
-    name: `${field.name}${component.name.replace(/\s+/g, "")}`,
+    name: `${logicalName}${component.name.replace(/\s+/g, "")}`,
     domainId: component.domainId ?? "",
-    componentId: component.id
+    componentId: component.id,
+    partitionKey: component.partitionKey ?? false
   }));
+}
+
+export function getFieldEffectiveName(field: ModelField, domains: DataDomain[]) {
+  const domain = domains.find((item) => item.id === field.domainId);
+  return field.useDomainName && domain ? `${field.name}${domain.name}` : field.name;
+}
+
+export function isPartitionKeyField(field: ModelField, domains: DataDomain[]) {
+  return expandDomainField(field, domains).some((expanded) => expanded.partitionKey);
 }
 
 export function isAssignableDomain(domain: DataDomain | undefined) {

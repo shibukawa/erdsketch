@@ -1,4 +1,4 @@
-import { GripVertical, Star, Trash2 } from "lucide-react";
+import { Columns3, GripVertical, Star, Trash2 } from "lucide-react";
 import {
   useCallback,
   type ChangeEvent,
@@ -7,7 +7,7 @@ import {
   type MouseEvent
 } from "react";
 import type { DataDomain, ModelField } from "../../features/modeling/types";
-import { expandDomainField } from "../../features/modeling/utils";
+import { expandDomainField, getFieldEffectiveName, isPartitionKeyField } from "../../features/modeling/utils";
 
 type FieldListRowProps = {
   field: ModelField;
@@ -22,6 +22,7 @@ type FieldListRowProps = {
   onNameChange: (fieldId: string, name: string) => void;
   onTogglePrimaryKey: (fieldId: string) => void;
   onToggleImportant: (fieldId: string) => void;
+  onToggleUseDomainName: (fieldId: string) => void;
   onDelete: (fieldId: string) => void;
   onDragStart: (event: DragEvent<HTMLElement>, fieldId: string) => void;
   onDragOver: (event: DragEvent<HTMLElement>, fieldId: string) => void;
@@ -43,6 +44,7 @@ export function FieldListRow({
   onNameChange,
   onTogglePrimaryKey,
   onToggleImportant,
+  onToggleUseDomainName,
   onDelete,
   onDragStart,
   onDragOver,
@@ -52,6 +54,8 @@ export function FieldListRow({
 }: FieldListRowProps) {
   const effectiveImportant = field.important || field.primaryKey;
   const expandedNames = expandDomainField(field, domains).map((item) => item.name);
+  const effectiveName = getFieldEffectiveName(field, domains);
+  const partitionKey = isPartitionKeyField(field, domains);
   const handleSelect = useCallback(() => {
     if (canEdit) onSelect(field.id);
   }, [canEdit, field.id, onSelect]);
@@ -73,7 +77,7 @@ export function FieldListRow({
     [field.id, onNameChange]
   );
 
-  const handleInputClick = useCallback((event: MouseEvent<HTMLInputElement>) => {
+  const handleInputClick = useCallback((event: MouseEvent<HTMLElement>) => {
     event.stopPropagation();
   }, []);
 
@@ -92,6 +96,11 @@ export function FieldListRow({
     },
     [field.id, onToggleImportant]
   );
+
+  const handleUseDomainNameChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    event.stopPropagation();
+    onToggleUseDomainName(field.id);
+  }, [field.id, onToggleUseDomainName]);
 
   const handleDeleteClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -132,7 +141,7 @@ export function FieldListRow({
   return (
     <li
       className={`field-list-row grid h-10 grid-cols-[30px_minmax(140px,1fr)_120px_78px_70px_44px_40px] items-center border-b border-slate-100 text-sm transition-colors ${
-        selected ? "bg-blue-50" : "hover:bg-slate-50"
+        partitionKey ? "bg-cyan-50 hover:bg-cyan-100" : selected ? "bg-blue-50" : "hover:bg-slate-50"
       } ${dragging ? "opacity-35" : ""} ${dropTarget ? "field-list-row-drop-target" : ""} ${domainDropTarget ? "bg-blue-100 ring-2 ring-inset ring-blue-400" : ""}`}
       role="row"
       tabIndex={canEdit ? 0 : -1}
@@ -155,17 +164,20 @@ export function FieldListRow({
 
       <div className="min-w-0 pr-3">
         {selected ? (
-          <input
-            autoFocus
-            type="text"
-            className="h-7 w-full rounded border border-blue-300 bg-white px-2 font-mono text-[13px] font-semibold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            value={field.name}
-            aria-label={`Edit ${field.name || "field"} name`}
-            onChange={handleNameChange}
-            onClick={handleInputClick}
-          />
+          <div className="flex min-w-0 items-center gap-2">
+            <input
+              autoFocus
+              type="text"
+              className="h-7 min-w-0 flex-1 rounded border border-blue-300 bg-white px-2 font-mono text-[13px] font-semibold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              value={field.name}
+              aria-label={`Edit ${effectiveName || "field"} name`}
+              onChange={handleNameChange}
+              onClick={handleInputClick}
+            />
+            {domain && <label className="flex w-[118px] shrink-0 grow-0 cursor-pointer items-center justify-end gap-1.5 whitespace-nowrap text-[10px] font-semibold text-slate-600" onClick={handleInputClick}><input type="checkbox" className="checkbox checkbox-xs" checked={field.useDomainName ?? false} onChange={handleUseDomainNameChange} disabled={!canEdit} />Use domain name</label>}
+          </div>
         ) : (
-          <span className="block truncate px-2 font-mono text-[13px] font-semibold text-slate-700">{field.name || "Untitled field"}</span>
+          <span className="flex truncate px-2 font-mono text-[13px] font-semibold text-slate-700">{partitionKey && <Columns3 size={14} className="mr-1.5 shrink-0 text-cyan-700" aria-label="Partition key" />}{effectiveName || "Untitled field"}</span>
         )}
       </div>
 

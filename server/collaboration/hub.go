@@ -12,6 +12,8 @@ type Hub struct {
 	seeds                  []ModelSeed
 	relationships          []Relationship
 	relationshipReferences []RelationshipReference
+	domains                []DataDomain
+	domainCategories       []DomainCategory
 	users                  map[string]Collaborator
 	locks                  map[string]string
 	streams                map[string]chan State
@@ -19,13 +21,14 @@ type Hub struct {
 
 func NewHub() *Hub {
 	return &Hub{
-		users:   make(map[string]Collaborator),
-		locks:   make(map[string]string),
-		streams: make(map[string]chan State),
+		domainCategories: []DomainCategory{{ID: "primitive", Name: "Primitive", System: true}, {ID: "user-defined", Name: "User Defined"}},
+		users:            make(map[string]Collaborator),
+		locks:            make(map[string]string),
+		streams:          make(map[string]chan State),
 	}
 }
 
-func (h *Hub) Join(user Collaborator, seeds []ModelSeed, relationships []Relationship, references []RelationshipReference) JoinResult {
+func (h *Hub) Join(user Collaborator, seeds []ModelSeed, relationships []Relationship, references []RelationshipReference, initialDomains ...[]DataDomain) JoinResult {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -36,6 +39,9 @@ func (h *Hub) Join(user Collaborator, seeds []ModelSeed, relationships []Relatio
 		h.seeds = append([]ModelSeed(nil), seeds...)
 		h.relationships = append([]Relationship(nil), relationships...)
 		h.relationshipReferences = append([]RelationshipReference(nil), references...)
+		if len(initialDomains) > 0 {
+			h.domains = normalizeDomains(initialDomains[0])
+		}
 	}
 	result := JoinResult{
 		State:         h.snapshotLocked(),
@@ -44,6 +50,96 @@ func (h *Hub) Join(user Collaborator, seeds []ModelSeed, relationships []Relatio
 	}
 	h.broadcastLocked()
 	return result
+}
+
+func (h *Hub) UpdateCategory(clientID string, next DomainCategory, create bool) (CategoryUpdate, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	user, ok := h.users[clientID]
+	if !ok {
+		return CategoryUpdate{}, ErrUnknownClient
+	}
+	if next.ID == "" || strings.TrimSpace(next.Name) == "" {
+		return CategoryUpdate{}, ErrCategoryInvalid
+	}
+	index := categoryIndex(h.domainCategories, next.ID)
+	for candidateIndex, candidate := range h.domainCategories {
+		if candidateIndex != index && candidate.Name == next.Name {
+			return CategoryUpdate{}, ErrCategoryExists
+		}
+	}
+	result := CategoryUpdate{User: user, Category: next}
+	if index >= 0 {
+		if create || h.domainCategories[index].System {
+			return CategoryUpdate{}, ErrCategoryInvalid
+		}
+		next.System = false
+		h.domainCategories[index] = next
+	} else {
+		if !create || next.System {
+			return CategoryUpdate{}, ErrCategoryInvalid
+		}
+		h.domainCategories = append(h.domainCategories, next)
+		result.Created = true
+	}
+	h.broadcastLocked()
+	return result, nil
+}
+
+func (h *Hub) UpdateDomain(clientID string, next DataDomain, create, remove bool) (DomainUpdate, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	user, ok := h.users[clientID]
+	if !ok {
+		return DomainUpdate{}, ErrUnknownClient
+	}
+	index := domainIndex(h.domains, next.ID)
+	if next.CategoryID == "" {
+		next.CategoryID = "user-defined"
+	}
+	if categoryIndex(h.domainCategories, next.CategoryID) < 0 || (next.System && next.CategoryID != "primitive") || (!next.System && next.CategoryID == "primitive") {
+		return DomainUpdate{}, ErrCategoryInvalid
+	}
+	result := DomainUpdate{User: user, Domain: next}
+	if remove {
+		if index < 0 {
+			return DomainUpdate{}, ErrDomainNotFound
+		}
+		if domainInUse(h.seeds, h.domains, next.ID) {
+			return DomainUpdate{}, ErrDomainInUse
+		}
+		h.domains = append(h.domains[:index], h.domains[index+1:]...)
+		result.Deleted = true
+		h.broadcastLocked()
+		return result, nil
+	}
+	if !validDomain(next, h.domains, index) {
+		return DomainUpdate{}, ErrDomainInvalid
+	}
+	if index >= 0 && h.domains[index].Shape == "scalar" && next.Shape != "scalar" && domainReferencedByComposite(h.domains, next.ID) {
+		return DomainUpdate{}, ErrDomainInUse
+	}
+	for candidateIndex, candidate := range h.domains {
+		if candidateIndex != index && candidate.Name == next.Name {
+			return DomainUpdate{}, ErrDomainExists
+		}
+	}
+	if index >= 0 {
+		if create {
+			return DomainUpdate{}, ErrDomainExists
+		}
+		h.domains[index] = next
+	} else {
+		if !create {
+			return DomainUpdate{}, ErrDomainNotFound
+		}
+		h.domains = append(h.domains, next)
+		result.Created = true
+	}
+	h.broadcastLocked()
+	return result, nil
 }
 
 func (h *Hub) UpdateRelationship(clientID string, next Relationship, reference RelationshipReference, create, remove bool) (RelationshipUpdate, error) {
@@ -140,6 +236,9 @@ func (h *Hub) UpdateSeed(clientID string, next ModelSeed, create bool) (SeedUpda
 	user, ok := h.users[clientID]
 	if !ok {
 		return SeedUpdate{}, ErrUnknownClient
+	}
+	if !fieldDomainsExist(next.Fields, h.domains) {
+		return SeedUpdate{}, ErrDomainNotFound
 	}
 	seedIndex := -1
 	for index := range h.seeds {
@@ -246,9 +345,137 @@ func (h *Hub) snapshotLocked() State {
 		Seeds:                  append([]ModelSeed(nil), h.seeds...),
 		Relationships:          append([]Relationship(nil), h.relationships...),
 		RelationshipReferences: append([]RelationshipReference(nil), h.relationshipReferences...),
+		Domains:                append([]DataDomain(nil), h.domains...),
+		DomainCategories:       append([]DomainCategory(nil), h.domainCategories...),
 		Users:                  users,
 		Locks:                  locks,
 	}
+}
+
+func normalizeDomains(domains []DataDomain) []DataDomain {
+	normalized := append([]DataDomain(nil), domains...)
+	for index := range normalized {
+		if normalized[index].CategoryID == "" {
+			if normalized[index].System {
+				normalized[index].CategoryID = "primitive"
+			} else {
+				normalized[index].CategoryID = "user-defined"
+			}
+		}
+	}
+	return normalized
+}
+
+func categoryIndex(categories []DomainCategory, id string) int {
+	for index, category := range categories {
+		if category.ID == id {
+			return index
+		}
+	}
+	return -1
+}
+
+func domainIndex(domains []DataDomain, id string) int {
+	for index, domain := range domains {
+		if domain.ID == id {
+			return index
+		}
+	}
+	return -1
+}
+
+func domainAssigned(seeds []ModelSeed, domainID string) bool {
+	for _, seed := range seeds {
+		for _, field := range seed.Fields {
+			if field.DomainID == domainID {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func domainInUse(seeds []ModelSeed, domains []DataDomain, domainID string) bool {
+	return domainAssigned(seeds, domainID) || domainReferencedByComposite(domains, domainID)
+}
+
+func fieldDomainsExist(fields []ModelField, domains []DataDomain) bool {
+	for _, field := range fields {
+		if field.DomainID == "" {
+			if field.UseDomainName || strings.TrimSpace(field.Name) == "" {
+				return false
+			}
+			continue
+		}
+		index := domainIndex(domains, field.DomainID)
+		if index < 0 {
+			return false
+		}
+		if strings.TrimSpace(field.Name) == "" && !field.UseDomainName {
+			return false
+		}
+	}
+	return true
+}
+
+func domainReferencedByComposite(domains []DataDomain, domainID string) bool {
+	for _, domain := range domains {
+		for _, component := range domain.Components {
+			if component.DomainID == domainID {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func validDomain(domain DataDomain, domains []DataDomain, updatingIndex int) bool {
+	if domain.ID == "" || strings.TrimSpace(domain.Name) == "" {
+		return false
+	}
+	if domain.Shape == "unresolved" {
+		return domain.PrimitiveType == "" && len(domain.Components) == 0
+	}
+	if domain.Shape == "primitive" || domain.Shape == "scalar" {
+		return validPrimitiveType(domain.PrimitiveType) && len(domain.Components) == 0 && validPrimitiveParameters(domain)
+	}
+	if domain.Shape != "composite" {
+		return false
+	}
+	componentNames := make(map[string]bool, len(domain.Components))
+	for _, component := range domain.Components {
+		if component.ID == "" || strings.TrimSpace(component.Name) == "" || componentNames[component.Name] {
+			return false
+		}
+		componentNames[component.Name] = true
+		if component.DomainID == "" {
+			continue
+		}
+		componentIndex := domainIndex(domains, component.DomainID)
+		if componentIndex < 0 || componentIndex == updatingIndex || (domains[componentIndex].Shape != "scalar" && domains[componentIndex].Shape != "primitive") {
+			return false
+		}
+	}
+	return true
+}
+
+func validPrimitiveType(value string) bool {
+	switch value {
+	case "integer", "decimal", "floating_point", "varchar", "text", "blob", "date", "time", "datetime", "datetime_with_timezone", "boolean", "uuid":
+		return true
+	default:
+		return false
+	}
+}
+
+func validPrimitiveParameters(domain DataDomain) bool {
+	if domain.Bits != 0 && domain.Bits != 8 && domain.Bits != 16 && domain.Bits != 32 && domain.Bits != 64 {
+		return false
+	}
+	if domain.Length < 0 || domain.Precision < 0 || domain.Scale < 0 || domain.Scale > domain.Precision {
+		return false
+	}
+	return true
 }
 
 func (h *Hub) hasSeedLockedBy(seedID, clientID string) bool {

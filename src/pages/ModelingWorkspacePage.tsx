@@ -17,7 +17,7 @@ import { RelationshipEditorDialog } from "../components/diagram/RelationshipEdit
 import { DomainDictionaryDialog } from "../components/diagram/DomainDictionaryDialog";
 import { initialDomainCategories, initialDomains, initialRelationshipReferences, initialRelationships, initialSeeds } from "../features/modeling/constants";
 import type { CardDisplayMode, DataDomain, DomainCategory, DomainCategoryBundle, DragState, ModelSeed, Relationship, RelationshipReference, Viewport } from "../features/modeling/types";
-import { clampScale, flattenLabels, getRelatedDragSeedIDs, getRelationshipDropTarget, getRelationshipReference } from "../features/modeling/utils";
+import { clampScale, flattenLabels, getFieldEffectiveName, getRelatedDragSeedIDs, getRelationshipDropTarget, getRelationshipReference } from "../features/modeling/utils";
 
 export function ModelingWorkspacePage() {
   const {
@@ -59,11 +59,11 @@ export function ModelingWorkspacePage() {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return seeds;
     return seeds.filter((seed) =>
-      [seed.title, seed.description, String(seed.maturedLevel), ...flattenLabels(seed), ...(seed.fields ?? []).map((field) => field.name)].some((value) =>
+      [seed.title, seed.description, String(seed.maturedLevel), ...flattenLabels(seed), ...(seed.fields ?? []).map((field) => getFieldEffectiveName(field, domains))].some((value) =>
         value.toLowerCase().includes(normalized)
       )
     );
-  }, [query, seeds]);
+  }, [domains, query, seeds]);
 
   const selectedSeed = useMemo(() => seeds.find((seed) => seed.id === selectedId) ?? seeds[0], [seeds, selectedId]);
   const selectedOwner = selectedSeed ? locks[selectedSeed.id] : undefined;

@@ -1,9 +1,9 @@
-import { Database, KeyRound, Link2, Lock, Menu, Star } from "lucide-react";
+import { Columns3, Database, KeyRound, Link2, Lock, Menu, Star } from "lucide-react";
 import { useCallback, useState, type ChangeEvent, type PointerEvent } from "react";
 import type { Collaborator } from "../../collaboration";
 import { cardHeight, cardWidth, roleMeta } from "../../features/modeling/constants";
 import type { CardDisplayMode, DataDomain, DomainCategory, ModelField, ModelSeed, Relationship, RelationshipReference } from "../../features/modeling/types";
-import { flattenLabels, getModelStageLabel, relationshipDisplaySeedIDs } from "../../features/modeling/utils";
+import { expandDomainField, flattenLabels, getFieldEffectiveName, getModelStageLabel, relationshipDisplaySeedIDs } from "../../features/modeling/utils";
 import { FieldListDialog } from "./FieldListDialog";
 import { RoughShape } from "./RoughShape";
 
@@ -36,11 +36,12 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
   const fields = seed.fields ?? [];
   const primaryKeyFields = fields.filter((field) => field.primaryKey);
   const favoriteFields = fields.filter((field) => field.important && !field.primaryKey);
+  const partitionKeyFields = fields.flatMap((field) => expandDomainField(field, domains).filter((expanded) => expanded.partitionKey).map((expanded) => ({ ...expanded, fieldId: field.id })));
   const primaryKeySummary =
     primaryKeyFields.length > 1
-      ? `(${primaryKeyFields.map((field) => field.name).join(", ")})`
-      : primaryKeyFields[0]?.name;
-  const summaryRowCount = (primaryKeySummary ? 1 : 0) + favoriteFields.length;
+      ? `(${primaryKeyFields.map((field) => getFieldEffectiveName(field, domains)).join(", ")})`
+      : primaryKeyFields[0] ? getFieldEffectiveName(primaryKeyFields[0], domains) : undefined;
+  const summaryRowCount = (primaryKeySummary ? 1 : 0) + favoriteFields.length + partitionKeyFields.length;
   const summaryBodyHeight = Math.max(64, summaryRowCount * 20 + 12);
   const renderedCardHeight = displayMode === "key-fields" ? cardHeight + summaryBodyHeight - 64 : cardHeight;
   const modelStageLabel = getModelStageLabel(seed.maturedLevel);
@@ -194,7 +195,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
           ) : (
             <div className="h-full rounded-md bg-white/45 px-2 py-1.5" aria-label={`${seed.title} key fields`}>
               {summaryRowCount === 0 ? (
-                <p className="pt-3 text-center text-xs font-medium text-slate-500">No primary or important fields</p>
+                <p className="pt-3 text-center text-xs font-medium text-slate-500">No primary, important, or partition-key fields</p>
               ) : (
                 <ul className="space-y-1">
                   {primaryKeySummary && (
@@ -206,6 +207,12 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
                   {favoriteFields.map((field) => (
                     <li key={field.id} className="flex min-w-0 items-center gap-1.5 font-mono text-xs text-slate-700">
                       <Star size={12} className="shrink-0 fill-amber-400 text-amber-600" aria-label="Important" />
+                      <span className="font-semibold">{getFieldEffectiveName(field, domains)}</span>
+                    </li>
+                  ))}
+                  {partitionKeyFields.map((field) => (
+                    <li key={`${field.fieldId}:${field.componentId ?? "scalar"}`} className="flex min-w-0 items-center gap-1.5 rounded bg-cyan-50 px-1 font-mono text-xs text-cyan-900">
+                      <Columns3 size={12} className="shrink-0 text-cyan-700" aria-label="Partition key" />
                       <span className="font-semibold">{field.name}</span>
                     </li>
                   ))}

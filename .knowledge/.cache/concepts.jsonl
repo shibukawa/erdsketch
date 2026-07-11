@@ -42,6 +42,8 @@
 {"category": "objective", "id": "requirement:ai-review", "path": ".knowledge/requirement/ai-review.md", "role": "primary", "title": "AI Review", "type": "requirement"}
 {"category": "objective", "id": "requirement:design-decision-history", "path": ".knowledge/requirement/design-decision-history.md", "role": "primary", "title": "Design Decision History", "type": "requirement"}
 {"category": "objective", "id": "requirement:domain-dictionary-management", "path": ".knowledge/requirement/domain-dictionary-management.md", "role": "primary", "title": "Domain Dictionary Management", "type": "requirement"}
+{"category": "objective", "id": "requirement:domain-name-field-naming", "path": ".knowledge/requirement/domain-name-field-naming.md", "role": "primary", "title": "Domain Name Field Naming", "type": "requirement"}
+{"category": "objective", "id": "requirement:domain-partition-key-marking", "path": ".knowledge/requirement/domain-partition-key-marking.md", "role": "primary", "title": "Domain Partition Key Marking", "type": "requirement"}
 {"category": "objective", "id": "requirement:entity-management", "path": ".knowledge/requirement/entity-management.md", "role": "primary", "title": "Entity Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:field-list-management", "path": ".knowledge/requirement/field-list-management.md", "role": "primary", "title": "Field List Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:future-extensions", "path": ".knowledge/requirement/future-extensions.md", "role": "primary", "title": "Future Extensions", "type": "requirement"}

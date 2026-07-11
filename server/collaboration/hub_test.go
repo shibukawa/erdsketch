@@ -163,3 +163,171 @@ func TestRelationshipUpdateRejectsMissingEndpoint(t *testing.T) {
 		t.Fatalf("missing endpoint: got %v, want %v", err, ErrRelationshipInvalid)
 	}
 }
+
+func TestDomainDictionarySynchronizesAssignmentsAndProtectsReferences(t *testing.T) {
+	hub := NewHub()
+	userIDDomain := DataDomain{ID: "user-id", Name: "User ID", Shape: "scalar", PrimitiveType: "varchar", Length: 6}
+	integerDomain := DataDomain{ID: "primitive-integer", Name: "Integer", CategoryID: "primitive", Shape: "primitive", PrimitiveType: "integer", Bits: 32, System: true}
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "customer", Title: "Customer"}}, nil, nil, []DataDomain{userIDDomain, integerDomain})
+
+	if _, err := hub.ChangeLock("lion", "customer", "lock"); err != nil {
+		t.Fatalf("lock: %v", err)
+	}
+	if _, err := hub.UpdateSeed("lion", ModelSeed{ID: "customer", Title: "Customer", Fields: []ModelField{{ID: "customer-user-id", Name: "user_id", DomainID: "user-id"}}}, false); err != nil {
+		t.Fatalf("assign domain: %v", err)
+	}
+	if _, err := hub.UpdateDomain("lion", userIDDomain, false, true); !errors.Is(err, ErrDomainInUse) {
+		t.Fatalf("delete assigned domain: got %v, want %v", err, ErrDomainInUse)
+	}
+
+	tenantIDDomain := DataDomain{ID: "tenant-id", Name: "Tenant ID", Shape: "scalar", PrimitiveType: "uuid"}
+	if _, err := hub.UpdateDomain("lion", tenantIDDomain, true, false); err != nil {
+		t.Fatalf("create scalar domain: %v", err)
+	}
+	customerCode := DataDomain{
+		ID: "customer-code", Name: "Customer Code", Shape: "composite",
+		Components: []DomainComponent{
+			{ID: "serial", Name: "Serial", Required: true, Description: "Type decided later"},
+			{ID: "year", Name: "Year", DomainID: "primitive-integer", Required: true, Description: "Manufacturing year"},
+			{ID: "tenant", Name: "Tenant ID", DomainID: "tenant-id", Required: false, Description: "Owning tenant"},
+			{ID: "user", Name: "User ID", DomainID: "user-id", Required: true},
+		},
+	}
+	if _, err := hub.UpdateDomain("lion", customerCode, true, false); err != nil {
+		t.Fatalf("create composite domain: %v", err)
+	}
+	nested := DataDomain{ID: "nested-code", Name: "Nested Code", Shape: "composite", Components: []DomainComponent{{ID: "customer", Name: "Customer", DomainID: customerCode.ID}}}
+	if _, err := hub.UpdateDomain("lion", nested, true, false); !errors.Is(err, ErrDomainInvalid) {
+		t.Fatalf("nested composite: got %v, want %v", err, ErrDomainInvalid)
+	}
+	if _, err := hub.UpdateDomain("lion", tenantIDDomain, false, true); !errors.Is(err, ErrDomainInUse) {
+		t.Fatalf("delete component domain: got %v, want %v", err, ErrDomainInUse)
+	}
+
+	subscription := hub.Subscribe("lion")
+	defer subscription.Close()
+	state := subscription.Initial()
+	components := state.Domains[3].Components
+	if len(state.Domains) != 4 || state.Seeds[0].Fields[0].DomainID != "user-id" || len(components) != 4 || components[0].DomainID != "" || components[0].Description != "Type decided later" || components[1].DomainID != "primitive-integer" || components[1].Description != "Manufacturing year" || components[2].Required {
+		t.Fatalf("domain state: %+v", state)
+	}
+}
+
+func TestSeedUpdateRejectsUnknownDomain(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order", Title: "Order"}}, nil, nil)
+	if _, err := hub.ChangeLock("lion", "order", "lock"); err != nil {
+		t.Fatalf("lock: %v", err)
+	}
+	_, err := hub.UpdateSeed("lion", ModelSeed{ID: "order", Title: "Order", Fields: []ModelField{{ID: "id", Name: "id", DomainID: "missing"}}}, false)
+	if !errors.Is(err, ErrDomainNotFound) {
+		t.Fatalf("unknown field domain: got %v, want %v", err, ErrDomainNotFound)
+	}
+}
+
+func TestDomainNamingAndPartitionKeyMetadataSynchronize(t *testing.T) {
+	hub := NewHub()
+	domain := DataDomain{
+		ID: "created-at", Name: "CreatedAt", Shape: "scalar", PrimitiveType: "datetime", PartitionKey: true,
+	}
+	composite := DataDomain{
+		ID: "tenant-code", Name: "TenantCode", Shape: "composite",
+		Components: []DomainComponent{{ID: "tenant", Name: "Tenant", DomainID: domain.ID, PartitionKey: true}},
+	}
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "article", Title: "Article"}}, nil, nil, []DataDomain{domain, composite})
+	if _, err := hub.ChangeLock("lion", "article", "lock"); err != nil {
+		t.Fatalf("lock: %v", err)
+	}
+	fields := []ModelField{
+		{ID: "created", Name: "Article", DomainID: domain.ID, UseDomainName: true},
+		{ID: "domain-only", Name: "", DomainID: domain.ID, UseDomainName: true},
+	}
+	if _, err := hub.UpdateSeed("lion", ModelSeed{ID: "article", Title: "Article", Fields: fields}, false); err != nil {
+		t.Fatalf("save domain-named fields: %v", err)
+	}
+	state := hub.snapshotLocked()
+	if !state.Seeds[0].Fields[0].UseDomainName || !state.Domains[0].PartitionKey || !state.Domains[1].Components[0].PartitionKey {
+		t.Fatalf("metadata was not preserved: %+v", state)
+	}
+	invalidFields := []ModelField{{ID: "empty", Name: "", DomainID: domain.ID}}
+	if _, err := hub.UpdateSeed("lion", ModelSeed{ID: "article", Title: "Article", Fields: invalidFields}, false); !errors.Is(err, ErrDomainNotFound) {
+		t.Fatalf("empty field without domain-name use: got %v, want %v", err, ErrDomainNotFound)
+	}
+	invalidFields = []ModelField{{ID: "orphan", Name: "Article", UseDomainName: true}}
+	if _, err := hub.UpdateSeed("lion", ModelSeed{ID: "article", Title: "Article", Fields: invalidFields}, false); !errors.Is(err, ErrDomainNotFound) {
+		t.Fatalf("domain-name use without domain: got %v, want %v", err, ErrDomainNotFound)
+	}
+}
+
+func TestEveryDomainShapeCanBeAssigned(t *testing.T) {
+	hub := NewHub()
+	unresolved := DataDomain{ID: "customer-code", Name: "Customer Code", Shape: "unresolved"}
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "customer", Title: "Customer"}}, nil, nil, []DataDomain{unresolved})
+	if _, err := hub.ChangeLock("lion", "customer", "lock"); err != nil {
+		t.Fatalf("lock: %v", err)
+	}
+	field := ModelField{ID: "customer-code", Name: "customer_code", DomainID: unresolved.ID}
+	if _, err := hub.UpdateSeed("lion", ModelSeed{ID: "customer", Title: "Customer", Fields: []ModelField{field}}, false); err != nil {
+		t.Fatalf("assign unresolved: %v", err)
+	}
+
+	emptyComposite := DataDomain{ID: unresolved.ID, Name: unresolved.Name, Shape: "composite"}
+	if _, err := hub.UpdateDomain("lion", emptyComposite, false, false); err != nil {
+		t.Fatalf("make assigned domain empty composite: %v", err)
+	}
+
+	unassignedComposite := DataDomain{ID: "empty-code", Name: "Empty Code", Shape: "composite"}
+	if _, err := hub.UpdateDomain("lion", unassignedComposite, true, false); err != nil {
+		t.Fatalf("create empty composite: %v", err)
+	}
+	field.DomainID = unassignedComposite.ID
+	if _, err := hub.UpdateSeed("lion", ModelSeed{ID: "customer", Title: "Customer", Fields: []ModelField{field}}, false); err != nil {
+		t.Fatalf("assign empty composite: %v", err)
+	}
+
+	scalar := DataDomain{ID: "country-code", Name: "Country Code", Shape: "scalar", PrimitiveType: "varchar", Length: 2}
+	if _, err := hub.UpdateDomain("lion", scalar, true, false); err != nil {
+		t.Fatalf("create scalar: %v", err)
+	}
+	composite := DataDomain{
+		ID: "product-code", Name: "Product Code", Shape: "composite",
+		Components: []DomainComponent{{ID: "country", Name: "Country", DomainID: scalar.ID, Required: true}},
+	}
+	if _, err := hub.UpdateDomain("lion", composite, true, false); err != nil {
+		t.Fatalf("create populated composite: %v", err)
+	}
+	fields := []ModelField{
+		field,
+		{ID: "country", Name: "country", DomainID: scalar.ID},
+		{ID: "product", Name: "product", DomainID: composite.ID},
+	}
+	if _, err := hub.UpdateSeed("lion", ModelSeed{ID: "customer", Title: "Customer", Fields: fields}, false); err != nil {
+		t.Fatalf("assign scalar and populated composite: %v", err)
+	}
+}
+
+func TestDomainCategoriesStartWithUserDefinedAndCanBeRenamed(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
+
+	initial := hub.snapshotLocked().DomainCategories
+	if len(initial) != 2 || initial[0].Name != "Primitive" || initial[1].Name != "User Defined" {
+		t.Fatalf("initial categories: %+v", initial)
+	}
+	category := DomainCategory{ID: "billing", Name: "Billing"}
+	if _, err := hub.UpdateCategory("lion", category, true); err != nil {
+		t.Fatalf("create category: %v", err)
+	}
+	category.Name = "Reference data"
+	if _, err := hub.UpdateCategory("lion", category, false); err != nil {
+		t.Fatalf("rename category: %v", err)
+	}
+	domain := DataDomain{ID: "payment-code", Name: "Payment Code", CategoryID: category.ID, Shape: "unresolved"}
+	if _, err := hub.UpdateDomain("lion", domain, true, false); err != nil {
+		t.Fatalf("create categorized domain: %v", err)
+	}
+	state := hub.snapshotLocked()
+	if state.Domains[0].CategoryID != "billing" || state.DomainCategories[2].Name != "Reference data" {
+		t.Fatalf("category state: %+v", state)
+	}
+}

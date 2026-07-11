@@ -10,6 +10,13 @@ var (
 	ErrLockConflict         = errors.New("seed is locked by another client")
 	ErrRelationshipNotFound = errors.New("relationship not found")
 	ErrRelationshipInvalid  = errors.New("invalid relationship")
+	ErrDomainNotFound       = errors.New("domain not found")
+	ErrDomainExists         = errors.New("domain already exists")
+	ErrDomainInvalid        = errors.New("invalid domain")
+	ErrDomainInUse          = errors.New("domain is assigned to a field")
+	ErrCategoryNotFound     = errors.New("domain category not found")
+	ErrCategoryExists       = errors.New("domain category already exists")
+	ErrCategoryInvalid      = errors.New("invalid domain category")
 )
 
 type ModelSeed struct {
@@ -27,10 +34,43 @@ type ModelSeed struct {
 }
 
 type ModelField struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	PrimaryKey bool   `json:"primaryKey"`
-	Important  bool   `json:"important"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	PrimaryKey    bool   `json:"primaryKey"`
+	Important     bool   `json:"important"`
+	DomainID      string `json:"domainId,omitempty"`
+	UseDomainName bool   `json:"useDomainName,omitempty"`
+}
+
+type DomainComponent struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	DomainID     string `json:"domainId,omitempty"`
+	Required     bool   `json:"required"`
+	Description  string `json:"description,omitempty"`
+	PartitionKey bool   `json:"partitionKey,omitempty"`
+}
+
+type DataDomain struct {
+	ID            string            `json:"id"`
+	Name          string            `json:"name"`
+	CategoryID    string            `json:"categoryId"`
+	Shape         string            `json:"shape"`
+	PrimitiveType string            `json:"primitiveType,omitempty"`
+	Bits          int               `json:"bits,omitempty"`
+	Unsigned      bool              `json:"unsigned,omitempty"`
+	Length        int               `json:"length,omitempty"`
+	Precision     int               `json:"precision,omitempty"`
+	Scale         int               `json:"scale,omitempty"`
+	Components    []DomainComponent `json:"components"`
+	PartitionKey  bool              `json:"partitionKey,omitempty"`
+	System        bool              `json:"system,omitempty"`
+}
+
+type DomainCategory struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	System bool   `json:"system,omitempty"`
 }
 
 type Relationship struct {
@@ -63,6 +103,8 @@ type State struct {
 	Seeds                  []ModelSeed             `json:"seeds"`
 	Relationships          []Relationship          `json:"relationships"`
 	RelationshipReferences []RelationshipReference `json:"relationshipReferences"`
+	Domains                []DataDomain            `json:"domains"`
+	DomainCategories       []DomainCategory        `json:"domainCategories"`
 	Users                  []Collaborator          `json:"users"`
 	Locks                  map[string]Collaborator `json:"locks"`
 }
@@ -99,6 +141,19 @@ type RelationshipUpdate struct {
 	Reference    RelationshipReference
 	Created      bool
 	Deleted      bool
+}
+
+type DomainUpdate struct {
+	User    Collaborator
+	Domain  DataDomain
+	Created bool
+	Deleted bool
+}
+
+type CategoryUpdate struct {
+	User     Collaborator
+	Category DomainCategory
+	Created  bool
 }
 
 type Departure struct {

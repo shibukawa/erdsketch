@@ -59,6 +59,7 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, domains
   const [draggingFieldId, setDraggingFieldId] = useState<string | null>(null);
   const [dropTargetFieldId, setDropTargetFieldId] = useState<string | null>(null);
   const [domainDropTargetFieldId, setDomainDropTargetFieldId] = useState<string | null>(null);
+  const [quickEntryDomainDropTarget, setQuickEntryDomainDropTarget] = useState(false);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -131,12 +132,45 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, domains
     [autoFavorite, canEdit, commitFields, quickEntry]
   );
 
+  const handleQuickEntryDragOver = useCallback((event: DragEvent<HTMLLabelElement>) => {
+    if (!canEdit || !event.dataTransfer.types.includes("application/x-erdsketch-domain-id")) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "copy";
+    setQuickEntryDomainDropTarget(true);
+  }, [canEdit]);
+
+  const handleQuickEntryDragLeave = useCallback((event: DragEvent<HTMLLabelElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setQuickEntryDomainDropTarget(false);
+  }, []);
+
+  const handleQuickEntryDomainDrop = useCallback((event: DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setQuickEntryDomainDropTarget(false);
+    const domainId = event.dataTransfer.getData("application/x-erdsketch-domain-id");
+    if (!canEdit || !domains.some((domain) => domain.id === domainId)) return;
+    const field: ModelField = {
+      id: crypto.randomUUID(),
+      name: quickEntry.trim(),
+      primaryKey: false,
+      important: autoFavorite,
+      domainId,
+      useDomainName: true
+    };
+    commitFields([...fieldsRef.current, field]);
+    setQuickEntry("");
+    setEditingFieldId(field.id);
+  }, [autoFavorite, canEdit, commitFields, domains, quickEntry]);
+
   const handleSelectField = useCallback((fieldId: string) => {
     setEditingFieldId(fieldId);
   }, []);
 
   const handleFieldNameChange = useCallback(
     (fieldId: string, name: string) => {
+      const field = fieldsRef.current.find((candidate) => candidate.id === fieldId);
+      if (!field || (!name && !(field.domainId && field.useDomainName))) return;
       commitFields(replaceField(fieldsRef.current, fieldId, { name }));
     },
     [commitFields]
@@ -164,6 +198,11 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, domains
     },
     [commitFields]
   );
+
+  const handleToggleUseDomainName = useCallback((fieldId: string) => {
+    const field = fieldsRef.current.find((candidate) => candidate.id === fieldId);
+    if (field?.domainId && (field.useDomainName ? !!field.name : true)) commitFields(replaceField(fieldsRef.current, fieldId, { useDomainName: !field.useDomainName }));
+  }, [commitFields]);
 
   const handleDelete = useCallback(
     (fieldId: string) => {
@@ -256,7 +295,12 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, domains
           </div>
 
           <div className="mt-3 flex items-center gap-3">
-            <label className="input input-bordered flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg bg-slate-50 focus-within:border-blue-500">
+            <label
+              className={`input input-bordered flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg bg-slate-50 focus-within:border-blue-500 ${quickEntryDomainDropTarget ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200" : ""}`}
+              onDragOver={handleQuickEntryDragOver}
+              onDragLeave={handleQuickEntryDragLeave}
+              onDrop={handleQuickEntryDomainDrop}
+            >
               <span className="text-base font-light text-slate-400">＋</span>
               <input
                 ref={quickEntryRef}
@@ -264,7 +308,7 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, domains
                 className="grow"
                 value={quickEntry}
                 disabled={!canEdit}
-                placeholder="Type a field name and press Enter"
+                placeholder="Type a field name and press Enter or drop Domain,"
                 aria-label="New field name"
                 onChange={handleQuickEntryChange}
                 onKeyDown={handleQuickEntryKeyDown}
@@ -322,7 +366,7 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, domains
               {sortedItems.map((item) => {
                 if (item.type === "field") {
                   const field = item.item;
-                  return <FieldListRow key={field.id} field={field} domain={domains.find((domain) => domain.id === field.domainId)} domains={domains} selected={editingFieldId === field.id && canEdit} dragging={draggingFieldId === field.id} dropTarget={dropTargetFieldId === field.id && draggingFieldId !== field.id} domainDropTarget={domainDropTargetFieldId === field.id} canEdit={canEdit} onSelect={handleSelectField} onNameChange={handleFieldNameChange} onTogglePrimaryKey={handleTogglePrimaryKey} onToggleImportant={handleToggleImportant} onDelete={handleDelete} onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={clearDragState} onDomainDrop={handleDomainAssign} />;
+                  return <FieldListRow key={field.id} field={field} domain={domains.find((domain) => domain.id === field.domainId)} domains={domains} selected={editingFieldId === field.id && canEdit} dragging={draggingFieldId === field.id} dropTarget={dropTargetFieldId === field.id && draggingFieldId !== field.id} domainDropTarget={domainDropTargetFieldId === field.id} canEdit={canEdit} onSelect={handleSelectField} onNameChange={handleFieldNameChange} onTogglePrimaryKey={handleTogglePrimaryKey} onToggleImportant={handleToggleImportant} onToggleUseDomainName={handleToggleUseDomainName} onDelete={handleDelete} onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={clearDragState} onDomainDrop={handleDomainAssign} />;
                 }
                 const referenceItem = relationshipReferenceByID.get(item.item.id);
                 return referenceItem ? <RelationshipReferenceRow key={item.item.id} relationship={referenceItem.relationship} reference={referenceItem.reference} canEdit={canEdit} onTogglePrimaryKey={handleToggleReferencePrimaryKey} onToggleForeignKey={handleToggleReferenceForeignKey} onDelete={onDeleteReference} /> : null;
