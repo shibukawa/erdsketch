@@ -114,7 +114,7 @@ export function FieldListRow({
 
   return (
     <li
-      className={`field-list-row grid h-10 grid-cols-[30px_minmax(180px,1fr)_78px_44px_40px] items-center border-b border-slate-100 text-sm transition-colors ${
+      className={`field-list-row grid h-10 grid-cols-[30px_minmax(180px,1fr)_78px_70px_44px_40px] items-center border-b border-slate-100 text-sm transition-colors ${
         selected ? "bg-blue-50" : "hover:bg-slate-50"
       } ${dragging ? "opacity-35" : ""} ${dropTarget ? "field-list-row-drop-target" : ""}`}
       role="row"
@@ -166,6 +166,8 @@ export function FieldListRow({
       >
         PK {field.primaryKey ? "ON" : "OFF"}
       </button>
+
+      <span className="text-center text-[10px] font-bold text-slate-300">—</span>
 
       <button
         type="button"

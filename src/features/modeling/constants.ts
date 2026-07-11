@@ -1,4 +1,4 @@
-import type { Dependency, EntityRole, ModelSeed } from "./types";
+import type { Dependency, EntityRole, ModelSeed, Relationship, RelationshipReference } from "./types";
 
 export const roleOptions: EntityRole[] = ["master", "transaction", "summary", "history", "work"];
 export const dependencyOptions: Dependency[] = ["independent", "dependent"];
@@ -117,3 +117,40 @@ export const initialSeeds: ModelSeed[] = [
     rotation: -0.3
   }
 ];
+
+export const initialRelationships: Relationship[] = [
+  {
+    id: "customer-orders",
+    name: "places",
+    sourceId: "customer",
+    targetId: "order",
+    sourceMultiplicity: "1",
+    targetMultiplicity: "0..*",
+    direction: "source-to-target"
+  },
+  {
+    id: "order-items",
+    name: "contains",
+    sourceId: "order",
+    targetId: "order-item",
+    sourceMultiplicity: "1",
+    targetMultiplicity: "1..*",
+    direction: "source-to-target"
+  },
+  {
+    id: "order-products",
+    name: "uses",
+    sourceId: "order",
+    targetId: "product",
+    sourceMultiplicity: "0..*",
+    targetMultiplicity: "0..*",
+    direction: "source-to-target"
+  }
+];
+
+export const initialRelationshipReferences: RelationshipReference[] = initialRelationships.map((relationship) => ({
+  id: `${relationship.id}-reference`,
+  relationshipId: relationship.id,
+  primaryKey: false,
+  foreignKey: true
+}));

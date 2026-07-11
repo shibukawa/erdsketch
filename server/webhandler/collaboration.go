@@ -17,14 +17,16 @@ func (h *Handler) join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request struct {
-		User  collaboration.Collaborator `json:"user"`
-		Seeds []collaboration.ModelSeed  `json:"seeds"`
+		User                   collaboration.Collaborator            `json:"user"`
+		Seeds                  []collaboration.ModelSeed             `json:"seeds"`
+		Relationships          []collaboration.Relationship          `json:"relationships"`
+		RelationshipReferences []collaboration.RelationshipReference `json:"relationshipReferences"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.User.ID == "" || request.User.Name == "" {
 		http.Error(w, "invalid join request", http.StatusBadRequest)
 		return
 	}
-	result := h.hub.Join(request.User, request.Seeds)
+	result := h.hub.Join(request.User, request.Seeds, request.Relationships, request.RelationshipReferences)
 	if !result.AlreadyJoined {
 		h.logger.Printf("[collab] join user=%q client=%s online=%d", request.User.Name, request.User.ID, result.Online)
 	}
@@ -136,23 +138,59 @@ func (h *Handler) updateSeed(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *Handler) updateRelationship(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var request struct {
+		ClientID     string                              `json:"clientId"`
+		Relationship collaboration.Relationship          `json:"relationship"`
+		Reference    collaboration.RelationshipReference `json:"reference"`
+		Create       bool                                `json:"create"`
+		Delete       bool                                `json:"delete"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.ClientID == "" || request.Relationship.ID == "" {
+		http.Error(w, "invalid relationship update", http.StatusBadRequest)
+		return
+	}
+	result, err := h.hub.UpdateRelationship(request.ClientID, request.Relationship, request.Reference, request.Create, request.Delete)
+	if err != nil {
+		writeCollaborationError(w, err)
+		return
+	}
+	if result.Deleted {
+		h.logger.Printf("[collab] delete relationship user=%q client=%s relationship=%s", result.User.Name, request.ClientID, result.Relationship.ID)
+	} else if result.Created {
+		h.logger.Printf("[collab] create relationship user=%q client=%s relationship=%s", result.User.Name, request.ClientID, result.Relationship.ID)
+	} else {
+		h.logger.Printf("[collab] edit relationship user=%q client=%s relationship=%s", result.User.Name, request.ClientID, result.Relationship.ID)
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) changeLock(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	var request struct {
-		ClientID string `json:"clientId"`
-		SeedID   string `json:"seedId"`
-		Action   string `json:"action"`
+		ClientID string   `json:"clientId"`
+		SeedID   string   `json:"seedId"`
+		SeedIDs  []string `json:"seedIds"`
+		Action   string   `json:"action"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.ClientID == "" || request.SeedID == "" {
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.ClientID == "" || (request.SeedID == "" && len(request.SeedIDs) == 0) {
 		http.Error(w, "invalid lock request", http.StatusBadRequest)
 		return
 	}
-	result, err := h.hub.ChangeLock(request.ClientID, request.SeedID, request.Action)
+	seedIDs := request.SeedIDs
+	if request.SeedID != "" {
+		seedIDs = []string{request.SeedID}
+	}
+	result, err := h.hub.ChangeLocks(request.ClientID, seedIDs, request.Action)
 	if errors.Is(err, collaboration.ErrLockConflict) {
-		h.logger.Printf("[collab] lock rejected user=%q client=%s seed=%s owner=%q owner_client=%s", result.User.Name, request.ClientID, request.SeedID, result.Owner.Name, result.Owner.ID)
+		h.logger.Printf("[collab] lock rejected user=%q client=%s seeds=%s owner=%q owner_client=%s", result.User.Name, request.ClientID, strings.Join(seedIDs, ","), result.Owner.Name, result.Owner.ID)
 		w.WriteHeader(http.StatusConflict)
 		writeJSON(w, map[string]bool{"acquired": false})
 		return
@@ -163,12 +201,12 @@ func (h *Handler) changeLock(w http.ResponseWriter, r *http.Request) {
 	}
 	if request.Action == "unlock" {
 		if result.Unlocked {
-			h.logger.Printf("[collab] unlock user=%q client=%s seed=%s", result.User.Name, request.ClientID, request.SeedID)
+			h.logger.Printf("[collab] unlock user=%q client=%s seeds=%s", result.User.Name, request.ClientID, strings.Join(seedIDs, ","))
 		}
 		writeJSON(w, map[string]bool{"acquired": false})
 		return
 	}
-	h.logger.Printf("[collab] lock user=%q client=%s seed=%s", result.User.Name, request.ClientID, request.SeedID)
+	h.logger.Printf("[collab] lock user=%q client=%s seeds=%s", result.User.Name, request.ClientID, strings.Join(seedIDs, ","))
 	writeJSON(w, map[string]bool{"acquired": true})
 }
 
@@ -184,10 +222,12 @@ func writeEvent(w http.ResponseWriter, state collaboration.State) bool {
 func writeCollaborationError(w http.ResponseWriter, err error) {
 	status := http.StatusInternalServerError
 	switch {
-	case errors.Is(err, collaboration.ErrUnknownClient), errors.Is(err, collaboration.ErrSeedNotFound):
+	case errors.Is(err, collaboration.ErrUnknownClient), errors.Is(err, collaboration.ErrSeedNotFound), errors.Is(err, collaboration.ErrRelationshipNotFound):
 		status = http.StatusNotFound
 	case errors.Is(err, collaboration.ErrSeedExists), errors.Is(err, collaboration.ErrLockRequired), errors.Is(err, collaboration.ErrLockConflict):
 		status = http.StatusConflict
+	case errors.Is(err, collaboration.ErrRelationshipInvalid):
+		status = http.StatusBadRequest
 	}
 	http.Error(w, err.Error(), status)
 }

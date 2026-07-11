@@ -3,11 +3,13 @@ package collaboration
 import "errors"
 
 var (
-	ErrUnknownClient = errors.New("unknown client")
-	ErrSeedExists    = errors.New("seed already exists")
-	ErrLockRequired  = errors.New("seed is not locked by this client")
-	ErrSeedNotFound  = errors.New("seed not found")
-	ErrLockConflict  = errors.New("seed is locked by another client")
+	ErrUnknownClient        = errors.New("unknown client")
+	ErrSeedExists           = errors.New("seed already exists")
+	ErrLockRequired         = errors.New("seed is not locked by this client")
+	ErrSeedNotFound         = errors.New("seed not found")
+	ErrLockConflict         = errors.New("seed is locked by another client")
+	ErrRelationshipNotFound = errors.New("relationship not found")
+	ErrRelationshipInvalid  = errors.New("invalid relationship")
 )
 
 type ModelSeed struct {
@@ -31,6 +33,23 @@ type ModelField struct {
 	Important  bool   `json:"important"`
 }
 
+type Relationship struct {
+	ID                 string `json:"id"`
+	Name               string `json:"name"`
+	SourceID           string `json:"sourceId"`
+	TargetID           string `json:"targetId"`
+	SourceMultiplicity string `json:"sourceMultiplicity"`
+	TargetMultiplicity string `json:"targetMultiplicity"`
+	Direction          string `json:"direction"`
+}
+
+type RelationshipReference struct {
+	ID             string `json:"id"`
+	RelationshipID string `json:"relationshipId"`
+	PrimaryKey     bool   `json:"primaryKey"`
+	ForeignKey     bool   `json:"foreignKey"`
+}
+
 type Collaborator struct {
 	ID     string  `json:"id"`
 	Name   string  `json:"name"`
@@ -41,9 +60,11 @@ type Collaborator struct {
 }
 
 type State struct {
-	Seeds []ModelSeed             `json:"seeds"`
-	Users []Collaborator          `json:"users"`
-	Locks map[string]Collaborator `json:"locks"`
+	Seeds                  []ModelSeed             `json:"seeds"`
+	Relationships          []Relationship          `json:"relationships"`
+	RelationshipReferences []RelationshipReference `json:"relationshipReferences"`
+	Users                  []Collaborator          `json:"users"`
+	Locks                  map[string]Collaborator `json:"locks"`
 }
 
 type JoinResult struct {
@@ -70,6 +91,14 @@ type LockResult struct {
 	Owner    Collaborator
 	Acquired bool
 	Unlocked bool
+}
+
+type RelationshipUpdate struct {
+	User         Collaborator
+	Relationship Relationship
+	Reference    RelationshipReference
+	Created      bool
+	Deleted      bool
 }
 
 type Departure struct {

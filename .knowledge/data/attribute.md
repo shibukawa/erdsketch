@@ -15,6 +15,9 @@ fields:
   - name: data_type
     type: text
     optional: true
+  - name: domain
+    type: data:data-domain
+    optional: true
   - name: required
     type: boolean
   - name: unique
@@ -34,6 +37,10 @@ operations:
   - edit
   - move_to_another_entity
 constraints:
+  - When domain is assigned, its definition is authoritative over an independently entered data_type.
+  - Composite domain assignment remains one logical attribute and expands through rule:domain-expansion.
+  - Attribute records and data:relationship-reference records use separate collections and persistence schemas.
+  - Attribute never stores a relationship reference discriminator or relationship ID.
   - important has no SQL or schema-generation semantics.
   - primary_key implies important according to rule:primary-key-favorite.
   - important may be true without primary_key.
@@ -48,4 +55,7 @@ related:
   - requirement:field-list-management
   - ui:field-list-dialog
   - rule:primary-key-favorite
+  - data:relationship-reference
+  - data:data-domain
+  - rule:domain-expansion
 ```

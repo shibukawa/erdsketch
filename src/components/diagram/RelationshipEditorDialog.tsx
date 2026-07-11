@@ -1,0 +1,133 @@
+import { ArrowLeftRight, Link2, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent, type SyntheticEvent } from "react";
+import { createPortal } from "react-dom";
+import type { ModelSeed, Multiplicity, Relationship, RelationshipDirection } from "../../features/modeling/types";
+
+const multiplicities: Multiplicity[] = ["0..1", "1", "0..*", "1..*"];
+
+type RelationshipEditorDialogProps = {
+  relationship: Relationship;
+  source?: ModelSeed;
+  target?: ModelSeed;
+  canDelete: boolean;
+  onSave: (relationship: Relationship) => void;
+  onDelete: () => void;
+  onClose: () => void;
+};
+
+export function RelationshipEditorDialog({ relationship, source, target, canDelete, onSave, onDelete, onClose }: RelationshipEditorDialogProps) {
+  const [draft, setDraft] = useState(relationship);
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+
+  useEffect(() => {
+    setDraft(relationship);
+  }, [relationship]);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
+
+  const handleNameChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setDraft((current) => ({ ...current, name: event.target.value }));
+  }, []);
+  const handleSourceMultiplicity = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
+    setDraft((current) => ({ ...current, sourceMultiplicity: event.target.value as Multiplicity }));
+  }, []);
+  const handleTargetMultiplicity = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
+    setDraft((current) => ({ ...current, targetMultiplicity: event.target.value as Multiplicity }));
+  }, []);
+  const handleDirection = useCallback(() => {
+    setDraft((current) => ({
+      ...current,
+      direction: (current.direction === "source-to-target" ? "target-to-source" : "source-to-target") as RelationshipDirection
+    }));
+  }, []);
+  const handleDirectionSelect = useCallback((direction: RelationshipDirection) => {
+    setDraft((current) => ({ ...current, direction }));
+  }, []);
+  const handleSourceToTarget = useCallback(() => {
+    handleDirectionSelect("source-to-target");
+  }, [handleDirectionSelect]);
+  const handleTargetToSource = useCallback(() => {
+    handleDirectionSelect("target-to-source");
+  }, [handleDirectionSelect]);
+  const handleSubmit = useCallback(
+    (event: SyntheticEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!draft.name.trim()) return;
+      onSave({ ...draft, name: draft.name.trim() });
+    },
+    [draft, onSave]
+  );
+  const handleDelete = useCallback(() => {
+    if (window.confirm(`Delete the “${relationship.name || "unnamed"}” relationship? Its relationship link will also disappear.`)) onDelete();
+  }, [onDelete, relationship.name]);
+  const handleCancel = useCallback((event: SyntheticEvent<HTMLDialogElement>) => {
+    event.preventDefault();
+    onClose();
+  }, [onClose]);
+  const handleBackdropClick = useCallback((event: MouseEvent<HTMLDialogElement>) => {
+    if (event.target === event.currentTarget) onClose();
+  }, [onClose]);
+
+  return createPortal(
+    <dialog ref={dialogRef} className="field-list-dialog m-auto w-[min(94vw,560px)] rounded-xl border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl" aria-labelledby="relationship-editor-title" onCancel={handleCancel} onClick={handleBackdropClick}>
+      <form onSubmit={handleSubmit}>
+        <header className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-blue-600">Semantic relationship</p>
+            <h2 id="relationship-editor-title" className="mt-1 text-xl font-bold">Edit relationship</h2>
+          </div>
+          <button type="button" className="btn btn-ghost btn-sm btn-square" aria-label="Close relationship editor" onClick={onClose}><X size={18} /></button>
+        </header>
+        <div className="space-y-5 px-5 py-5">
+          <label className="block">
+            <span className="text-sm font-bold text-slate-700">Name</span>
+            <input autoFocus className="input input-bordered mt-2 w-full" value={draft.name} onChange={handleNameChange} placeholder="e.g. ownership" />
+          </label>
+          <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+            <label className="block">
+              <span className="block truncate text-sm font-bold text-slate-700">{source?.title ?? "Source"}</span>
+              <select className="select select-bordered mt-2 w-full" value={draft.sourceMultiplicity} onChange={handleSourceMultiplicity}>
+                {multiplicities.map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+            <button type="button" className="btn btn-outline btn-square" onClick={handleDirection} aria-label="Reverse relationship reading direction" title="Reverse reading direction">
+              <ArrowLeftRight size={17} />
+            </button>
+            <label className="block">
+              <span className="block truncate text-sm font-bold text-slate-700">{target?.title ?? "Target"}</span>
+              <select className="select select-bordered mt-2 w-full" value={draft.targetMultiplicity} onChange={handleTargetMultiplicity}>
+                {multiplicities.map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+          </div>
+          <fieldset>
+            <legend className="text-sm font-bold text-slate-700">Arrow direction</legend>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button type="button" className={`btn btn-sm ${draft.direction === "source-to-target" ? "btn-primary" : "btn-outline"}`} onClick={handleSourceToTarget}>
+                {source?.title ?? "Source"} → {target?.title ?? "Target"}
+              </button>
+              <button type="button" className={`btn btn-sm ${draft.direction === "target-to-source" ? "btn-primary" : "btn-outline"}`} onClick={handleTargetToSource}>
+                {target?.title ?? "Target"} → {source?.title ?? "Source"}
+              </button>
+            </div>
+          </fieldset>
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+            <Link2 size={13} className="mr-1 inline" />
+            The arrow reads {draft.direction === "source-to-target" ? `${source?.title ?? "Source"} → ${target?.title ?? "Target"}` : `${target?.title ?? "Target"} → ${source?.title ?? "Source"}`}. This remains a relationship entity; SQL projection is deferred to export.
+          </p>
+        </div>
+        <footer className="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+          <button type="button" className="btn btn-ghost text-red-600 hover:bg-red-50" disabled={!canDelete} onClick={handleDelete}><Trash2 size={16} /> Delete</button>
+          <div className="flex gap-2">
+            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Save relationship</button>
+          </div>
+        </footer>
+      </form>
+    </dialog>,
+    document.body
+  );
+}

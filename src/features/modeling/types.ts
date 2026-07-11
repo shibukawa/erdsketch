@@ -9,6 +9,27 @@ export type ModelField = {
   important: boolean;
 };
 
+export type Multiplicity = "0..1" | "1" | "0..*" | "1..*";
+
+export type RelationshipDirection = "source-to-target" | "target-to-source";
+
+export type Relationship = {
+  id: string;
+  name: string;
+  sourceId: string;
+  targetId: string;
+  sourceMultiplicity: Multiplicity;
+  targetMultiplicity: Multiplicity;
+  direction: RelationshipDirection;
+};
+
+export type RelationshipReference = {
+  id: string;
+  relationshipId: string;
+  primaryKey: boolean;
+  foreignKey: boolean;
+};
+
 export type CardDisplayMode = "description" | "key-fields";
 
 export type ModelSeed = {
@@ -45,5 +66,15 @@ export type DragState =
       seedId: string;
       offsetX: number;
       offsetY: number;
+      seedIds: string[];
+      origins: Record<string, { x: number; y: number }>;
+      groupLocked: boolean;
+    }
+  | {
+      type: "relationship";
+      pointerId: number;
+      sourceId: string;
+      x: number;
+      y: number;
     }
   | null;

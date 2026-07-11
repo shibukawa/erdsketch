@@ -4,9 +4,10 @@ import { useEffect, useRef } from "react";
 type RoughLinkProps = {
   path: string;
   roughness: number;
+  arrowPath?: string;
 };
 
-export function RoughLink({ path, roughness }: RoughLinkProps) {
+export function RoughLink({ path, roughness, arrowPath }: RoughLinkProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
@@ -22,7 +23,16 @@ export function RoughLink({ path, roughness }: RoughLinkProps) {
       fill: "none"
     });
     svg.appendChild(shape);
-  }, [path, roughness]);
+    if (arrowPath) {
+      svg.appendChild(rc.path(arrowPath, {
+        roughness,
+        bowing: 0.8,
+        stroke: "rgba(71,85,105,0.82)",
+        strokeWidth: 2.3,
+        fill: "none"
+      }));
+    }
+  }, [arrowPath, path, roughness]);
 
   return <svg ref={svgRef} className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" aria-hidden="true" />;
 }

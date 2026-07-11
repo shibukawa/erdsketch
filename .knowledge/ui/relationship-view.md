@@ -4,7 +4,7 @@ type: ui
 title: Relationship View
 ---
 
-Users edit semantic relationship types and relationship metadata.
+Users create and edit semantic relationships directly on the canvas.
 
 ```yaml
 ui:
@@ -14,6 +14,46 @@ ui:
     children:
       - kind: relationship-editor
         item: data:relationship
+        create:
+          start: drag_chain_handle_on_selected_model
+          finish: drop_on_other_model
+          result: open_relationship_editor
+        editable_fields:
+          - name
+          - reading_direction
+          - source_multiplicity
+          - target_multiplicity
+        name:
+          count: one
+        reading_direction:
+          control: arrow_direction_selector
+          values:
+            - source_to_target
+            - target_to_source
+          examples:
+            ownership: parent_to_child
+            dependency: dependent_to_independent
+        cardinality_presets:
+          - one_to_many
+          - many_to_one
+          - many_to_many
+        optionality:
+          notation: UML
+          endpoint_values:
+            - "0..1"
+            - "1"
+            - "0..*"
+            - "1..*"
+        canvas_line:
+          geometry: soft_curve
+          preserve_existing_style: true
+          roughness: rule:relationship-roughness
+          endpoint_labels: UML_multiplicity
+          arrow: selected_reading_direction
+          avoid: ERD_crows_foot_notation
+        delete:
+          confirmation_required: true
+          warning: Relationship and its projected reference field will disappear.
         editable_types:
           - has-a
           - is-a
@@ -25,4 +65,9 @@ ui:
           - lifecycle_dependency
           - delete_behavior
           - identity_scope
+related:
+  - data:relationship
+  - requirement:relationship-management
+  - rule:dependent-drag-follow
+  - rule:relationship-roughness
 ```

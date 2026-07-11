@@ -8,11 +8,13 @@ import (
 )
 
 type Hub struct {
-	mu      sync.Mutex
-	seeds   []ModelSeed
-	users   map[string]Collaborator
-	locks   map[string]string
-	streams map[string]chan State
+	mu                     sync.Mutex
+	seeds                  []ModelSeed
+	relationships          []Relationship
+	relationshipReferences []RelationshipReference
+	users                  map[string]Collaborator
+	locks                  map[string]string
+	streams                map[string]chan State
 }
 
 func NewHub() *Hub {
@@ -23,7 +25,7 @@ func NewHub() *Hub {
 	}
 }
 
-func (h *Hub) Join(user Collaborator, seeds []ModelSeed) JoinResult {
+func (h *Hub) Join(user Collaborator, seeds []ModelSeed, relationships []Relationship, references []RelationshipReference) JoinResult {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -32,6 +34,8 @@ func (h *Hub) Join(user Collaborator, seeds []ModelSeed) JoinResult {
 	h.users[user.ID] = user
 	if len(h.seeds) == 0 && len(seeds) > 0 {
 		h.seeds = append([]ModelSeed(nil), seeds...)
+		h.relationships = append([]Relationship(nil), relationships...)
+		h.relationshipReferences = append([]RelationshipReference(nil), references...)
 	}
 	result := JoinResult{
 		State:         h.snapshotLocked(),
@@ -40,6 +44,53 @@ func (h *Hub) Join(user Collaborator, seeds []ModelSeed) JoinResult {
 	}
 	h.broadcastLocked()
 	return result
+}
+
+func (h *Hub) UpdateRelationship(clientID string, next Relationship, reference RelationshipReference, create, remove bool) (RelationshipUpdate, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	user, ok := h.users[clientID]
+	if !ok {
+		return RelationshipUpdate{}, ErrUnknownClient
+	}
+	if next.ID == "" || next.SourceID == "" || next.TargetID == "" || next.SourceID == next.TargetID || next.Name == "" || !h.hasSeed(next.SourceID) || !h.hasSeed(next.TargetID) || !validMultiplicity(next.SourceMultiplicity) || !validMultiplicity(next.TargetMultiplicity) || !validDirection(next.Direction) {
+		return RelationshipUpdate{}, ErrRelationshipInvalid
+	}
+	if !h.hasSeedLockedBy(next.SourceID, clientID) || !h.hasSeedLockedBy(next.TargetID, clientID) {
+		return RelationshipUpdate{}, ErrLockRequired
+	}
+
+	index := relationshipIndex(h.relationships, next.ID)
+	result := RelationshipUpdate{User: user, Relationship: next, Reference: reference}
+	if remove {
+		if index < 0 {
+			return RelationshipUpdate{}, ErrRelationshipNotFound
+		}
+		h.relationships = append(h.relationships[:index], h.relationships[index+1:]...)
+		h.relationshipReferences = removeReferences(h.relationshipReferences, next.ID)
+		result.Deleted = true
+		h.broadcastLocked()
+		return result, nil
+	}
+	if reference.ID == "" || reference.RelationshipID != next.ID {
+		return RelationshipUpdate{}, ErrRelationshipInvalid
+	}
+	if index >= 0 {
+		if create {
+			return RelationshipUpdate{}, ErrSeedExists
+		}
+		h.relationships[index] = next
+	} else {
+		if !create {
+			return RelationshipUpdate{}, ErrRelationshipNotFound
+		}
+		h.relationships = append(h.relationships, next)
+		result.Created = true
+	}
+	h.relationshipReferences = upsertReference(h.relationshipReferences, reference)
+	h.broadcastLocked()
+	return result, nil
 }
 
 func (h *Hub) Subscribe(clientID string) *Subscription {
@@ -139,12 +190,42 @@ func (h *Hub) ChangeLock(clientID, seedID, action string) (LockResult, error) {
 		result.Owner = h.users[ownerID]
 		return result, ErrLockConflict
 	}
-	for lockedSeedID, ownerID := range h.locks {
-		if ownerID == clientID && lockedSeedID != seedID {
-			delete(h.locks, lockedSeedID)
+	h.locks[seedID] = clientID
+	result.Acquired = true
+	h.broadcastLocked()
+	return result, nil
+}
+
+func (h *Hub) ChangeLocks(clientID string, seedIDs []string, action string) (LockResult, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	user, ok := h.users[clientID]
+	if !ok {
+		return LockResult{}, ErrUnknownClient
+	}
+	result := LockResult{User: user}
+	if len(seedIDs) == 0 {
+		return result, ErrSeedNotFound
+	}
+	if action == "unlock" {
+		for _, seedID := range seedIDs {
+			if h.locks[seedID] == clientID {
+				delete(h.locks, seedID)
+				result.Unlocked = true
+			}
+		}
+		h.broadcastLocked()
+		return result, nil
+	}
+	for _, seedID := range seedIDs {
+		if ownerID, exists := h.locks[seedID]; exists && ownerID != clientID {
+			result.Owner = h.users[ownerID]
+			return result, ErrLockConflict
 		}
 	}
-	h.locks[seedID] = clientID
+	for _, seedID := range seedIDs {
+		h.locks[seedID] = clientID
+	}
 	result.Acquired = true
 	h.broadcastLocked()
 	return result, nil
@@ -162,10 +243,67 @@ func (h *Hub) snapshotLocked() State {
 		}
 	}
 	return State{
-		Seeds: append([]ModelSeed(nil), h.seeds...),
-		Users: users,
-		Locks: locks,
+		Seeds:                  append([]ModelSeed(nil), h.seeds...),
+		Relationships:          append([]Relationship(nil), h.relationships...),
+		RelationshipReferences: append([]RelationshipReference(nil), h.relationshipReferences...),
+		Users:                  users,
+		Locks:                  locks,
 	}
+}
+
+func (h *Hub) hasSeedLockedBy(seedID, clientID string) bool {
+	return h.locks[seedID] == clientID
+}
+
+func (h *Hub) hasSeed(seedID string) bool {
+	for _, seed := range h.seeds {
+		if seed.ID == seedID {
+			return true
+		}
+	}
+	return false
+}
+
+func relationshipIndex(relationships []Relationship, id string) int {
+	for index, relationship := range relationships {
+		if relationship.ID == id {
+			return index
+		}
+	}
+	return -1
+}
+
+func removeReferences(references []RelationshipReference, relationshipID string) []RelationshipReference {
+	filtered := references[:0]
+	for _, reference := range references {
+		if reference.RelationshipID != relationshipID {
+			filtered = append(filtered, reference)
+		}
+	}
+	return filtered
+}
+
+func upsertReference(references []RelationshipReference, next RelationshipReference) []RelationshipReference {
+	for index, reference := range references {
+		if reference.RelationshipID == next.RelationshipID {
+			references[index] = next
+			return references
+		}
+	}
+	return append(references, next)
+}
+
+func validMultiplicity(value string) bool {
+	switch value {
+	case "0..1", "1", "0..*", "1..*":
+		return true
+	default:
+		return false
+	}
+}
+
+func validDirection(value string) bool {
+	return value == "source-to-target" || value == "target-to-source"
 }
 
 func (h *Hub) broadcastLocked() {

@@ -1,4 +1,5 @@
 import { startTransition, useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
+import type { Relationship, RelationshipReference } from "./features/modeling/types";
 
 export type Collaborator = {
   id: string;
@@ -11,6 +12,8 @@ export type Collaborator = {
 
 type CollaborationState<T> = {
   seeds: T[];
+  relationships: Relationship[];
+  relationshipReferences: RelationshipReference[];
   users: Collaborator[];
   locks: Record<string, Collaborator>;
 };
@@ -44,9 +47,15 @@ async function post(path: string, body: unknown) {
   });
 }
 
-export function useCollaboration<T extends { id: string }>(initialSeeds: T[]) {
+export function useCollaboration<T extends { id: string }>(initialSeeds: T[], initialRelationships: Relationship[] = [], initialReferences: RelationshipReference[] = []) {
   const [me, setMe] = useState<Collaborator>(() => getIdentity());
-  const [state, setState] = useState<CollaborationState<T>>({ seeds: initialSeeds, users: [], locks: {} });
+  const [state, setState] = useState<CollaborationState<T>>({
+    seeds: initialSeeds,
+    relationships: initialRelationships,
+    relationshipReferences: initialReferences,
+    users: [],
+    locks: {}
+  });
   const [connected, setConnected] = useState(false);
   const joinedRef = useRef(false);
   const cursorFrameRef = useRef<number | undefined>(undefined);
@@ -94,7 +103,12 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[]) {
     let events: EventSource | undefined;
     let cancelled = false;
     const sessionUser = getSessionUser();
-    void post("/api/collaboration/join", { user: sessionUser, seeds: initialSeeds })
+    void post("/api/collaboration/join", {
+      user: sessionUser,
+      seeds: initialSeeds,
+      relationships: initialRelationships,
+      relationshipReferences: initialReferences
+    })
       .then(async (response) => {
         if (!response.ok) throw new Error("Could not join collaboration session");
         const joinedState = (await response.json()) as CollaborationState<T>;
@@ -112,7 +126,7 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[]) {
       events?.close();
       if (cursorFrameRef.current !== undefined) cancelAnimationFrame(cursorFrameRef.current);
     };
-  }, [initialSeeds, me.id]);
+  }, [initialReferences, initialRelationships, initialSeeds, me.id]);
 
   const rename = useCallback(
     async (name: string) => {
@@ -143,7 +157,7 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[]) {
 
   const lock = useCallback(
     async (seedId: string) => {
-      const response = await post("/api/collaboration/lock", { clientId: me.id, seedId, action: "lock" });
+      const response = await post("/api/collaboration/lock", { clientId: me.id, seedIds: [seedId], action: "lock" });
       if (response.ok) {
         startTransition(() => {
           setState((current) => {
@@ -160,7 +174,7 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[]) {
 
   const unlock = useCallback(
     async (seedId: string) => {
-      const response = await post("/api/collaboration/lock", { clientId: me.id, seedId, action: "unlock" });
+      const response = await post("/api/collaboration/lock", { clientId: me.id, seedIds: [seedId], action: "unlock" });
       if (response.ok) {
         startTransition(() => {
           setState((current) => {
@@ -170,6 +184,41 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[]) {
           });
         });
       }
+    },
+    [me.id]
+  );
+
+  const lockAll = useCallback(
+    async (seedIds: string[]) => {
+      const uniqueIDs = [...new Set(seedIds)];
+      const response = await post("/api/collaboration/lock", { clientId: me.id, seedIds: uniqueIDs, action: "lock" });
+      if (!response.ok) return false;
+      startTransition(() => {
+        setState((current) => {
+          const locks = { ...current.locks };
+          for (const seedId of uniqueIDs) locks[seedId] = me;
+          return { ...current, locks };
+        });
+      });
+      return true;
+    },
+    [me]
+  );
+
+  const unlockAll = useCallback(
+    async (seedIds: string[]) => {
+      const uniqueIDs = [...new Set(seedIds)];
+      const response = await post("/api/collaboration/lock", { clientId: me.id, seedIds: uniqueIDs, action: "unlock" });
+      if (!response.ok) return;
+      startTransition(() => {
+        setState((current) => {
+          const locks = { ...current.locks };
+          for (const seedId of uniqueIDs) {
+            if (locks[seedId]?.id === me.id) delete locks[seedId];
+          }
+          return { ...current, locks };
+        });
+      });
     },
     [me.id]
   );
@@ -210,17 +259,41 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[]) {
     setState((current) => ({ ...current, seeds }));
   }, []);
 
+  const setLocalRelationships = useCallback((relationships: Relationship[], relationshipReferences: RelationshipReference[]) => {
+    setState((current) => ({ ...current, relationships, relationshipReferences }));
+  }, []);
+
+  const saveRelationship = useCallback(
+    async (relationship: Relationship, reference: RelationshipReference, options: { create?: boolean; delete?: boolean } = {}) => {
+      const response = await post("/api/collaboration/relationship", {
+        clientId: me.id,
+        relationship,
+        reference,
+        create: options.create ?? false,
+        delete: options.delete ?? false
+      });
+      return response.ok;
+    },
+    [me.id]
+  );
+
   return {
     me,
     seeds: state.seeds,
     users: state.users,
     locks: state.locks,
+    relationships: state.relationships,
+    relationshipReferences: state.relationshipReferences,
     connected,
     rename,
     moveCursor,
     lock,
     unlock,
+    lockAll,
+    unlockAll,
     saveSeed,
-    setLocalSeeds
+    saveRelationship,
+    setLocalSeeds,
+    setLocalRelationships
   };
 }

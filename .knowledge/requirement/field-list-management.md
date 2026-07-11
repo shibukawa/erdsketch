@@ -27,6 +27,43 @@ requirements:
       - name
       - primary_key
       - important
+  domain_assignment:
+    source: ui:domain-dictionary-panel
+    interaction: drag_domain_to_attribute_row
+    stores_reference_to: data:data-domain
+    composite_display: one_logical_row
+    physical_projection: rule:domain-expansion
+  relationship_reference:
+    item: data:relationship-reference
+    source: data:relationship
+    persistence: separate_from_data:attribute
+    visibility:
+      one_to_many: many_endpoint
+      many_to_one: many_endpoint
+      one_to_one: arrow_origin_endpoint
+      many_to_many: both_endpoints
+    model_ownership: none
+    presentation:
+      icon: chain
+      label: relationship_name
+    editable_flags:
+      - primary_key
+      - foreign_key
+    flag_behavior:
+      independent: true
+      primary_key_and_foreign_key_allowed: true
+    deletion:
+      effect: delete_relationship
+      confirmation_required: true
+  list_projection:
+    presents_together:
+      - data:attribute
+      - data:relationship-reference
+    common_visual_row: true
+    common_storage_collection: false
+    common_domain_type: false
+    relationship_reference_name_source: data:relationship.name
+    sort: rule:field-list-sort
   flags:
     primary_key: schema_meaning
     important: visual_emphasis_only
@@ -34,7 +71,7 @@ requirements:
     independent_favorite: important_may_be_true_without_primary_key
   excluded:
     - foreign_key_assignment
-    - relationship_creation
+    - relationship_creation_from_field_editor
 acceptance:
   - Repeated typing and Enter appends multiple fields without reopening the dialog.
   - Japanese IME confirmation never creates an unintended field.
@@ -43,9 +80,25 @@ acceptance:
   - A field may be important without being a primary key.
   - A primary-key field remains effectively important.
   - Important never changes SQL meaning.
+  - A projected relationship reference appears on the many-side field list with a chain icon and relationship name.
+  - Attributes and relationship references appear in one list but remain different domain and persistence types.
+  - Saving or loading a relationship reference never converts it into an attribute.
+  - Changing one-to-many to many-to-one preserves reference identity and flags; only its displayed model changes.
+  - One-to-one appears on the arrow-origin model and many-to-many appears on both models.
+  - After save, primary-key items appear first, foreign-key-only items second, and all other items last.
+  - Removing a projected relationship reference requires confirmation because it removes the relationship.
+  - A domain can be assigned to an attribute from the adjacent dictionary panel.
+  - A composite domain remains one field-list row.
 related:
   - data:attribute
   - data:relationship
   - ui:field-list-dialog
   - rule:primary-key-favorite
+  - requirement:relationship-management
+  - data:relationship-reference
+  - rule:field-list-sort
+  - requirement:domain-dictionary-management
+  - ui:domain-dictionary-panel
+  - data:data-domain
+  - rule:domain-expansion
 ```

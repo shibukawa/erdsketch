@@ -1,24 +1,30 @@
-import { Database, KeyRound, Lock, Menu, Star } from "lucide-react";
+import { Database, KeyRound, Link2, Lock, Menu, Star } from "lucide-react";
 import { useCallback, useState, type ChangeEvent, type PointerEvent } from "react";
 import type { Collaborator } from "../../collaboration";
 import { cardHeight, cardWidth, roleMeta } from "../../features/modeling/constants";
-import type { CardDisplayMode, ModelField, ModelSeed } from "../../features/modeling/types";
-import { flattenLabels, getModelStageLabel } from "../../features/modeling/utils";
+import type { CardDisplayMode, ModelField, ModelSeed, Relationship, RelationshipReference } from "../../features/modeling/types";
+import { flattenLabels, getModelStageLabel, relationshipDisplaySeedIDs } from "../../features/modeling/utils";
 import { FieldListDialog } from "./FieldListDialog";
 import { RoughShape } from "./RoughShape";
 
 type ModelSeedCardProps = {
   seed: ModelSeed;
   selected: boolean;
+  relationshipDropTarget: boolean;
   displayMode: CardDisplayMode;
   owner?: Collaborator;
   me: Collaborator;
   onPointerDown: (event: PointerEvent<HTMLElement>, seed: ModelSeed) => void;
   onUpdate: (seedId: string, patch: Partial<ModelSeed>) => void;
   onUnlock: (seedId: string) => void;
+  onRelationshipPointerDown: (event: PointerEvent<HTMLButtonElement>, seed: ModelSeed) => void;
+  relationships: Relationship[];
+  relationshipReferences: RelationshipReference[];
+  onUpdateRelationshipReference: (relationshipId: string, patch: Partial<RelationshipReference>) => void;
+  onDeleteRelationship: (relationshipId: string) => void;
 };
 
-export function ModelSeedCard({ seed, selected, displayMode, owner, me, onPointerDown, onUpdate, onUnlock }: ModelSeedCardProps) {
+export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayMode, owner, me, onPointerDown, onUpdate, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, onUpdateRelationshipReference, onDeleteRelationship }: ModelSeedCardProps) {
   const meta = roleMeta[seed.role];
   const lockedByMe = owner?.id === me.id;
   const lockedByOther = !!owner && !lockedByMe;
@@ -34,6 +40,11 @@ export function ModelSeedCard({ seed, selected, displayMode, owner, me, onPointe
   const summaryBodyHeight = Math.max(64, summaryRowCount * 20 + 12);
   const renderedCardHeight = displayMode === "key-fields" ? cardHeight + summaryBodyHeight - 64 : cardHeight;
   const modelStageLabel = getModelStageLabel(seed.maturedLevel);
+  const visibleRelationshipReferences = relationships.flatMap((relationship) => {
+    if (!relationshipDisplaySeedIDs(relationship).includes(seed.id)) return [];
+    const reference = relationshipReferences.find((item) => item.relationshipId === relationship.id);
+    return reference ? [{ relationship, reference }] : [];
+  });
 
   const handlePointerDown = useCallback(
     (event: PointerEvent<HTMLElement>) => {
@@ -49,6 +60,13 @@ export function ModelSeedCard({ seed, selected, displayMode, owner, me, onPointe
   const handleUnlock = useCallback(() => {
     if (lockedByMe) onUnlock(seed.id);
   }, [lockedByMe, onUnlock, seed.id]);
+
+  const handleRelationshipPointerDown = useCallback(
+    (event: PointerEvent<HTMLButtonElement>) => {
+      onRelationshipPointerDown(event, seed);
+    },
+    [onRelationshipPointerDown, seed]
+  );
 
   const handleTitleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -88,7 +106,7 @@ export function ModelSeedCard({ seed, selected, displayMode, owner, me, onPointe
 
   return (
     <article
-      className={`model-seed-card absolute w-[270px] select-none p-4 ${selected ? "is-selected" : ""} ${
+      className={`model-seed-card absolute w-[270px] select-none p-4 ${selected || relationshipDropTarget ? "is-selected" : ""} ${relationshipDropTarget ? "is-relationship-drop-target" : ""} ${
         lockedByOther ? "is-locked" : ""
       }`}
       style={{
@@ -105,7 +123,7 @@ export function ModelSeedCard({ seed, selected, displayMode, owner, me, onPointe
         roughness={seed.maturedLevel}
         fill={meta.fill}
         stroke={meta.stroke}
-        selected={selected}
+        selected={selected || relationshipDropTarget}
       />
 
       <div className="relative">
@@ -199,13 +217,34 @@ export function ModelSeedCard({ seed, selected, displayMode, owner, me, onPointe
           ))}
         </div>
       </div>
+      {selected && (
+        <button
+          data-no-drag="true"
+          type="button"
+          className="absolute -bottom-2 -right-2 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-blue-200 bg-white text-blue-700 shadow-md transition hover:scale-105 hover:bg-blue-50 disabled:cursor-wait disabled:opacity-50"
+          aria-label={`Create relationship from ${seed.title}`}
+          title="Drag to another model to create a relationship"
+          disabled={!lockedByMe}
+          onPointerDown={handleRelationshipPointerDown}
+        >
+          <Link2 size={16} />
+        </button>
+      )}
+      {relationshipDropTarget && (
+        <span className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-700 px-3 py-1 text-xs font-bold text-white shadow-lg">
+          Release to connect
+        </span>
+      )}
       {fieldListOpen && (
         <FieldListDialog
           modelTitle={seed.title}
           modelMaturedLevel={seed.maturedLevel}
           fields={fields}
+          relationshipReferences={visibleRelationshipReferences}
           canEdit={lockedByMe}
           onChange={handleFieldsChange}
+          onUpdateReference={onUpdateRelationshipReference}
+          onDeleteReference={onDeleteRelationship}
           onClose={handleCloseFieldList}
         />
       )}

@@ -7,7 +7,7 @@ import (
 
 func TestSeedUpdateRequiresOwningLock(t *testing.T) {
 	hub := NewHub()
-	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order", Title: "Order"}})
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order", Title: "Order"}}, nil, nil)
 
 	_, err := hub.UpdateSeed("lion", ModelSeed{ID: "order", Title: "Changed"}, false)
 	if !errors.Is(err, ErrLockRequired) {
@@ -29,7 +29,7 @@ func TestSeedUpdateRequiresOwningLock(t *testing.T) {
 
 func TestSeedUpdateSynchronizesFields(t *testing.T) {
 	hub := NewHub()
-	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order", Title: "Order"}})
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order", Title: "Order"}}, nil, nil)
 	if _, err := hub.ChangeLock("lion", "order", "lock"); err != nil {
 		t.Fatalf("lock: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestSeedUpdateSynchronizesFields(t *testing.T) {
 
 func TestSeedUpdateSynchronizesMaturedLevel(t *testing.T) {
 	hub := NewHub()
-	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order", MaturedLevel: 6}})
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order", MaturedLevel: 6}}, nil, nil)
 	if _, err := hub.ChangeLock("lion", "order", "lock"); err != nil {
 		t.Fatalf("lock: %v", err)
 	}
@@ -75,8 +75,8 @@ func TestSeedUpdateSynchronizesMaturedLevel(t *testing.T) {
 
 func TestLockRejectsAnotherCollaborator(t *testing.T) {
 	hub := NewHub()
-	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil)
-	hub.Join(Collaborator{ID: "koara", Name: "Koara"}, nil)
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
+	hub.Join(Collaborator{ID: "koara", Name: "Koara"}, nil, nil, nil)
 
 	if _, err := hub.ChangeLock("lion", "order", "lock"); err != nil {
 		t.Fatalf("first lock: %v", err)
@@ -92,7 +92,7 @@ func TestLockRejectsAnotherCollaborator(t *testing.T) {
 
 func TestClosingSubscriptionRemovesUserAndOwnedLocks(t *testing.T) {
 	hub := NewHub()
-	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil)
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
 	if _, err := hub.ChangeLock("lion", "order", "lock"); err != nil {
 		t.Fatalf("lock: %v", err)
 	}
@@ -104,5 +104,62 @@ func TestClosingSubscriptionRemovesUserAndOwnedLocks(t *testing.T) {
 	}
 	if _, err := hub.UpdateUser("lion", nil, nil, nil); !errors.Is(err, ErrUnknownClient) {
 		t.Fatalf("update after close: got %v, want %v", err, ErrUnknownClient)
+	}
+}
+
+func TestRelationshipUpdateRequiresBothEndpointLocksAndPersistsReference(t *testing.T) {
+	hub := NewHub()
+	seeds := []ModelSeed{{ID: "order", Title: "Order"}, {ID: "line", Title: "Line"}}
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, seeds, nil, nil)
+	relationship := Relationship{ID: "order-lines", Name: "contains", SourceID: "order", TargetID: "line", SourceMultiplicity: "1", TargetMultiplicity: "1..*", Direction: "source-to-target"}
+	reference := RelationshipReference{ID: "order-lines-reference", RelationshipID: relationship.ID, ForeignKey: true}
+
+	if _, err := hub.ChangeLocks("lion", []string{"order"}, "lock"); err != nil {
+		t.Fatalf("lock source: %v", err)
+	}
+	if _, err := hub.UpdateRelationship("lion", relationship, reference, true, false); !errors.Is(err, ErrLockRequired) {
+		t.Fatalf("create with one lock: got %v, want %v", err, ErrLockRequired)
+	}
+	if _, err := hub.ChangeLocks("lion", []string{"order", "line"}, "lock"); err != nil {
+		t.Fatalf("lock endpoints: %v", err)
+	}
+	if _, err := hub.UpdateRelationship("lion", relationship, reference, true, false); err != nil {
+		t.Fatalf("create relationship: %v", err)
+	}
+
+	subscription := hub.Subscribe("lion")
+	defer subscription.Close()
+	state := subscription.Initial()
+	if len(state.Relationships) != 1 || len(state.RelationshipReferences) != 1 || !state.RelationshipReferences[0].ForeignKey {
+		t.Fatalf("relationship state: %+v", state)
+	}
+}
+
+func TestChangeLocksIsAtomic(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
+	hub.Join(Collaborator{ID: "fox", Name: "Fox"}, nil, nil, nil)
+	if _, err := hub.ChangeLocks("fox", []string{"line"}, "lock"); err != nil {
+		t.Fatalf("lock line: %v", err)
+	}
+	if _, err := hub.ChangeLocks("lion", []string{"order", "line"}, "lock"); !errors.Is(err, ErrLockConflict) {
+		t.Fatalf("lock conflict: got %v, want %v", err, ErrLockConflict)
+	}
+	state := hub.snapshotLocked()
+	if _, exists := state.Locks["order"]; exists {
+		t.Fatalf("order lock must not be partially acquired: %+v", state.Locks)
+	}
+}
+
+func TestRelationshipUpdateRejectsMissingEndpoint(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order"}}, nil, nil)
+	if _, err := hub.ChangeLocks("lion", []string{"order", "missing"}, "lock"); err != nil {
+		t.Fatalf("lock: %v", err)
+	}
+	relationship := Relationship{ID: "invalid", Name: "invalid", SourceID: "order", TargetID: "missing", SourceMultiplicity: "1", TargetMultiplicity: "0..*", Direction: "source-to-target"}
+	_, err := hub.UpdateRelationship("lion", relationship, RelationshipReference{ID: "invalid-reference", RelationshipID: "invalid"}, true, false)
+	if !errors.Is(err, ErrRelationshipInvalid) {
+		t.Fatalf("missing endpoint: got %v, want %v", err, ErrRelationshipInvalid)
 	}
 }

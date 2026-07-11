@@ -4,16 +4,18 @@ type: term
 title: Relationship Vocabulary
 ---
 
-Relationships have business-readable names.
+Relationships have one business-readable name and an independently selected reading direction.
 
 ```yaml
 examples:
-  - subject: Customer
-    predicate: places
-    object: Order
-  - subject: Order
-    predicate: contains
-    object: OrderLine
+  - name: ownership
+    direction: parent_to_child
+  - name: dependency
+    direction: dependent_to_independent
+rules:
+  name_count: one
+  direction_follows_meaning: true
+  direction_is_not_derived_from_cardinality: true
 related:
   - data:relationship
   - term:vocabulary

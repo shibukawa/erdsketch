@@ -38,7 +38,7 @@ func TestListSeeds(t *testing.T) {
 
 func TestSeedUpdateRequiresOwningLock(t *testing.T) {
 	hub := collaboration.NewHub()
-	hub.Join(collaboration.Collaborator{ID: "lion", Name: "Lion"}, []collaboration.ModelSeed{{ID: "order", Title: "Order"}})
+	hub.Join(collaboration.Collaborator{ID: "lion", Name: "Lion"}, []collaboration.ModelSeed{{ID: "order", Title: "Order"}}, nil, nil)
 	handler := New(hub, seedListerStub{}, log.New(io.Discard, "", 0))
 
 	withoutLock := post(handler, "/api/collaboration/seed", `{"clientId":"lion","seed":{"id":"order","title":"Changed"}}`)

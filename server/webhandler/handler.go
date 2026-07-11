@@ -32,6 +32,7 @@ func New(hub *collaboration.Hub, seeds SeedLister, logger *log.Logger) http.Hand
 	mux.HandleFunc("/api/collaboration/events", handler.events)
 	mux.HandleFunc("/api/collaboration/user", handler.updateUser)
 	mux.HandleFunc("/api/collaboration/seed", handler.updateSeed)
+	mux.HandleFunc("/api/collaboration/relationship", handler.updateRelationship)
 	mux.HandleFunc("/api/collaboration/lock", handler.changeLock)
 	return mux
 }

@@ -15,16 +15,19 @@
 {"category": "structure", "id": "data:data-ownership", "path": ".knowledge/data/data-ownership.md", "role": "supporting", "title": "Data Ownership", "type": "data"}
 {"category": "structure", "id": "data:dependent-entity", "path": ".knowledge/data/dependent-entity.md", "role": "supporting", "title": "Dependent Entity", "type": "data"}
 {"category": "structure", "id": "data:design-pattern", "path": ".knowledge/data/design-pattern.md", "role": "supporting", "title": "Design Pattern", "type": "data"}
+{"category": "structure", "id": "data:domain-component", "path": ".knowledge/data/domain-component.md", "role": "supporting", "title": "Domain Component", "type": "data"}
 {"category": "structure", "id": "data:entity", "path": ".knowledge/data/entity.md", "role": "supporting", "title": "Entity", "type": "data"}
 {"category": "structure", "id": "data:governance-metadata", "path": ".knowledge/data/governance-metadata.md", "role": "supporting", "title": "Governance Metadata", "type": "data"}
 {"category": "structure", "id": "data:master-data-distribution", "path": ".knowledge/data/master-data-distribution.md", "role": "supporting", "title": "Master Data Distribution", "type": "data"}
 {"category": "structure", "id": "data:model-seed", "path": ".knowledge/data/model-seed.md", "role": "supporting", "title": "Model Seed", "type": "data"}
 {"category": "structure", "id": "data:model-state", "path": ".knowledge/data/model-state.md", "role": "supporting", "title": "Model State", "type": "data"}
 {"category": "structure", "id": "data:model-transformation", "path": ".knowledge/data/model-transformation.md", "role": "supporting", "title": "Model Transformation", "type": "data"}
+{"category": "structure", "id": "data:primitive-type", "path": ".knowledge/data/primitive-type.md", "role": "supporting", "title": "Primitive Type", "type": "data"}
 {"category": "structure", "id": "data:query-profile", "path": ".knowledge/data/query-profile.md", "role": "supporting", "title": "Query Profile", "type": "data"}
 {"category": "structure", "id": "data:reconciliation-pattern", "path": ".knowledge/data/reconciliation-pattern.md", "role": "supporting", "title": "Reconciliation Pattern", "type": "data"}
 {"category": "structure", "id": "data:reference-actual-value", "path": ".knowledge/data/reference-actual-value.md", "role": "supporting", "title": "Reference Value and Actual Value", "type": "data"}
 {"category": "structure", "id": "data:reference-implementation", "path": ".knowledge/data/reference-implementation.md", "role": "supporting", "title": "Reference Implementation", "type": "data"}
+{"category": "structure", "id": "data:relationship-reference", "path": ".knowledge/data/relationship-reference.md", "role": "supporting", "title": "Relationship Reference", "type": "data"}
 {"category": "structure", "id": "data:relationship", "path": ".knowledge/data/relationship.md", "role": "supporting", "title": "Relationship", "type": "data"}
 {"category": "structure", "id": "data:snapshot-reference", "path": ".knowledge/data/snapshot-reference.md", "role": "supporting", "title": "Snapshot Reference", "type": "data"}
 {"category": "structure", "id": "data:state-transition", "path": ".knowledge/data/state-transition.md", "role": "supporting", "title": "State Transition", "type": "data"}
@@ -38,6 +41,7 @@
 {"category": "constraint", "id": "policy:deletion-policy", "path": ".knowledge/policy/deletion-policy.md", "role": "supporting", "title": "Deletion Policy", "type": "policy"}
 {"category": "objective", "id": "requirement:ai-review", "path": ".knowledge/requirement/ai-review.md", "role": "primary", "title": "AI Review", "type": "requirement"}
 {"category": "objective", "id": "requirement:design-decision-history", "path": ".knowledge/requirement/design-decision-history.md", "role": "primary", "title": "Design Decision History", "type": "requirement"}
+{"category": "objective", "id": "requirement:domain-dictionary-management", "path": ".knowledge/requirement/domain-dictionary-management.md", "role": "primary", "title": "Domain Dictionary Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:entity-management", "path": ".knowledge/requirement/entity-management.md", "role": "primary", "title": "Entity Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:field-list-management", "path": ".knowledge/requirement/field-list-management.md", "role": "primary", "title": "Field List Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:future-extensions", "path": ".knowledge/requirement/future-extensions.md", "role": "primary", "title": "Future Extensions", "type": "requirement"}
@@ -46,12 +50,21 @@
 {"category": "objective", "id": "requirement:normalization-support", "path": ".knowledge/requirement/normalization-support.md", "role": "primary", "title": "Normalization Support", "type": "requirement"}
 {"category": "objective", "id": "requirement:pattern-library-experience", "path": ".knowledge/requirement/pattern-library-experience.md", "role": "primary", "title": "Pattern Library Experience", "type": "requirement"}
 {"category": "objective", "id": "requirement:performance-design", "path": ".knowledge/requirement/performance-design.md", "role": "primary", "title": "Performance Design", "type": "requirement"}
+{"category": "objective", "id": "requirement:relationship-management", "path": ".knowledge/requirement/relationship-management.md", "role": "primary", "title": "Relationship Management", "type": "requirement"}
+{"category": "objective", "id": "requirement:relationship-validation", "path": ".knowledge/requirement/relationship-validation.md", "role": "primary", "title": "Relationship Validation Inventory", "type": "requirement"}
+{"category": "constraint", "id": "rule:dependent-drag-follow", "path": ".knowledge/rule/dependent-drag-follow.md", "role": "supporting", "title": "Dependent Drag Follow", "type": "rule"}
+{"category": "constraint", "id": "rule:domain-expansion", "path": ".knowledge/rule/domain-expansion.md", "role": "supporting", "title": "Domain Expansion", "type": "rule"}
 {"category": "constraint", "id": "rule:entity-classification", "path": ".knowledge/rule/entity-classification.md", "role": "supporting", "title": "Entity Classification", "type": "rule"}
+{"category": "constraint", "id": "rule:field-list-sort", "path": ".knowledge/rule/field-list-sort.md", "role": "supporting", "title": "Field List Sort", "type": "rule"}
 {"category": "constraint", "id": "rule:model-seed-labels", "path": ".knowledge/rule/model-seed-labels.md", "role": "supporting", "title": "Model Seed Structured Hints", "type": "rule"}
 {"category": "constraint", "id": "rule:primary-key-favorite", "path": ".knowledge/rule/primary-key-favorite.md", "role": "supporting", "title": "Primary Key Is Favorite", "type": "rule"}
+{"category": "constraint", "id": "rule:relationship-move-lock", "path": ".knowledge/rule/relationship-move-lock.md", "role": "supporting", "title": "Relationship Move Lock", "type": "rule"}
+{"category": "constraint", "id": "rule:relationship-operation-history", "path": ".knowledge/rule/relationship-operation-history.md", "role": "supporting", "title": "Relationship Operation History", "type": "rule"}
+{"category": "constraint", "id": "rule:relationship-roughness", "path": ".knowledge/rule/relationship-roughness.md", "role": "supporting", "title": "Relationship Roughness", "type": "rule"}
 {"category": "external", "id": "system:storage-target", "path": ".knowledge/system/storage-target.md", "role": "supporting", "title": "Storage Target", "type": "system"}
 {"category": "vocabulary", "id": "term:relationship-vocabulary", "path": ".knowledge/term/relationship-vocabulary.md", "role": "supporting", "title": "Relationship Vocabulary", "type": "term"}
 {"category": "vocabulary", "id": "term:vocabulary", "path": ".knowledge/term/vocabulary.md", "role": "supporting", "title": "Vocabulary", "type": "term"}
+{"category": "interface", "id": "ui:domain-dictionary-panel", "path": ".knowledge/ui/domain-dictionary-panel.md", "role": "primary", "title": "Domain Dictionary Panel", "type": "ui"}
 {"category": "interface", "id": "ui:entity-candidate-view", "path": ".knowledge/ui/entity-candidate-view.md", "role": "primary", "title": "Entity Candidate View", "type": "ui"}
 {"category": "interface", "id": "ui:erd-sketch-canvas", "path": ".knowledge/ui/erd-sketch-canvas.md", "role": "primary", "title": "ERD Sketch Canvas", "type": "ui"}
 {"category": "interface", "id": "ui:field-list-dialog", "path": ".knowledge/ui/field-list-dialog.md", "role": "primary", "title": "Field List Dialog", "type": "ui"}

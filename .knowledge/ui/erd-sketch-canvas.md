@@ -23,7 +23,7 @@ ui:
       - open_field_list_from_card_menu
       - switch_card_content_from_sidebar
       - inline_rename
-      - multi_select
+      - single_select
       - pan_canvas
       - zoom_canvas
       - adjust_roughness_slider
@@ -32,6 +32,7 @@ ui:
       - choose_seed_dependency
       - toggle_seed_privacy
       - connect_seeds
+      - drag_chain_handle_to_connect_models
       - grow_seed_as_entity
       - grow_seed_as_value_object
       - grow_seed_as_data_domain
@@ -39,6 +40,7 @@ ui:
       card_renderer: roughjs
       card_shape: roughjs_rectangle
       line_renderer: roughjs_path
+      relationship_line_roughness: rule:relationship-roughness
       maturity_signal: roughness
       roughness_range:
         min: 0.5
@@ -81,7 +83,7 @@ ui:
       privacy:
         interaction: boolean_toggle
       relationship:
-        interaction: draw_line_between_models
+        interaction: ui:relationship-view
         not_a_card_tag: true
       fields:
         interaction: ui:field-list-dialog
@@ -113,6 +115,13 @@ constraints:
   - Role, dependency, and privacy are not multi-tag fields.
   - Relationship labels are not seed tags.
   - Linked state should be visible from connections or promoted model references.
+  - Relationship lines keep the existing soft curved geometry.
+  - Relationship line roughness is the arithmetic mean of both endpoint model roughness values.
+  - Relationship endpoint multiplicity uses UML notation, not ERD notation.
+  - Model selection contains at most one model.
+  - Dragging a dependent model moves all transitively reachable independent models, including offscreen models; reverse dependency direction does not follow.
+  - A group drag starts only after every model in its movement set is locked.
+  - A group drag is one atomic undo unit.
 related:
   - data:model-seed
   - concept:model-growth
@@ -123,4 +132,8 @@ related:
   - ui:model-card-display-mode
   - data:model-state
   - requirement:model-state-management
+  - requirement:relationship-management
+  - rule:dependent-drag-follow
+  - rule:relationship-move-lock
+  - rule:relationship-roughness
 ```
