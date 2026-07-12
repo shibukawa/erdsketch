@@ -1,8 +1,9 @@
 import { BookOpen, ChevronRight, Download, GripVertical, Plus, Trash2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type FocusEvent, type KeyboardEvent, type MouseEvent, type SyntheticEvent } from "react";
 import { createPortal } from "react-dom";
-import type { DataDomain, DomainCategory, DomainCategoryBundle, DomainShape, PrimitiveType } from "../../features/modeling/types";
+import type { CodeSetBaseType, CodeSetEntry, DataDomain, DomainCategory, DomainCategoryBundle, DomainShape, PrimitiveType } from "../../features/modeling/types";
 import { isAssignableDomain } from "../../features/modeling/utils";
+import { CodeSetEditor } from "./CodeSetEditor";
 
 type DomainAssignmentTarget = {
   label: string;
@@ -36,7 +37,8 @@ const primitiveLabels: Record<PrimitiveType, string> = {
   datetime: "Datetime",
   datetime_with_timezone: "Datetime with timezone",
   boolean: "Boolean",
-  uuid: "UUID"
+  uuid: "UUID",
+  code_set: "Code Set"
 };
 
 const primitiveTypes = Object.keys(primitiveLabels) as PrimitiveType[];
@@ -48,6 +50,7 @@ function domainTypeSummary(domain: DataDomain) {
   if (domain.primitiveType === "integer" || domain.primitiveType === "floating_point") return domain.bits ? `${primitive} · ${domain.bits} bit` : primitive;
   if (domain.primitiveType === "varchar") return domain.length ? `${primitive}(${domain.length})` : primitive;
   if (domain.primitiveType === "decimal") return domain.precision ? `${primitive}(${domain.precision}, ${domain.scale ?? 0})` : primitive;
+  if (domain.primitiveType === "code_set") return `${primitive} · ${domain.codeSetBaseType ?? "varchar"} · ${domain.codeSetEntries?.length ?? 0} codes`;
   return primitive;
 }
 
@@ -227,18 +230,29 @@ export function DomainDictionaryDialog({ domains, categories, canEdit, assignmen
   const handleKindChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
     const shape = event.target.value as DomainShape;
     if (shape === "unresolved") {
-      updateSelected({ shape, primitiveType: undefined, bits: undefined, length: undefined, precision: undefined, scale: undefined, components: [], partitionKey: false });
+      updateSelected({ shape, primitiveType: undefined, bits: undefined, length: undefined, precision: undefined, scale: undefined, codeSetBaseType: undefined, codeSetEntries: undefined, components: [], partitionKey: false });
       return;
     }
     if (shape === "composite") {
-      updateSelected({ shape, primitiveType: undefined, bits: undefined, length: undefined, precision: undefined, scale: undefined, components: selectedDomain?.components ?? [], partitionKey: false });
+      updateSelected({ shape, primitiveType: undefined, bits: undefined, length: undefined, precision: undefined, scale: undefined, codeSetBaseType: undefined, codeSetEntries: undefined, components: selectedDomain?.components ?? [], partitionKey: false });
       return;
     }
     updateSelected({ shape: "scalar", primitiveType: selectedDomain?.primitiveType ?? "varchar", components: [] });
   }, [selectedDomain?.components, selectedDomain?.primitiveType, updateSelected]);
 
   const handlePrimitiveChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
-    updateSelected({ shape: "scalar", primitiveType: event.target.value as PrimitiveType, components: [] });
+    const primitiveType = event.target.value as PrimitiveType;
+    updateSelected({
+      shape: "scalar",
+      primitiveType,
+      components: [],
+      codeSetBaseType: primitiveType === "code_set" ? selectedDomain?.codeSetBaseType ?? "varchar" : undefined,
+      codeSetEntries: primitiveType === "code_set" ? selectedDomain?.codeSetEntries ?? [] : undefined
+    });
+  }, [selectedDomain?.codeSetBaseType, selectedDomain?.codeSetEntries, updateSelected]);
+
+  const handleCodeSetChange = useCallback((codeSetBaseType: CodeSetBaseType, codeSetEntries: CodeSetEntry[]) => {
+    updateSelected({ codeSetBaseType, codeSetEntries });
   }, [updateSelected]);
 
   const handleNumberChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
@@ -402,7 +416,7 @@ export function DomainDictionaryDialog({ domains, categories, canEdit, assignmen
                   {selectedDomain.components.length === 0 && <p className="rounded-md border border-dashed border-slate-300 bg-white px-3 py-4 text-center text-xs text-slate-500">No components yet. Add names above; types can stay undefined.</p>}
                 </div>
               )}
-              {(selectedDomain.shape === "primitive" || selectedDomain.shape === "scalar") && <div className="space-y-4"><label className="flex cursor-pointer items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm font-semibold text-cyan-900"><input type="checkbox" className="checkbox checkbox-info" checked={selectedDomain.partitionKey ?? false} onChange={handlePartitionKeyChange} disabled={!canEdit || selectedDomain.system} />Partition key</label><label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Primitive type</span><select className="select select-bordered w-full bg-white" value={selectedDomain.primitiveType ?? "varchar"} onChange={handlePrimitiveChange} disabled={!canEdit || selectedDomain.system}>{primitiveTypes.map((primitive) => <option key={primitive} value={primitive}>{primitiveLabels[primitive]}</option>)}</select></label>{(selectedDomain.primitiveType === "integer" || selectedDomain.primitiveType === "floating_point") && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Bits</span><select className="select select-bordered w-full bg-white" value={selectedDomain.bits ?? 32} onChange={handleBitsChange} disabled={!canEdit || selectedDomain.system}><option value={8}>8 bit</option><option value={16}>16 bit</option><option value={32}>32 bit</option><option value={64}>64 bit / bigint</option></select></label>}{selectedDomain.primitiveType === "integer" && <label className="label cursor-pointer justify-start gap-2"><input type="checkbox" className="checkbox" checked={selectedDomain.unsigned ?? false} onChange={handleUnsignedChange} disabled={!canEdit || selectedDomain.system} /><span className="label-text">Unsigned</span></label>}{selectedDomain.primitiveType === "varchar" && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Length</span><input className="input input-bordered w-full bg-white" type="number" min="1" data-parameter="length" value={selectedDomain.length ?? ""} onChange={handleNumberChange} disabled={!canEdit || selectedDomain.system} /></label>}{selectedDomain.primitiveType === "decimal" && <div className="grid grid-cols-2 gap-3"><label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Precision</span><input className="input input-bordered w-full bg-white" type="number" min="1" data-parameter="precision" value={selectedDomain.precision ?? ""} onChange={handleNumberChange} disabled={!canEdit || selectedDomain.system} /></label><label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Scale</span><input className="input input-bordered w-full bg-white" type="number" min="0" data-parameter="scale" value={selectedDomain.scale ?? 0} onChange={handleNumberChange} disabled={!canEdit || selectedDomain.system} /></label></div>}</div>}
+              {(selectedDomain.shape === "primitive" || selectedDomain.shape === "scalar") && <div className="space-y-4"><label className="flex cursor-pointer items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm font-semibold text-cyan-900"><input type="checkbox" className="checkbox checkbox-info" checked={selectedDomain.partitionKey ?? false} onChange={handlePartitionKeyChange} disabled={!canEdit || selectedDomain.system} />Partition key</label><label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Primitive type</span><select className="select select-bordered w-full bg-white" value={selectedDomain.primitiveType ?? "varchar"} onChange={handlePrimitiveChange} disabled={!canEdit || selectedDomain.system}>{primitiveTypes.map((primitive) => <option key={primitive} value={primitive}>{primitiveLabels[primitive]}</option>)}</select></label>{(selectedDomain.primitiveType === "integer" || selectedDomain.primitiveType === "floating_point") && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Bits</span><select className="select select-bordered w-full bg-white" value={selectedDomain.bits ?? 32} onChange={handleBitsChange} disabled={!canEdit || selectedDomain.system}><option value={8}>8 bit</option><option value={16}>16 bit</option><option value={32}>32 bit</option><option value={64}>64 bit / bigint</option></select></label>}{selectedDomain.primitiveType === "integer" && <label className="label cursor-pointer justify-start gap-2"><input type="checkbox" className="checkbox" checked={selectedDomain.unsigned ?? false} onChange={handleUnsignedChange} disabled={!canEdit || selectedDomain.system} /><span className="label-text">Unsigned</span></label>}{selectedDomain.primitiveType === "varchar" && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Length</span><input className="input input-bordered w-full bg-white" type="number" min="1" data-parameter="length" value={selectedDomain.length ?? ""} onChange={handleNumberChange} disabled={!canEdit || selectedDomain.system} /></label>}{selectedDomain.primitiveType === "decimal" && <div className="grid grid-cols-2 gap-3"><label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Precision</span><input className="input input-bordered w-full bg-white" type="number" min="1" data-parameter="precision" value={selectedDomain.precision ?? ""} onChange={handleNumberChange} disabled={!canEdit || selectedDomain.system} /></label><label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Scale</span><input className="input input-bordered w-full bg-white" type="number" min="0" data-parameter="scale" value={selectedDomain.scale ?? 0} onChange={handleNumberChange} disabled={!canEdit || selectedDomain.system} /></label></div>}{selectedDomain.primitiveType === "code_set" && <CodeSetEditor baseType={selectedDomain.codeSetBaseType ?? "varchar"} entries={selectedDomain.codeSetEntries ?? []} canEdit={canEdit && !selectedDomain.system} onChange={handleCodeSetChange} />}</div>}
               {!selectedDomain.system && <button type="button" className="btn btn-ghost gap-2 text-red-600" onClick={handleDelete} disabled={!canEdit}><Trash2 size={16} />Delete domain</button>}
             </div>}
           </section>

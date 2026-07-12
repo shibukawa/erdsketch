@@ -51,20 +51,28 @@ type DomainComponent struct {
 	PartitionKey bool   `json:"partitionKey,omitempty"`
 }
 
+type CodeSetEntry struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
 type DataDomain struct {
-	ID            string            `json:"id"`
-	Name          string            `json:"name"`
-	CategoryID    string            `json:"categoryId"`
-	Shape         string            `json:"shape"`
-	PrimitiveType string            `json:"primitiveType,omitempty"`
-	Bits          int               `json:"bits,omitempty"`
-	Unsigned      bool              `json:"unsigned,omitempty"`
-	Length        int               `json:"length,omitempty"`
-	Precision     int               `json:"precision,omitempty"`
-	Scale         int               `json:"scale,omitempty"`
-	Components    []DomainComponent `json:"components"`
-	PartitionKey  bool              `json:"partitionKey,omitempty"`
-	System        bool              `json:"system,omitempty"`
+	ID              string            `json:"id"`
+	Name            string            `json:"name"`
+	CategoryID      string            `json:"categoryId"`
+	Shape           string            `json:"shape"`
+	PrimitiveType   string            `json:"primitiveType,omitempty"`
+	Bits            int               `json:"bits,omitempty"`
+	Unsigned        bool              `json:"unsigned,omitempty"`
+	Length          int               `json:"length,omitempty"`
+	Precision       int               `json:"precision,omitempty"`
+	Scale           int               `json:"scale,omitempty"`
+	CodeSetBaseType string            `json:"codeSetBaseType,omitempty"`
+	CodeSetEntries  []CodeSetEntry    `json:"codeSetEntries,omitempty"`
+	Components      []DomainComponent `json:"components"`
+	PartitionKey    bool              `json:"partitionKey,omitempty"`
+	System          bool              `json:"system,omitempty"`
 }
 
 type DomainCategory struct {
@@ -150,6 +158,12 @@ type DomainUpdate struct {
 	Domain  DataDomain
 	Created bool
 	Deleted bool
+}
+
+type RefinementUpdate struct {
+	User         Collaborator
+	CreatedSeeds int
+	Summary      []string
 }
 
 type CategoryUpdate struct {

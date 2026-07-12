@@ -4,7 +4,7 @@ import type {
   RefObject
 } from "react";
 import type { Collaborator } from "../../collaboration";
-import type { CardDisplayMode, DataDomain, DomainCategory, DragState, ModelSeed, Relationship, RelationshipReference, Viewport } from "../../features/modeling/types";
+import type { CardDisplayMode, DataDomain, DomainCategory, DragState, ModelSeed, RefinementResult, Relationship, RelationshipReference, Viewport } from "../../features/modeling/types";
 import { getCardBoundaryPoint, getRelationshipDropTarget, relationshipVisibleOnCanvas } from "../../features/modeling/utils";
 import { ModelSeedCard } from "./ModelSeedCard";
 import { RemoteCursor } from "./RemoteCursor";
@@ -41,6 +41,7 @@ type DiagramCanvasProps = {
   onDeleteRelationship: (relationshipId: string) => void;
   onCreateDomain: (name: string) => void;
   onOpenDomainDictionary: (seedId: string, fieldId?: string) => void;
+  onApplyRefinement: (result: RefinementResult) => Promise<boolean>;
 };
 
 export function DiagramCanvas({
@@ -72,6 +73,7 @@ export function DiagramCanvas({
   onDeleteRelationship,
   onCreateDomain,
   onOpenDomainDictionary
+  ,onApplyRefinement
 }: DiagramCanvasProps) {
   const relationshipDropTargetId = dragState?.type === "relationship"
     ? getRelationshipDropTarget(dragState.sourceId, dragState, allSeeds)?.id
@@ -132,6 +134,8 @@ export function DiagramCanvas({
             onDeleteRelationship={onDeleteRelationship}
             onCreateDomain={onCreateDomain}
             onOpenDomainDictionary={onOpenDomainDictionary}
+            seeds={allSeeds}
+            onApplyRefinement={onApplyRefinement}
           />
         ))}
 

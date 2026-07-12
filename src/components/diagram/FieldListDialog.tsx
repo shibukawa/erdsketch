@@ -13,11 +13,12 @@ import {
   type WheelEvent
 } from "react";
 import { createPortal } from "react-dom";
-import type { DataDomain, DomainCategory, ModelField, Relationship, RelationshipReference } from "../../features/modeling/types";
+import type { DataDomain, DomainCategory, ModelField, ModelSeed, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
 import { sortFieldListItems } from "../../features/modeling/utils";
 import { FieldListRow } from "./FieldListRow";
 import { RelationshipReferenceRow } from "./RelationshipReferenceRow";
 import { DomainDictionaryPanel } from "./DomainDictionaryPanel";
+import { RefinementPanel } from "./RefinementPanel";
 
 type FieldListDialogProps = {
   modelId: string;
@@ -27,6 +28,9 @@ type FieldListDialogProps = {
   domains: DataDomain[];
   domainCategories: DomainCategory[];
   relationshipReferences: Array<{ relationship: Relationship; reference: RelationshipReference }>;
+  seeds: ModelSeed[];
+  allRelationships: Relationship[];
+  allRelationshipReferences: RelationshipReference[];
   canEdit: boolean;
   onChange: (fields: ModelField[]) => void;
   onClose: () => void;
@@ -34,6 +38,7 @@ type FieldListDialogProps = {
   onDeleteReference: (relationshipId: string) => void;
   onCreateDomain: (name: string) => void;
   onOpenDomainDictionary: (fieldId?: string) => void;
+  onApplyRefinement: (result: RefinementResult) => Promise<boolean>;
 };
 
 function replaceField(fields: ModelField[], fieldId: string, patch: Partial<ModelField>) {
@@ -50,7 +55,7 @@ function reorderFields(fields: ModelField[], sourceId: string, targetId: string)
   return [...remaining.slice(0, targetIndex), source, ...remaining.slice(targetIndex)];
 }
 
-export function FieldListDialog({ modelId, modelTitle, modelMaturedLevel, fields, domains, domainCategories, relationshipReferences, canEdit, onChange, onClose, onUpdateReference, onDeleteReference, onCreateDomain, onOpenDomainDictionary }: FieldListDialogProps) {
+export function FieldListDialog({ modelId, modelTitle, modelMaturedLevel, fields, domains, domainCategories, relationshipReferences, seeds, allRelationships, allRelationshipReferences, canEdit, onChange, onClose, onUpdateReference, onDeleteReference, onCreateDomain, onOpenDomainDictionary, onApplyRefinement }: FieldListDialogProps) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const quickEntryRef = useRef<HTMLInputElement | null>(null);
   const fieldsRef = useRef(fields);
@@ -61,6 +66,9 @@ export function FieldListDialog({ modelId, modelTitle, modelMaturedLevel, fields
   const [dropTargetFieldId, setDropTargetFieldId] = useState<string | null>(null);
   const [domainDropTargetFieldId, setDomainDropTargetFieldId] = useState<string | null>(null);
   const [quickEntryDomainDropTarget, setQuickEntryDomainDropTarget] = useState(false);
+  const [selectedRefinementFieldIds, setSelectedRefinementFieldIds] = useState<string[]>([]);
+  const [selectedRefinementRelationshipIds, setSelectedRefinementRelationshipIds] = useState<string[]>([]);
+  const [sideTab, setSideTab] = useState<"domains" | "refinement">("domains");
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -167,6 +175,25 @@ export function FieldListDialog({ modelId, modelTitle, modelMaturedLevel, fields
   const handleSelectField = useCallback((fieldId: string) => {
     setEditingFieldId(fieldId);
   }, []);
+  const handleToggleRefinement = useCallback((fieldId: string) => {
+    const selecting = !selectedRefinementFieldIds.includes(fieldId);
+    setSelectedRefinementFieldIds((current) => selecting ? [...current, fieldId] : current.filter((id) => id !== fieldId));
+    if (selecting) setSideTab("refinement");
+  }, [selectedRefinementFieldIds]);
+  const handleToggleRelationshipRefinement = useCallback((relationshipId: string) => {
+    setSelectedRefinementRelationshipIds((current) => current.includes(relationshipId) ? current.filter((id) => id !== relationshipId) : [...current, relationshipId]);
+  }, []);
+  const handleDomainsTab = useCallback(() => {
+    setSideTab("domains");
+  }, []);
+  const handleRefinementTab = useCallback(() => {
+    setSideTab("refinement");
+  }, []);
+  const handleApplyRefinement = useCallback(async (result: RefinementResult) => {
+    const applied = await onApplyRefinement(result);
+    if (applied) onClose();
+    return applied;
+  }, [onApplyRefinement, onClose]);
 
   const handleFieldNameChange = useCallback(
     (fieldId: string, name: string) => {
@@ -376,15 +403,15 @@ export function FieldListDialog({ modelId, modelTitle, modelMaturedLevel, fields
               {sortedItems.map((item) => {
                 if (item.type === "field") {
                   const field = item.item;
-                  return <FieldListRow key={field.id} field={field} domain={domains.find((domain) => domain.id === field.domainId)} domains={domains} selected={editingFieldId === field.id && canEdit} dragging={draggingFieldId === field.id} dropTarget={dropTargetFieldId === field.id && draggingFieldId !== field.id} domainDropTarget={domainDropTargetFieldId === field.id} canEdit={canEdit} onSelect={handleSelectField} onNameChange={handleFieldNameChange} onTogglePrimaryKey={handleTogglePrimaryKey} onToggleImportant={handleToggleImportant} onToggleUseDomainName={handleToggleUseDomainName} onDelete={handleDelete} onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={clearDragState} onDomainDrop={handleDomainAssign} />;
+                  return <FieldListRow key={field.id} field={field} domain={domains.find((domain) => domain.id === field.domainId)} domains={domains} selected={editingFieldId === field.id && canEdit} refinementSelected={selectedRefinementFieldIds.includes(field.id)} dragging={draggingFieldId === field.id} dropTarget={dropTargetFieldId === field.id && draggingFieldId !== field.id} domainDropTarget={domainDropTargetFieldId === field.id} canEdit={canEdit} onSelect={handleSelectField} onToggleRefinement={handleToggleRefinement} onNameChange={handleFieldNameChange} onTogglePrimaryKey={handleTogglePrimaryKey} onToggleImportant={handleToggleImportant} onToggleUseDomainName={handleToggleUseDomainName} onDelete={handleDelete} onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={clearDragState} onDomainDrop={handleDomainAssign} />;
                 }
                 const referenceItem = relationshipReferenceByID.get(item.item.id);
-                return referenceItem ? <RelationshipReferenceRow key={item.item.id} modelId={modelId} relationship={referenceItem.relationship} reference={referenceItem.reference} canEdit={canEdit} onTogglePrimaryKey={handleToggleReferencePrimaryKey} onToggleForeignKey={handleToggleReferenceForeignKey} onToggleVisibility={handleToggleReferenceVisibility} onDelete={onDeleteReference} /> : null;
+                return referenceItem ? <RelationshipReferenceRow key={item.item.id} modelId={modelId} relationship={referenceItem.relationship} reference={referenceItem.reference} canEdit={canEdit} refinementSelected={selectedRefinementRelationshipIds.includes(referenceItem.relationship.id)} onToggleRefinement={handleToggleRelationshipRefinement} onTogglePrimaryKey={handleToggleReferencePrimaryKey} onToggleForeignKey={handleToggleReferenceForeignKey} onToggleVisibility={handleToggleReferenceVisibility} onDelete={onDeleteReference} /> : null;
               })}
             </ul>
           )}
         </div>
-        <DomainDictionaryPanel domains={domains} categories={domainCategories} canEdit={canEdit} onCreate={onCreateDomain} onOpen={() => onOpenDomainDictionary(editingFieldId ?? undefined)} />
+        <aside className="flex w-[310px] shrink-0 flex-col"><div role="tablist" className="tabs tabs-box mx-3 mt-3"><button type="button" role="tab" className={`tab text-xs ${sideTab === "domains" ? "tab-active" : ""}`} onClick={handleDomainsTab}>Domains</button><button type="button" role="tab" className={`tab text-xs ${sideTab === "refinement" ? "tab-active" : ""}`} onClick={handleRefinementTab}>Refinement</button></div><div className="min-h-0 flex-1">{sideTab === "domains" ? <DomainDictionaryPanel domains={domains} categories={domainCategories} canEdit={canEdit} onCreate={onCreateDomain} onOpen={() => onOpenDomainDictionary(editingFieldId ?? undefined)} /> : <RefinementPanel source={seeds.find((seed) => seed.id === modelId)!} seeds={seeds} relationships={allRelationships} relationshipReferences={allRelationshipReferences} domains={domains} selectedFieldIds={selectedRefinementFieldIds} selectedRelationshipIds={selectedRefinementRelationshipIds} canEdit={canEdit} onApply={handleApplyRefinement}/>}</div></aside>
         </div>
       </div>
     </dialog>,

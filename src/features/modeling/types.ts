@@ -11,6 +11,50 @@ export type ModelField = {
   useDomainName?: boolean;
 };
 
+export type RefinementPatternId =
+  | "extract-master"
+  | "extract-domain"
+  | "create-history"
+  | "multiple-items"
+  | "extract-optional"
+  | "extract-one-to-one"
+  | "split-code-set"
+  | "create-work";
+
+export type RefinementInput = {
+  patternId: RefinementPatternId;
+  sourceId: string;
+  selectedFieldIds: string[];
+  selectedRelationshipIds: string[];
+  modelName: string;
+  keyMode: "selected" | "new";
+  keyFieldIds: string[];
+  newKeyName: string;
+  newKeyDomainId?: string;
+  keepSnapshot: boolean;
+  cardinality: "1:N" | "N:M";
+  ordered: boolean;
+  orderFieldName: string;
+  historyStorage: "source" | "history" | "current";
+  currentModelName: string;
+  temporalMode: "instant" | "version" | "range";
+  temporalNames: string[];
+  inheritParent: boolean;
+  domainName: string;
+  similarModelIds: string[];
+  codeSetModelNames: Record<string, string>;
+};
+
+export type RefinementResult = {
+  seeds: ModelSeed[];
+  relationships: Relationship[];
+  relationshipReferences: RelationshipReference[];
+  domains: DataDomain[];
+  affectedSeedIds: string[];
+  createdSeedIds: string[];
+  summary: string[];
+};
+
 export type PrimitiveType =
   | "integer"
   | "decimal"
@@ -23,7 +67,16 @@ export type PrimitiveType =
   | "datetime"
   | "datetime_with_timezone"
   | "boolean"
-  | "uuid";
+  | "uuid"
+  | "code_set";
+
+export type CodeSetBaseType = "varchar" | "decimal" | "integer";
+
+export type CodeSetEntry = {
+  id: string;
+  name: string;
+  value: string;
+};
 
 export type DomainShape = "primitive" | "unresolved" | "scalar" | "composite";
 
@@ -53,6 +106,8 @@ export type DataDomain = {
   length?: number;
   precision?: number;
   scale?: number;
+  codeSetBaseType?: CodeSetBaseType;
+  codeSetEntries?: CodeSetEntry[];
   components: DomainComponent[];
   partitionKey?: boolean;
   system?: boolean;

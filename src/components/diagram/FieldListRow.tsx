@@ -12,6 +12,7 @@ import { expandDomainField, getFieldEffectiveName, isPartitionKeyField } from ".
 type FieldListRowProps = {
   field: ModelField;
   selected: boolean;
+  refinementSelected: boolean;
   dragging: boolean;
   dropTarget: boolean;
   domainDropTarget: boolean;
@@ -19,6 +20,7 @@ type FieldListRowProps = {
   domain?: DataDomain;
   domains: DataDomain[];
   onSelect: (fieldId: string) => void;
+  onToggleRefinement: (fieldId: string) => void;
   onNameChange: (fieldId: string, name: string) => void;
   onTogglePrimaryKey: (fieldId: string) => void;
   onToggleImportant: (fieldId: string) => void;
@@ -34,6 +36,7 @@ type FieldListRowProps = {
 export function FieldListRow({
   field,
   selected,
+  refinementSelected,
   dragging,
   dropTarget,
   domainDropTarget,
@@ -41,6 +44,7 @@ export function FieldListRow({
   domain,
   domains,
   onSelect,
+  onToggleRefinement,
   onNameChange,
   onTogglePrimaryKey,
   onToggleImportant,
@@ -59,6 +63,10 @@ export function FieldListRow({
   const handleSelect = useCallback(() => {
     if (canEdit) onSelect(field.id);
   }, [canEdit, field.id, onSelect]);
+  const handleRefinementChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    event.stopPropagation();
+    onToggleRefinement(field.id);
+  }, [field.id, onToggleRefinement]);
 
   const handleRowKeyDown = useCallback(
     (event: KeyboardEvent<HTMLLIElement>) => {
@@ -159,7 +167,10 @@ export function FieldListRow({
         onDragStart={handleDragStart}
         onDragEnd={onDragEnd}
       >
-        <GripVertical size={15} />
+        <label className={`flex h-full w-full items-center justify-center ${canEdit ? "cursor-pointer" : "cursor-not-allowed"}`} onClick={handleInputClick}>
+          <input type="checkbox" className="checkbox checkbox-xs" checked={refinementSelected} disabled={!canEdit} aria-label={`Select ${field.name} for refinement`} onChange={handleRefinementChange}/>
+        </label>
+        <GripVertical size={12} className="pointer-events-none absolute ml-6" />
       </span>
 
       <div className="min-w-0 pr-3">

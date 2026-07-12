@@ -196,6 +196,32 @@ func (h *Handler) updateSeed(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *Handler) applyRefinement(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var request struct {
+		ClientID               string                                `json:"clientId"`
+		Seeds                  []collaboration.ModelSeed             `json:"seeds"`
+		Relationships          []collaboration.Relationship          `json:"relationships"`
+		RelationshipReferences []collaboration.RelationshipReference `json:"relationshipReferences"`
+		Domains                []collaboration.DataDomain            `json:"domains"`
+		Summary                []string                              `json:"summary"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.ClientID == "" {
+		http.Error(w, "invalid refinement", http.StatusBadRequest)
+		return
+	}
+	result, err := h.hub.ApplyRefinement(request.ClientID, request.Seeds, request.Relationships, request.RelationshipReferences, request.Domains, request.Summary)
+	if err != nil {
+		writeCollaborationError(w, err)
+		return
+	}
+	h.logger.Printf("[collab] refinement user=%q client=%s created_seeds=%d summary=%q", result.User.Name, request.ClientID, result.CreatedSeeds, strings.Join(result.Summary, "; "))
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) updateRelationship(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

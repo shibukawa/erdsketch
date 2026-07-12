@@ -2,7 +2,7 @@ import { Columns3, Database, KeyRound, Link2, Lock, Menu, Star } from "lucide-re
 import { useCallback, useState, type ChangeEvent, type PointerEvent } from "react";
 import type { Collaborator } from "../../collaboration";
 import { cardHeight, cardWidth, roleMeta } from "../../features/modeling/constants";
-import type { CardDisplayMode, DataDomain, DomainCategory, ModelField, ModelSeed, Relationship, RelationshipReference } from "../../features/modeling/types";
+import type { CardDisplayMode, DataDomain, DomainCategory, ModelField, ModelSeed, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
 import { expandDomainField, flattenLabels, getFieldEffectiveName, getModelStageLabel, relationshipDisplaySeedIDs } from "../../features/modeling/utils";
 import { FieldListDialog } from "./FieldListDialog";
 import { RoughShape } from "./RoughShape";
@@ -26,17 +26,22 @@ type ModelSeedCardProps = {
   onDeleteRelationship: (relationshipId: string) => void;
   onCreateDomain: (name: string) => void;
   onOpenDomainDictionary: (seedId: string, fieldId?: string) => void;
+  seeds: ModelSeed[];
+  onApplyRefinement: (result: RefinementResult) => Promise<boolean>;
 };
 
-export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayMode, owner, me, onPointerDown, onUpdate, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, domains, domainCategories, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary }: ModelSeedCardProps) {
+export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayMode, owner, me, onPointerDown, onUpdate, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, domains, domainCategories, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, seeds, onApplyRefinement }: ModelSeedCardProps) {
   const meta = roleMeta[seed.role];
   const lockedByMe = owner?.id === me.id;
   const lockedByOther = !!owner && !lockedByMe;
   const [fieldListOpen, setFieldListOpen] = useState(false);
   const fields = seed.fields ?? [];
-  const primaryKeyFields = fields.filter((field) => field.primaryKey);
-  const favoriteFields = fields.filter((field) => field.important && !field.primaryKey);
-  const partitionKeyFields = fields.flatMap((field) => expandDomainField(field, domains).filter((expanded) => expanded.partitionKey).map((expanded) => ({ ...expanded, fieldId: field.id })));
+  const inheritedParentIds = relationships.filter((relationship) => relationship.kind === "inherit" && relationship.sourceId === seed.id).map((relationship) => relationship.targetId);
+  const inheritedFields = seeds.filter((candidate) => inheritedParentIds.includes(candidate.id)).flatMap((candidate) => candidate.fields.map((field) => ({ ...field, id: `inherited:${candidate.id}:${field.id}`, name: `${getFieldEffectiveName(field, domains)} ↗`, useDomainName: false })));
+  const effectiveFields = [...fields, ...inheritedFields];
+  const primaryKeyFields = effectiveFields.filter((field) => field.primaryKey);
+  const favoriteFields = effectiveFields.filter((field) => field.important && !field.primaryKey);
+  const partitionKeyFields = effectiveFields.flatMap((field) => expandDomainField(field, domains).filter((expanded) => expanded.partitionKey).map((expanded) => ({ ...expanded, fieldId: field.id })));
   const primaryKeySummary =
     primaryKeyFields.length > 1
       ? `(${primaryKeyFields.map((field) => getFieldEffectiveName(field, domains)).join(", ")})`
@@ -270,6 +275,9 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
           domains={domains}
           domainCategories={domainCategories}
           relationshipReferences={projectedRelationshipReferences}
+          seeds={seeds}
+          allRelationships={relationships}
+          allRelationshipReferences={relationshipReferences}
           canEdit={lockedByMe}
           onChange={handleFieldsChange}
           onUpdateReference={onUpdateRelationshipReference}
@@ -277,6 +285,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
           onCreateDomain={onCreateDomain}
           onOpenDomainDictionary={handleOpenDomainDictionary}
           onClose={handleCloseFieldList}
+          onApplyRefinement={onApplyRefinement}
         />
       )}
     </article>

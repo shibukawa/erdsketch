@@ -51,6 +51,35 @@ func TestSeedUpdateSynchronizesFields(t *testing.T) {
 	}
 }
 
+func TestApplyRefinementIsAtomicAndRequiresChangedModelLock(t *testing.T) {
+	hub := NewHub()
+	initial := []ModelSeed{{ID: "order", Title: "Order", Fields: []ModelField{{ID: "number", Name: "number"}}}}
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, initial, nil, nil)
+	next := []ModelSeed{{ID: "order", Title: "Order", Fields: nil}, {ID: "detail", Title: "Order Detail", Fields: []ModelField{{ID: "number", Name: "number"}}}}
+	relationships := []Relationship{{ID: "details", Name: "contains", SourceID: "order", TargetID: "detail", SourceMultiplicity: "1", TargetMultiplicity: "0..*", Direction: "source-to-target", Kind: "foreign-key"}}
+	references := []RelationshipReference{{ID: "details-ref", RelationshipID: "details", ForeignKey: true}}
+	if _, err := hub.ApplyRefinement("lion", next, relationships, references, nil, []string{"extract detail"}); !errors.Is(err, ErrLockRequired) {
+		t.Fatalf("apply without lock: got %v, want %v", err, ErrLockRequired)
+	}
+	before := hub.Subscribe("lion")
+	if got := before.Initial(); len(got.Seeds) != 1 || len(got.Relationships) != 0 || len(got.Seeds[0].Fields) != 1 {
+		t.Fatalf("failed refinement changed state: %+v", got)
+	}
+	before.Close()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
+	if _, err := hub.ChangeLock("lion", "order", "lock"); err != nil {
+		t.Fatalf("lock: %v", err)
+	}
+	if _, err := hub.ApplyRefinement("lion", next, relationships, references, nil, []string{"extract detail"}); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	after := hub.Subscribe("lion")
+	defer after.Close()
+	if got := after.Initial(); len(got.Seeds) != 2 || len(got.Relationships) != 1 || len(got.Seeds[0].Fields) != 0 {
+		t.Fatalf("refinement state: %+v", got)
+	}
+}
+
 func TestSeedUpdateSynchronizesMaturedLevel(t *testing.T) {
 	hub := NewHub()
 	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order", MaturedLevel: 6}}, nil, nil)
@@ -354,6 +383,38 @@ func TestEveryDomainShapeCanBeAssigned(t *testing.T) {
 	}
 	if _, err := hub.UpdateSeed("lion", ModelSeed{ID: "customer", Title: "Customer", Fields: fields}, false); err != nil {
 		t.Fatalf("assign scalar and populated composite: %v", err)
+	}
+}
+
+func TestCodeSetDomainValidatesAndPreservesOrderedEntries(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
+	domain := DataDomain{
+		ID: "order-status", Name: "Order Status", Shape: "scalar", PrimitiveType: "code_set", CodeSetBaseType: "integer",
+		CodeSetEntries: []CodeSetEntry{{ID: "paid", Name: "Paid", Value: "20"}, {ID: "pending", Name: "Pending", Value: "10"}},
+	}
+	if _, err := hub.UpdateDomain("lion", domain, true, false); err != nil {
+		t.Fatalf("create code set: %v", err)
+	}
+	state := hub.snapshotLocked()
+	if got := state.Domains[0]; got.PrimitiveType != "code_set" || got.CodeSetBaseType != "integer" || len(got.CodeSetEntries) != 2 || got.CodeSetEntries[0].Name != "Paid" || got.CodeSetEntries[1].Value != "10" {
+		t.Fatalf("code set was not preserved in order: %+v", got)
+	}
+
+	invalidValue := domain
+	invalidValue.ID = "bad-value"
+	invalidValue.Name = "Bad Value"
+	invalidValue.CodeSetEntries = []CodeSetEntry{{ID: "bad", Name: "Bad", Value: "1.5"}}
+	if _, err := hub.UpdateDomain("lion", invalidValue, true, false); !errors.Is(err, ErrDomainInvalid) {
+		t.Fatalf("decimal value in integer code set: got %v, want %v", err, ErrDomainInvalid)
+	}
+
+	invalidBase := domain
+	invalidBase.ID = "bad-base"
+	invalidBase.Name = "Bad Base"
+	invalidBase.CodeSetBaseType = "boolean"
+	if _, err := hub.UpdateDomain("lion", invalidBase, true, false); !errors.Is(err, ErrDomainInvalid) {
+		t.Fatalf("unsupported code set base: got %v, want %v", err, ErrDomainInvalid)
 	}
 }
 

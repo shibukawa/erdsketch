@@ -15,7 +15,7 @@ import { WorkspaceHeader } from "../components/layout/WorkspaceHeader";
 import { RelationshipEditorDialog } from "../components/diagram/RelationshipEditorDialog";
 import { DomainDictionaryDialog } from "../components/diagram/DomainDictionaryDialog";
 import { initialDomainCategories, initialDomains, initialRelationshipReferences, initialRelationships, initialSeeds } from "../features/modeling/constants";
-import type { CardDisplayMode, DataDomain, DomainCategory, DomainCategoryBundle, DragState, ModelSeed, Relationship, RelationshipReference, Viewport } from "../features/modeling/types";
+import type { CardDisplayMode, DataDomain, DomainCategory, DomainCategoryBundle, DragState, ModelSeed, RefinementResult, Relationship, RelationshipReference, Viewport } from "../features/modeling/types";
 import { clampScale, flattenLabels, getFieldEffectiveName, getRelatedDragSeedIDs, getRelationshipDropTarget, getRelationshipReference } from "../features/modeling/utils";
 
 export function ModelingWorkspacePage() {
@@ -37,6 +37,7 @@ export function ModelingWorkspacePage() {
     unlockAll,
     saveSeed,
     saveRelationship,
+    saveRefinement,
     saveDomain,
     saveDomainCategory,
     setLocalSeeds,
@@ -600,6 +601,28 @@ export function ModelingWorkspacePage() {
     setViewport({ x: 260, y: 140, scale: 1 });
   }, []);
 
+  const applyRefinement = useCallback(async (result: RefinementResult) => {
+    const existingSeedIds = new Set(seeds.map((seed) => seed.id));
+    const existingRelationshipIds = new Set(relationships.map((item) => item.id));
+    const requiredLocks = new Set(result.seeds.filter((seed) => existingSeedIds.has(seed.id) && JSON.stringify(seed) !== JSON.stringify(seeds.find((item) => item.id === seed.id))).map((seed) => seed.id));
+    for (const item of result.relationships.filter((relationship) => !existingRelationshipIds.has(relationship.id))) {
+      if (existingSeedIds.has(item.sourceId)) requiredLocks.add(item.sourceId);
+      if (existingSeedIds.has(item.targetId)) requiredLocks.add(item.targetId);
+    }
+    for (const item of result.relationships.filter((relationship) => existingRelationshipIds.has(relationship.id) && JSON.stringify(relationship) !== JSON.stringify(relationships.find((current) => current.id === relationship.id)))) {
+      const current = relationships.find((relationship) => relationship.id === item.id)!;
+      for (const seedId of [current.sourceId, current.targetId, item.sourceId, item.targetId]) if (existingSeedIds.has(seedId)) requiredLocks.add(seedId);
+    }
+    if (requiredLocks.size > 0 && !(await lockAll([...requiredLocks]))) return false;
+    if (!(await saveRefinement(result))) return false;
+    startTransition(() => {
+      setLocalSeeds(result.seeds);
+      setLocalRelationships(result.relationships, result.relationshipReferences);
+      setLocalDomains(result.domains);
+    });
+    return true;
+  }, [lockAll, relationships, saveRefinement, seeds, setLocalDomains, setLocalRelationships, setLocalSeeds]);
+
   return (
     <main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
       <div className="flex h-full">
@@ -658,6 +681,7 @@ export function ModelingWorkspacePage() {
             }}
             onCreateDomain={(name) => void createDomain(name)}
             onOpenDomainDictionary={openDomainDictionary}
+            onApplyRefinement={applyRefinement}
           />
         </section>
       </div>

@@ -10,6 +10,8 @@
 {"category": "structure", "id": "data:code-set", "path": ".knowledge/data/code-set.md", "role": "supporting", "title": "Code Set", "type": "data"}
 {"category": "structure", "id": "data:concept-projection", "path": ".knowledge/data/concept-projection.md", "role": "supporting", "title": "Concept Projection", "type": "data"}
 {"category": "structure", "id": "data:correction-pattern", "path": ".knowledge/data/correction-pattern.md", "role": "supporting", "title": "Correction Pattern", "type": "data"}
+{"category": "structure", "id": "data:create-history-pattern", "path": ".knowledge/data/create-history-pattern.md", "role": "supporting", "title": "Create History Model Pattern", "type": "data"}
+{"category": "structure", "id": "data:create-work-pattern", "path": ".knowledge/data/create-work-pattern.md", "role": "supporting", "title": "Create Work Pattern", "type": "data"}
 {"category": "structure", "id": "data:data-domain", "path": ".knowledge/data/data-domain.md", "role": "supporting", "title": "Data Domain", "type": "data"}
 {"category": "structure", "id": "data:data-flow", "path": ".knowledge/data/data-flow.md", "role": "supporting", "title": "Data Flow", "type": "data"}
 {"category": "structure", "id": "data:data-lifecycle", "path": ".knowledge/data/data-lifecycle.md", "role": "supporting", "title": "Data Lifecycle", "type": "data"}
@@ -18,11 +20,16 @@
 {"category": "structure", "id": "data:design-pattern", "path": ".knowledge/data/design-pattern.md", "role": "supporting", "title": "Design Pattern", "type": "data"}
 {"category": "structure", "id": "data:domain-component", "path": ".knowledge/data/domain-component.md", "role": "supporting", "title": "Domain Component", "type": "data"}
 {"category": "structure", "id": "data:entity", "path": ".knowledge/data/entity.md", "role": "supporting", "title": "Entity", "type": "data"}
+{"category": "structure", "id": "data:extract-domain-pattern", "path": ".knowledge/data/extract-domain-pattern.md", "role": "supporting", "title": "Extract New Domain Pattern", "type": "data"}
+{"category": "structure", "id": "data:extract-master-pattern", "path": ".knowledge/data/extract-master-pattern.md", "role": "supporting", "title": "Extract New Master Pattern", "type": "data"}
+{"category": "structure", "id": "data:extract-one-to-one-pattern", "path": ".knowledge/data/extract-one-to-one-pattern.md", "role": "supporting", "title": "Extract Model One-to-One Pattern", "type": "data"}
+{"category": "structure", "id": "data:extract-optional-model-pattern", "path": ".knowledge/data/extract-optional-model-pattern.md", "role": "supporting", "title": "Extract Optional Model Pattern", "type": "data"}
 {"category": "structure", "id": "data:governance-metadata", "path": ".knowledge/data/governance-metadata.md", "role": "supporting", "title": "Governance Metadata", "type": "data"}
 {"category": "structure", "id": "data:master-data-distribution", "path": ".knowledge/data/master-data-distribution.md", "role": "supporting", "title": "Master Data Distribution", "type": "data"}
 {"category": "structure", "id": "data:model-seed", "path": ".knowledge/data/model-seed.md", "role": "supporting", "title": "Model Seed", "type": "data"}
 {"category": "structure", "id": "data:model-state", "path": ".knowledge/data/model-state.md", "role": "supporting", "title": "Model State", "type": "data"}
 {"category": "structure", "id": "data:model-transformation", "path": ".knowledge/data/model-transformation.md", "role": "supporting", "title": "Model Transformation", "type": "data"}
+{"category": "structure", "id": "data:multiple-items-pattern", "path": ".knowledge/data/multiple-items-pattern.md", "role": "supporting", "title": "Multiple Items Pattern", "type": "data"}
 {"category": "structure", "id": "data:primitive-type", "path": ".knowledge/data/primitive-type.md", "role": "supporting", "title": "Primitive Type", "type": "data"}
 {"category": "structure", "id": "data:query-profile", "path": ".knowledge/data/query-profile.md", "role": "supporting", "title": "Query Profile", "type": "data"}
 {"category": "structure", "id": "data:reconciliation-pattern", "path": ".knowledge/data/reconciliation-pattern.md", "role": "supporting", "title": "Reconciliation Pattern", "type": "data"}
@@ -31,6 +38,7 @@
 {"category": "structure", "id": "data:relationship-reference", "path": ".knowledge/data/relationship-reference.md", "role": "supporting", "title": "Relationship Reference", "type": "data"}
 {"category": "structure", "id": "data:relationship", "path": ".knowledge/data/relationship.md", "role": "supporting", "title": "Relationship", "type": "data"}
 {"category": "structure", "id": "data:snapshot-reference", "path": ".knowledge/data/snapshot-reference.md", "role": "supporting", "title": "Snapshot Reference", "type": "data"}
+{"category": "structure", "id": "data:split-by-code-set-pattern", "path": ".knowledge/data/split-by-code-set-pattern.md", "role": "supporting", "title": "Split Model by Code Set Pattern", "type": "data"}
 {"category": "structure", "id": "data:state-transition", "path": ".knowledge/data/state-transition.md", "role": "supporting", "title": "State Transition", "type": "data"}
 {"category": "structure", "id": "data:system-boundary-pattern", "path": ".knowledge/data/system-boundary-pattern.md", "role": "supporting", "title": "System Boundary Pattern", "type": "data"}
 {"category": "structure", "id": "data:time-characteristic", "path": ".knowledge/data/time-characteristic.md", "role": "supporting", "title": "Time Characteristic", "type": "data"}
@@ -50,6 +58,7 @@
 {"category": "objective", "id": "requirement:field-list-management", "path": ".knowledge/requirement/field-list-management.md", "role": "primary", "title": "Field List Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:future-extensions", "path": ".knowledge/requirement/future-extensions.md", "role": "primary", "title": "Future Extensions", "type": "requirement"}
 {"category": "objective", "id": "requirement:model-card-field-summary", "path": ".knowledge/requirement/model-card-field-summary.md", "role": "primary", "title": "Model Card Field Summary", "type": "requirement"}
+{"category": "objective", "id": "requirement:model-refinement-patterns", "path": ".knowledge/requirement/model-refinement-patterns.md", "role": "primary", "title": "Model Refinement Patterns", "type": "requirement"}
 {"category": "objective", "id": "requirement:model-state-management", "path": ".knowledge/requirement/model-state-management.md", "role": "primary", "title": "Model State Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:normalization-support", "path": ".knowledge/requirement/normalization-support.md", "role": "primary", "title": "Normalization Support", "type": "requirement"}
 {"category": "objective", "id": "requirement:pattern-library-experience", "path": ".knowledge/requirement/pattern-library-experience.md", "role": "primary", "title": "Pattern Library Experience", "type": "requirement"}
@@ -77,6 +86,7 @@
 {"category": "interface", "id": "ui:field-list-dialog", "path": ".knowledge/ui/field-list-dialog.md", "role": "primary", "title": "Field List Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:lifecycle-view", "path": ".knowledge/ui/lifecycle-view.md", "role": "primary", "title": "Lifecycle View", "type": "ui"}
 {"category": "interface", "id": "ui:model-card-display-mode", "path": ".knowledge/ui/model-card-display-mode.md", "role": "primary", "title": "Model Card Display Mode", "type": "ui"}
+{"category": "interface", "id": "ui:model-refinement-panel", "path": ".knowledge/ui/model-refinement-panel.md", "role": "primary", "title": "Model Refinement Panel", "type": "ui"}
 {"category": "interface", "id": "ui:normalization-view", "path": ".knowledge/ui/normalization-view.md", "role": "primary", "title": "Normalization View", "type": "ui"}
 {"category": "interface", "id": "ui:pattern-library-view", "path": ".knowledge/ui/pattern-library-view.md", "role": "primary", "title": "Pattern Library View", "type": "ui"}
 {"category": "interface", "id": "ui:relationship-view", "path": ".knowledge/ui/relationship-view.md", "role": "primary", "title": "Relationship View", "type": "ui"}

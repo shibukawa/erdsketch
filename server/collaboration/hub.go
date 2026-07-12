@@ -3,6 +3,7 @@ package collaboration
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -273,6 +274,101 @@ func (h *Hub) UpdateSeed(clientID string, next ModelSeed, create bool) (SeedUpda
 	return result, nil
 }
 
+// ApplyRefinement validates and swaps the complete modeling graph while holding
+// the hub mutex, so clients never observe a partially applied transformation.
+func (h *Hub) ApplyRefinement(clientID string, seeds []ModelSeed, relationships []Relationship, references []RelationshipReference, domains []DataDomain, summary []string) (RefinementUpdate, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	user, ok := h.users[clientID]
+	if !ok {
+		return RefinementUpdate{}, ErrUnknownClient
+	}
+	seedIDs := make(map[string]bool, len(seeds))
+	for _, seed := range seeds {
+		if seed.ID == "" || seedIDs[seed.ID] || !fieldDomainsExist(seed.Fields, domains) {
+			return RefinementUpdate{}, ErrRelationshipInvalid
+		}
+		seedIDs[seed.ID] = true
+	}
+	for _, current := range h.seeds {
+		index := seedIndexByID(seeds, current.ID)
+		if index < 0 {
+			return RefinementUpdate{}, ErrSeedNotFound
+		}
+		if !reflect.DeepEqual(current, seeds[index]) && h.locks[current.ID] != clientID {
+			return RefinementUpdate{}, ErrLockRequired
+		}
+	}
+	domainIDs := make(map[string]bool, len(domains))
+	for index, domain := range domains {
+		if domain.ID == "" || domainIDs[domain.ID] || !validDomain(domain, domains, index) {
+			return RefinementUpdate{}, ErrDomainInvalid
+		}
+		domainIDs[domain.ID] = true
+	}
+	for _, current := range h.domains {
+		index := domainIndex(domains, current.ID)
+		if index < 0 || !reflect.DeepEqual(current, domains[index]) {
+			return RefinementUpdate{}, ErrDomainInvalid
+		}
+	}
+	relationshipIDs := make(map[string]bool, len(relationships))
+	for _, item := range relationships {
+		if item.ID == "" || relationshipIDs[item.ID] || !seedIDs[item.SourceID] || !seedIDs[item.TargetID] || item.SourceID == item.TargetID || item.Name == "" || !validMultiplicity(item.SourceMultiplicity) || !validMultiplicity(item.TargetMultiplicity) || !validDirection(item.Direction) || !validRelationshipKind(item.Kind) {
+			return RefinementUpdate{}, ErrRelationshipInvalid
+		}
+		relationshipIDs[item.ID] = true
+		currentIndex := relationshipIndex(h.relationships, item.ID)
+		if currentIndex < 0 {
+			if seedIndexByID(h.seeds, item.SourceID) >= 0 && h.locks[item.SourceID] != clientID {
+				return RefinementUpdate{}, ErrLockRequired
+			}
+			if seedIndexByID(h.seeds, item.TargetID) >= 0 && h.locks[item.TargetID] != clientID {
+				return RefinementUpdate{}, ErrLockRequired
+			}
+		} else if !reflect.DeepEqual(h.relationships[currentIndex], item) {
+			current := h.relationships[currentIndex]
+			for _, seedID := range []string{current.SourceID, current.TargetID, item.SourceID, item.TargetID} {
+				if seedIndexByID(h.seeds, seedID) >= 0 && h.locks[seedID] != clientID {
+					return RefinementUpdate{}, ErrLockRequired
+				}
+			}
+		}
+	}
+	if len(references) != len(relationships) {
+		return RefinementUpdate{}, ErrRelationshipInvalid
+	}
+	seenReferences := make(map[string]bool, len(references))
+	for _, reference := range references {
+		if reference.ID == "" || seenReferences[reference.RelationshipID] || !relationshipIDs[reference.RelationshipID] {
+			return RefinementUpdate{}, ErrRelationshipInvalid
+		}
+		seenReferences[reference.RelationshipID] = true
+		item := relationships[relationshipIndex(relationships, reference.RelationshipID)]
+		for _, hiddenID := range reference.HiddenOnModelIDs {
+			if hiddenID != item.SourceID && hiddenID != item.TargetID {
+				return RefinementUpdate{}, ErrRelationshipInvalid
+			}
+		}
+	}
+	result := RefinementUpdate{User: user, CreatedSeeds: len(seeds) - len(h.seeds), Summary: append([]string(nil), summary...)}
+	h.seeds = append([]ModelSeed(nil), seeds...)
+	h.relationships = append([]Relationship(nil), relationships...)
+	h.relationshipReferences = append([]RelationshipReference(nil), references...)
+	h.domains = normalizeDomains(domains)
+	h.broadcastLocked()
+	return result, nil
+}
+
+func seedIndexByID(seeds []ModelSeed, id string) int {
+	for index := range seeds {
+		if seeds[index].ID == id {
+			return index
+		}
+	}
+	return -1
+}
+
 func (h *Hub) ChangeLock(clientID, seedID, action string) (LockResult, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -466,7 +562,7 @@ func validDomain(domain DataDomain, domains []DataDomain, updatingIndex int) boo
 
 func validPrimitiveType(value string) bool {
 	switch value {
-	case "integer", "decimal", "floating_point", "varchar", "text", "blob", "date", "time", "datetime", "datetime_with_timezone", "boolean", "uuid":
+	case "integer", "decimal", "floating_point", "varchar", "text", "blob", "date", "time", "datetime", "datetime_with_timezone", "boolean", "uuid", "code_set":
 		return true
 	default:
 		return false
@@ -480,7 +576,35 @@ func validPrimitiveParameters(domain DataDomain) bool {
 	if domain.Length < 0 || domain.Precision < 0 || domain.Scale < 0 || domain.Scale > domain.Precision {
 		return false
 	}
+	if domain.PrimitiveType != "code_set" {
+		return domain.CodeSetBaseType == "" && len(domain.CodeSetEntries) == 0
+	}
+	if domain.CodeSetBaseType != "varchar" && domain.CodeSetBaseType != "decimal" && domain.CodeSetBaseType != "integer" {
+		return false
+	}
+	entryIDs := make(map[string]bool, len(domain.CodeSetEntries))
+	entryNames := make(map[string]bool, len(domain.CodeSetEntries))
+	for _, entry := range domain.CodeSetEntries {
+		name := strings.TrimSpace(entry.Name)
+		if entry.ID == "" || name == "" || entryIDs[entry.ID] || entryNames[name] || !validCodeSetValue(entry.Value, domain.CodeSetBaseType) {
+			return false
+		}
+		entryIDs[entry.ID] = true
+		entryNames[name] = true
+	}
 	return true
+}
+
+func validCodeSetValue(value, baseType string) bool {
+	if value == "" || baseType == "varchar" {
+		return true
+	}
+	if baseType == "integer" {
+		_, err := strconv.ParseInt(value, 10, 64)
+		return err == nil
+	}
+	_, err := strconv.ParseFloat(value, 64)
+	return err == nil
 }
 
 func (h *Hub) hasSeedLockedBy(seedID, clientID string) bool {

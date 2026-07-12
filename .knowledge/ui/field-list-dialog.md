@@ -61,6 +61,8 @@ ui:
                 - hidden
               scope: current_model
               hidden_row_behavior: keep_in_dialog_with_hidden_state
+      - kind: side-panel
+        target: ui:model-refinement-panel
 accessibility:
   - Icon button has an accessible name and visible focus state.
   - Dialog traps focus and supports Escape to close.
@@ -85,6 +87,7 @@ related:
   - rule:field-list-sort
   - ui:domain-dictionary-panel
   - ui:domain-dictionary-dialog
+  - ui:model-refinement-panel
   - data:data-domain
   - rule:domain-expansion
 ```

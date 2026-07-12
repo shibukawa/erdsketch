@@ -1,5 +1,5 @@
 import { startTransition, useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
-import type { DataDomain, DomainCategory, Relationship, RelationshipReference } from "./features/modeling/types";
+import type { DataDomain, DomainCategory, RefinementResult, Relationship, RelationshipReference } from "./features/modeling/types";
 
 export type Collaborator = {
   id: string;
@@ -311,6 +311,11 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[], in
     [me.id]
   );
 
+  const saveRefinement = useCallback(async (result: RefinementResult) => {
+    const response = await post("/api/collaboration/refinement", { clientId: me.id, ...result });
+    return response.ok;
+  }, [me.id]);
+
   return {
     me,
     seeds: state.seeds,
@@ -329,6 +334,7 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[], in
     unlockAll,
     saveSeed,
     saveRelationship,
+    saveRefinement,
     saveDomain,
     saveDomainCategory,
     setLocalSeeds,

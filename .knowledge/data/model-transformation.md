@@ -22,6 +22,14 @@ operations:
   - extract_reference
   - create_snapshot
   - inherit_parent_attributes
+  - apply data:extract-master-pattern
+  - apply data:extract-domain-pattern
+  - apply data:create-history-pattern
+  - apply data:multiple-items-pattern
+  - apply data:extract-optional-model-pattern
+  - apply data:extract-one-to-one-pattern
+  - apply data:split-by-code-set-pattern
+  - apply data:create-work-pattern
 example:
   operation: field_to_one_to_many
   intent: Need multiple values for one field.

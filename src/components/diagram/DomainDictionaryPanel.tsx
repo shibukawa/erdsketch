@@ -23,7 +23,8 @@ const primitiveLabels: Record<PrimitiveType, string> = {
   datetime: "Datetime",
   datetime_with_timezone: "Datetime with timezone",
   boolean: "Boolean",
-  uuid: "UUID"
+  uuid: "UUID",
+  code_set: "Code Set"
 };
 
 function domainTypeSummary(domain: DataDomain) {
@@ -32,6 +33,7 @@ function domainTypeSummary(domain: DataDomain) {
   const primitive = domain.primitiveType ? primitiveLabels[domain.primitiveType] : "undefined";
   if (domain.primitiveType === "varchar" && domain.length) return `${primitive}(${domain.length})`;
   if ((domain.primitiveType === "integer" || domain.primitiveType === "floating_point") && domain.bits) return `${primitive} · ${domain.bits} bit`;
+  if (domain.primitiveType === "code_set") return `${primitive} · ${domain.codeSetEntries?.length ?? 0}`;
   return primitive;
 }
 
