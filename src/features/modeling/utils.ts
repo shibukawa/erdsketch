@@ -1,9 +1,34 @@
-import type { DataDomain, ExpandedDomainField, ModelField, ModelSeed, Multiplicity, Relationship, RelationshipDirection, RelationshipReference } from "./types";
+import type { DataDomain, ExpandedDomainField, ModelField, ModelSeed, Multiplicity, NameDisplayMode, NameSet, Relationship, RelationshipDirection, RelationshipReference } from "./types";
 import { cardHeight, cardWidth } from "./constants";
 
 export const clampScale = (scale: number) => Math.min(2.4, Math.max(0.35, scale));
 
 export const clampMaturedLevel = (maturedLevel: number) => Math.min(6, Math.max(0.5, maturedLevel));
+
+export function toSnakeCase(value: string) {
+  return value
+    .normalize("NFKC")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[^\p{L}\p{N}]+/gu, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+}
+
+export function normalizeNames(legacyName: string, names?: Partial<NameSet>): NameSet {
+  return {
+    business: names?.business?.trim() || legacyName,
+    system: names?.system?.trim() || names?.business?.trim() || legacyName,
+    physical: names?.physical?.trim() || toSnakeCase(names?.system || names?.business || legacyName)
+  };
+}
+
+export function getDisplayName(legacyName: string, names: Partial<NameSet> | undefined, mode: NameDisplayMode) {
+  return normalizeNames(legacyName, names)[mode];
+}
+
+export function updateNameSet(legacyName: string, names: Partial<NameSet> | undefined, mode: NameDisplayMode, value: string): NameSet {
+  return { ...normalizeNames(legacyName, names), [mode]: value };
+}
 
 export const getModelStageLabel = (maturedLevel: number) => {
   if (maturedLevel <= 0.5) return "MATURED MODEL";
@@ -51,9 +76,10 @@ export function expandDomainField(field: ModelField, domains: DataDomain[]): Exp
   }));
 }
 
-export function getFieldEffectiveName(field: ModelField, domains: DataDomain[]) {
+export function getFieldEffectiveName(field: ModelField, domains: DataDomain[], mode: NameDisplayMode = "system") {
   const domain = domains.find((item) => item.id === field.domainId);
-  return field.useDomainName && domain ? `${field.name}${domain.name}` : field.name;
+  const fieldName = getDisplayName(field.name, field.names, mode);
+  return field.useDomainName && domain ? `${fieldName}${getDisplayName(domain.name, domain.names, mode)}` : fieldName;
 }
 
 export function isPartitionKeyField(field: ModelField, domains: DataDomain[]) {

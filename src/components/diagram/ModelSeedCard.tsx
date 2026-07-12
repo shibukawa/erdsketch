@@ -2,16 +2,20 @@ import { Columns3, Database, KeyRound, Link2, Lock, Menu, Star } from "lucide-re
 import { useCallback, useState, type ChangeEvent, type PointerEvent } from "react";
 import type { Collaborator } from "../../collaboration";
 import { cardHeight, cardWidth, roleMeta } from "../../features/modeling/constants";
-import type { CardDisplayMode, DataDomain, DomainCategory, ModelField, ModelSeed, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
-import { expandDomainField, flattenLabels, getFieldEffectiveName, getModelStageLabel, relationshipDisplaySeedIDs } from "../../features/modeling/utils";
+import type { CardDisplayMode, DataDomain, DomainCategory, ModelField, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
+import { expandDomainField, flattenLabels, getFieldEffectiveName, getModelStageLabel, relationshipDisplaySeedIDs, updateNameSet } from "../../features/modeling/utils";
 import { FieldListDialog } from "./FieldListDialog";
 import { RoughShape } from "./RoughShape";
+import { getCachedDisplayName, type VocabularyMatchCache } from "../../features/modeling/vocabulary";
+import { VocabularyDisplayName } from "./VocabularyDisplayName";
 
 type ModelSeedCardProps = {
   seed: ModelSeed;
   selected: boolean;
   relationshipDropTarget: boolean;
   displayMode: CardDisplayMode;
+  nameDisplayMode: NameDisplayMode;
+  vocabularyCache: VocabularyMatchCache;
   owner?: Collaborator;
   me: Collaborator;
   onPointerDown: (event: PointerEvent<HTMLElement>, seed: ModelSeed) => void;
@@ -30,7 +34,7 @@ type ModelSeedCardProps = {
   onApplyRefinement: (result: RefinementResult) => Promise<boolean>;
 };
 
-export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayMode, owner, me, onPointerDown, onUpdate, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, domains, domainCategories, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, seeds, onApplyRefinement }: ModelSeedCardProps) {
+export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayMode, nameDisplayMode, vocabularyCache, owner, me, onPointerDown, onUpdate, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, domains, domainCategories, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, seeds, onApplyRefinement }: ModelSeedCardProps) {
   const meta = roleMeta[seed.role];
   const lockedByMe = owner?.id === me.id;
   const lockedByOther = !!owner && !lockedByMe;
@@ -42,10 +46,12 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
   const primaryKeyFields = effectiveFields.filter((field) => field.primaryKey);
   const favoriteFields = effectiveFields.filter((field) => field.important && !field.primaryKey);
   const partitionKeyFields = effectiveFields.flatMap((field) => expandDomainField(field, domains).filter((expanded) => expanded.partitionKey).map((expanded) => ({ ...expanded, fieldId: field.id })));
+  const fieldDisplayName = (field: ModelField) => getCachedDisplayName(vocabularyCache, `field:${seed.id}:${field.id}`, getFieldEffectiveName(field, domains, nameDisplayMode), field.names, nameDisplayMode);
   const primaryKeySummary =
     primaryKeyFields.length > 1
-      ? `(${primaryKeyFields.map((field) => getFieldEffectiveName(field, domains)).join(", ")})`
-      : primaryKeyFields[0] ? getFieldEffectiveName(primaryKeyFields[0], domains) : undefined;
+      ? `(${primaryKeyFields.map(fieldDisplayName).join(", ")})`
+      : primaryKeyFields[0] ? fieldDisplayName(primaryKeyFields[0]) : undefined;
+  const displayedTitle = getCachedDisplayName(vocabularyCache, `table:${seed.id}`, seed.title, seed.names, nameDisplayMode);
   const modelStageLabel = getModelStageLabel(seed.maturedLevel);
   const projectedRelationshipReferences = relationships.flatMap((relationship) => {
     if (!relationshipDisplaySeedIDs(relationship).includes(seed.id)) return [];
@@ -81,9 +87,9 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
 
   const handleTitleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      onUpdate(seed.id, { title: event.target.value });
+      onUpdate(seed.id, { names: updateNameSet(seed.title, seed.names, "business", event.target.value), vocabularyBinding: undefined });
     },
-    [onUpdate, seed.id]
+    [onUpdate, seed.id, seed.names, seed.title]
   );
 
   const handleDescriptionChange = useCallback(
@@ -166,15 +172,15 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{modelStageLabel}</p>
-            <input
+            {nameDisplayMode === "business" ? <input
               data-no-drag="true"
               readOnly={!lockedByMe}
               className="w-full rounded-md bg-transparent text-xl font-bold leading-tight outline-none focus:bg-white/80 focus:px-1"
-              value={seed.title}
+              value={displayedTitle}
               onChange={handleTitleChange}
               onPointerDown={handleEditablePointerDown}
-              aria-label={`${seed.title} title`}
-            />
+              aria-label={`${displayedTitle} title`}
+            /> : <div className="w-full truncate rounded-md text-xl font-bold leading-tight"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`table:${seed.id}`} legacyName={seed.title} names={seed.names} mode={nameDisplayMode} /></div>}
           </div>
           <button
             data-no-drag="true"
@@ -214,7 +220,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
                   {favoriteFields.map((field) => (
                     <li key={field.id} className="flex min-w-0 items-center gap-1.5 font-mono text-xs text-slate-700">
                       <Star size={12} className="shrink-0 fill-amber-400 text-amber-600" aria-label="Important" />
-                      <span className="font-semibold">{getFieldEffectiveName(field, domains)}</span>
+                      <span className="font-semibold"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`field:${seed.id}:${field.id}`} legacyName={getFieldEffectiveName(field, domains, nameDisplayMode)} names={field.names} mode={nameDisplayMode} /></span>
                     </li>
                   ))}
                   {partitionKeyFields.map((field) => (
@@ -270,6 +276,9 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
         <FieldListDialog
           modelId={seed.id}
           modelTitle={seed.title}
+          modelNames={seed.names}
+          initialNameDisplayMode={nameDisplayMode}
+          vocabularyCache={vocabularyCache}
           modelMaturedLevel={seed.maturedLevel}
           fields={fields}
           domains={domains}

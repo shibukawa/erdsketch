@@ -1,33 +1,40 @@
-import { AlignLeft, BookOpen, Braces, KeyRound, Plus, Search } from "lucide-react";
+import { AlignLeft, BookOpen, Braces, KeyRound, Languages, Plus, Search } from "lucide-react";
 import { useCallback, type ChangeEvent, type MouseEvent } from "react";
 import type { Collaborator } from "../../collaboration";
-import type { CardDisplayMode, ModelSeed } from "../../features/modeling/types";
+import type { CardDisplayMode, ModelSeed, NameDisplayMode } from "../../features/modeling/types";
 import { SeedInspector } from "../diagram/SeedInspector";
+import { NameModeControl } from "../diagram/NameModeControl";
 
 type SidebarProps = {
   query: string;
   cardDisplayMode: CardDisplayMode;
+  nameDisplayMode: NameDisplayMode;
   selectedSeed?: ModelSeed;
   selectedOwner?: Collaborator;
   canEditSelected: boolean;
   onQueryChange: (query: string) => void;
   onCardDisplayModeChange: (mode: CardDisplayMode) => void;
+  onNameDisplayModeChange: (mode: NameDisplayMode) => void;
   onAddSeed: () => void;
   onUpdateSeed: (seedId: string, patch: Partial<ModelSeed>) => void;
   onOpenDomainDictionary: () => void;
+  onOpenVocabulary: () => void;
 };
 
 export function Sidebar({
   query,
   cardDisplayMode,
+  nameDisplayMode,
   selectedSeed,
   selectedOwner,
   canEditSelected,
   onQueryChange,
   onCardDisplayModeChange,
+  onNameDisplayModeChange,
   onAddSeed,
   onUpdateSeed,
-  onOpenDomainDictionary
+  onOpenDomainDictionary,
+  onOpenVocabulary
 }: SidebarProps) {
   const handleAddSeed = useCallback(() => {
     onAddSeed();
@@ -107,11 +114,19 @@ export function Sidebar({
         </div>
       </section>
 
+      <section className="mt-4">
+        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Names</p>
+        <NameModeControl value={nameDisplayMode} onChange={onNameDisplayModeChange} />
+      </section>
+
       {selectedSeed && (
         <SeedInspector seed={selectedSeed} owner={selectedOwner} canEdit={canEditSelected} onUpdate={onUpdateSeed} />
       )}
 
       <div className="mt-auto pt-6">
+        <button type="button" className="btn btn-outline mb-2 w-full justify-start gap-2" onClick={onOpenVocabulary}>
+          <Languages size={17} />Vocabulary
+        </button>
         <button type="button" className="btn btn-outline w-full justify-start gap-2" onClick={handleOpenDomainDictionary}>
           <BookOpen size={17} />Domain dictionary
         </button>

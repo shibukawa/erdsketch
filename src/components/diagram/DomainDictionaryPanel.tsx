@@ -1,11 +1,15 @@
 import { BookOpen, GripVertical, Plus, Search } from "lucide-react";
 import { useCallback, useMemo, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from "react";
-import type { DataDomain, DomainCategory, PrimitiveType } from "../../features/modeling/types";
+import type { DataDomain, DomainCategory, NameDisplayMode, PrimitiveType } from "../../features/modeling/types";
 import { isAssignableDomain } from "../../features/modeling/utils";
+import type { VocabularyMatchCache } from "../../features/modeling/vocabulary";
+import { VocabularyDisplayName } from "./VocabularyDisplayName";
 
 type DomainDictionaryPanelProps = {
   domains: DataDomain[];
   categories: DomainCategory[];
+  nameDisplayMode: NameDisplayMode;
+  vocabularyCache: VocabularyMatchCache;
   canEdit: boolean;
   onCreate: (name: string) => void;
   onOpen: () => void;
@@ -37,7 +41,7 @@ function domainTypeSummary(domain: DataDomain) {
   return primitive;
 }
 
-export function DomainDictionaryPanel({ domains, categories, canEdit, onCreate, onOpen }: DomainDictionaryPanelProps) {
+export function DomainDictionaryPanel({ domains, categories, nameDisplayMode, vocabularyCache, canEdit, onCreate, onOpen }: DomainDictionaryPanelProps) {
   const [quickEntry, setQuickEntry] = useState("");
   const [query, setQuery] = useState("");
   const matchingDomains = useMemo(() => {
@@ -91,7 +95,7 @@ export function DomainDictionaryPanel({ domains, categories, canEdit, onCreate, 
       </label>
       <p className="mt-2 text-[11px] leading-4 text-slate-500">Drag any domain to a field row. Its definition can remain undefined or an empty multi-field.</p>
       <ul className="mt-2 min-h-0 flex-1 space-y-1 overflow-y-auto" aria-label="Assignable domains">
-        {matchingDomains.map((domain) => <li key={domain.id}><button type="button" data-domain-id={domain.id} draggable={canEdit} className="flex w-full items-center gap-2 rounded-md bg-white px-2 py-2 text-left shadow-sm ring-1 ring-slate-200 hover:ring-blue-300" onDragStart={handleDomainDragStart}><GripVertical size={14} className="shrink-0 text-slate-400" /><span className="min-w-0 flex-1 truncate font-mono text-xs font-semibold">{domain.name}</span><span className="shrink-0 text-[10px] text-slate-500">{domainTypeSummary(domain)}</span></button></li>)}
+        {matchingDomains.map((domain) => <li key={domain.id}><button type="button" data-domain-id={domain.id} draggable={canEdit} className="flex w-full items-center gap-2 rounded-md bg-white px-2 py-2 text-left shadow-sm ring-1 ring-slate-200 hover:ring-blue-300" onDragStart={handleDomainDragStart}><GripVertical size={14} className="shrink-0 text-slate-400" /><span className="min-w-0 flex-1 truncate font-mono text-xs font-semibold"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`domain:${domain.id}`} legacyName={domain.name} names={domain.names} mode={nameDisplayMode} /></span><span className="shrink-0 text-[10px] text-slate-500">{domainTypeSummary(domain)}</span></button></li>)}
         {matchingDomains.length === 0 && <li className="rounded-md border border-dashed border-slate-300 bg-white px-3 py-4 text-center text-xs text-slate-500">No assignable domains match.</li>}
       </ul>
       <button type="button" className="btn btn-outline mt-3 justify-start gap-2" onClick={handleOpen}><BookOpen size={16} />Open domain dictionary</button>

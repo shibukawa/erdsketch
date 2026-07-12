@@ -35,6 +35,8 @@ func New(hub *collaboration.Hub, seeds SeedLister, logger *log.Logger) http.Hand
 	mux.HandleFunc("/api/collaboration/relationship", handler.updateRelationship)
 	mux.HandleFunc("/api/collaboration/domain", handler.updateDomain)
 	mux.HandleFunc("/api/collaboration/domain-category", handler.updateDomainCategory)
+	mux.HandleFunc("/api/collaboration/naming-policy", handler.updateNamingPolicy)
+	mux.HandleFunc("/api/collaboration/vocabulary", handler.updateVocabulary)
 	mux.HandleFunc("/api/collaboration/refinement", handler.applyRefinement)
 	mux.HandleFunc("/api/collaboration/lock", handler.changeLock)
 	return mux

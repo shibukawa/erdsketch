@@ -1,9 +1,12 @@
 import { BookOpen, ChevronRight, Download, GripVertical, Plus, Trash2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type FocusEvent, type KeyboardEvent, type MouseEvent, type SyntheticEvent } from "react";
 import { createPortal } from "react-dom";
-import type { CodeSetBaseType, CodeSetEntry, DataDomain, DomainCategory, DomainCategoryBundle, DomainShape, PrimitiveType } from "../../features/modeling/types";
-import { isAssignableDomain } from "../../features/modeling/utils";
+import type { CodeSetBaseType, CodeSetEntry, DataDomain, DomainCategory, DomainCategoryBundle, DomainShape, NameDisplayMode, PrimitiveType } from "../../features/modeling/types";
+import { isAssignableDomain, updateNameSet } from "../../features/modeling/utils";
 import { CodeSetEditor } from "./CodeSetEditor";
+import { NameModeControl } from "./NameModeControl";
+import { getCachedDisplayName, type VocabularyMatchCache } from "../../features/modeling/vocabulary";
+import { VocabularyDisplayName } from "./VocabularyDisplayName";
 
 type DomainAssignmentTarget = {
   label: string;
@@ -14,6 +17,8 @@ type DomainDictionaryDialogProps = {
   domains: DataDomain[];
   categories: DomainCategory[];
   canEdit: boolean;
+  initialNameDisplayMode: NameDisplayMode;
+  vocabularyCache: VocabularyMatchCache;
   assignmentTarget?: DomainAssignmentTarget;
   onChange: (domain: DataDomain) => void;
   onCreateDomain: (name: string, categoryId: string) => void;
@@ -58,7 +63,7 @@ function createComponent(name: string) {
   return { id: crypto.randomUUID(), name, required: true, description: "", partitionKey: false };
 }
 
-export function DomainDictionaryDialog({ domains, categories, canEdit, assignmentTarget, onChange, onCreateDomain, onCreateCategory, onChangeCategory, onImportCategory, onDelete, onAssign, onClose }: DomainDictionaryDialogProps) {
+export function DomainDictionaryDialog({ domains, categories, canEdit, initialNameDisplayMode, vocabularyCache, assignmentTarget, onChange, onCreateDomain, onCreateCategory, onChangeCategory, onImportCategory, onDelete, onAssign, onClose }: DomainDictionaryDialogProps) {
   const dialogRef = useState<HTMLDialogElement | null>(null);
   const [dialog, setDialog] = dialogRef;
   const [categoryId, setCategoryId] = useState("user-defined");
@@ -71,6 +76,7 @@ export function DomainDictionaryDialog({ domains, categories, canEdit, assignmen
   const [draggingComponentId, setDraggingComponentId] = useState<string | null>(null);
   const [componentDropTargetId, setComponentDropTargetId] = useState<string | null>(null);
   const [categoryDropTargetId, setCategoryDropTargetId] = useState<string | null>(null);
+  const [nameDisplayMode, setNameDisplayMode] = useState(initialNameDisplayMode);
   const categoryImportRef = useRef<HTMLInputElement | null>(null);
   const filteredDomains = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -224,8 +230,8 @@ export function DomainDictionaryDialog({ domains, categories, canEdit, assignmen
   const handleDomainDragEnd = useCallback(() => setCategoryDropTargetId(null), []);
 
   const handleNameChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    updateSelected({ name: event.target.value });
-  }, [updateSelected]);
+    if (selectedDomain) updateSelected({ names: updateNameSet(selectedDomain.name, selectedDomain.names, "business", event.target.value), vocabularyBinding: undefined });
+  }, [selectedDomain, updateSelected]);
 
   const handleKindChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
     const shape = event.target.value as DomainShape;
@@ -380,7 +386,7 @@ export function DomainDictionaryDialog({ domains, categories, canEdit, assignmen
       <div className="flex h-full min-h-0 flex-col">
         <header className="flex shrink-0 items-center justify-between border-b border-slate-200 px-6 py-4">
           <div className="flex items-center gap-3"><BookOpen className="text-blue-700" size={22} /><div><h2 id="domain-dictionary-title" className="text-xl font-bold">Domain dictionary</h2><p className="text-xs text-slate-500">Define reusable types and multi-field domains.</p></div></div>
-          <button type="button" className="btn btn-ghost btn-sm btn-square" aria-label="Close domain dictionary" onClick={handleClose}><X size={18} /></button>
+          <div className="flex items-center gap-3"><div className="w-64"><NameModeControl value={nameDisplayMode} onChange={setNameDisplayMode} compact /></div><button type="button" className="btn btn-ghost btn-sm btn-square" aria-label="Close domain dictionary" onClick={handleClose}><X size={18} /></button></div>
         </header>
         <div className="grid min-h-0 flex-1 grid-cols-[190px_minmax(300px,0.9fr)_minmax(420px,1.2fr)]">
           <nav className="flex min-h-0 flex-col border-r border-slate-200 bg-slate-50 p-3" aria-label="Domain categories">
@@ -392,14 +398,14 @@ export function DomainDictionaryDialog({ domains, categories, canEdit, assignmen
           <section className="flex min-h-0 flex-col border-r border-slate-200" aria-label="Domain list">
             <div className="space-y-2 border-b border-slate-200 p-4"><input className="input input-bordered intent-search h-10 w-full text-sm" value={query} onChange={handleSearchChange} placeholder="Search domains" aria-label="Search domains" />{selectedCategory?.system ? <p className="px-1 text-xs text-slate-500">Built-in generic domains are fixed.</p> : <input className="input input-bordered intent-add h-10 w-full text-sm" value={domainQuickEntry} onChange={handleDomainQuickEntryChange} onKeyDown={handleDomainQuickEntryKeyDown} disabled={!canEdit} placeholder="Add domain name + Enter" aria-label="New dictionary domain name" />}</div>
             <ul className="min-h-0 flex-1 overflow-y-auto p-2">
-              {filteredDomains.map((domain) => <li key={domain.id}><button type="button" data-domain-id={domain.id} draggable={isAssignableDomain(domain)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left ${selectedDomainId === domain.id ? "bg-blue-50 text-blue-950" : "hover:bg-slate-50"}`} onClick={handleDomainSelect} onDragStart={handleDomainDragStart} onDragEnd={handleDomainDragEnd}><GripVertical size={15} className="shrink-0 text-slate-400" /><span className="min-w-0 flex-1 truncate font-mono text-xs font-semibold">{domain.name}</span><span className="shrink-0 text-[10px] text-slate-500">{domainTypeSummary(domain)}</span></button></li>)}
+              {filteredDomains.map((domain) => <li key={domain.id}><button type="button" data-domain-id={domain.id} draggable={isAssignableDomain(domain)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left ${selectedDomainId === domain.id ? "bg-blue-50 text-blue-950" : "hover:bg-slate-50"}`} onClick={handleDomainSelect} onDragStart={handleDomainDragStart} onDragEnd={handleDomainDragEnd}><GripVertical size={15} className="shrink-0 text-slate-400" /><span className="min-w-0 flex-1 truncate font-mono text-xs font-semibold"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`domain:${domain.id}`} legacyName={domain.name} names={domain.names} mode={nameDisplayMode} /></span><span className="shrink-0 text-[10px] text-slate-500">{domainTypeSummary(domain)}</span></button></li>)}
               {filteredDomains.length === 0 && <li className="px-3 py-8 text-center text-sm text-slate-500">No domains in this category.</li>}
             </ul>
           </section>
           <section className="min-h-0 overflow-y-auto bg-slate-50 p-6" aria-label="Domain details">
             {!selectedDomain ? <p className="rounded-lg border border-dashed border-slate-300 bg-white p-5 text-sm leading-6 text-slate-500">Choose a domain from the list. New names added from a field list begin here as undefined.</p> : <div className="space-y-5">
-              <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{categories.find((category) => category.id === selectedDomain.categoryId)?.name ?? "User Defined"}</p><h3 className="mt-1 font-mono text-lg font-bold">{selectedDomain.name}</h3></div>{assignmentTarget && <button type="button" className="btn btn-primary btn-sm" disabled={!isAssignableDomain(selectedDomain)} onClick={handleAssign}>Assign to {assignmentTarget.label}</button>}</div>
-              {!selectedDomain.system && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Name</span><input className="input input-bordered w-full bg-white" value={selectedDomain.name} onChange={handleNameChange} disabled={!canEdit} /></label>}
+              <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{categories.find((category) => category.id === selectedDomain.categoryId)?.name ?? "User Defined"}</p><h3 className="mt-1 font-mono text-lg font-bold"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`domain:${selectedDomain.id}`} legacyName={selectedDomain.name} names={selectedDomain.names} mode={nameDisplayMode} /></h3></div>{assignmentTarget && <button type="button" className="btn btn-primary btn-sm" disabled={!isAssignableDomain(selectedDomain)} onClick={handleAssign}>Assign to {assignmentTarget.label}</button>}</div>
+              {!selectedDomain.system && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Business source name</span><input className="input input-bordered w-full bg-white" value={selectedDomain.names?.business || selectedDomain.name} onChange={handleNameChange} disabled={!canEdit} /></label>}
               {!selectedDomain.system && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Definition</span><select className="select select-bordered w-full bg-white" value={selectedDomain.shape} onChange={handleKindChange} disabled={!canEdit}><option value="unresolved">Undefined</option><option value="scalar">Single field</option><option value="composite">Multi-field</option></select></label>}
               {selectedDomain.shape === "unresolved" && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Define as primitive type</span><select className="select select-bordered w-full bg-white" value="" onChange={handlePrimitiveChange} disabled={!canEdit}><option value="">Choose a type…</option>{primitiveTypes.map((primitive) => <option key={primitive} value={primitive}>{primitiveLabels[primitive]}</option>)}</select><span className="mt-2 text-xs text-slate-500">Undefined keeps the domain identity while its physical type is still undecided.</span></label>}
               {selectedDomain.shape === "composite" && (
@@ -409,7 +415,7 @@ export function DomainDictionaryDialog({ domains, categories, canEdit, assignmen
                   {selectedDomain.components.map((component, index) => (
                     <div key={component.id} data-component-id={component.id} className={`space-y-2 rounded-md border bg-white p-3 ${componentDropTargetId === component.id ? "border-blue-500 ring-2 ring-blue-200" : "border-slate-200"} ${draggingComponentId === component.id ? "opacity-40" : ""}`} onDragOver={handleComponentDragOver} onDrop={handleComponentDrop}>
                       <div className="flex items-center gap-2"><span className="cursor-grab text-slate-300 active:cursor-grabbing" data-component-id={component.id} draggable={canEdit} onDragStart={handleComponentDragStart} onDragEnd={clearComponentDrag} aria-label={`Drag ${component.name} to reorder`}><GripVertical size={15} /></span><input key={`${component.id}:${component.name}`} className="input input-bordered input-sm min-w-0 flex-1 bg-white font-mono text-xs font-semibold" data-component-id={component.id} defaultValue={component.name} onBlur={handleComponentNameCommit} onKeyDown={handleComponentInputKeyDown} disabled={!canEdit} aria-label={`Component ${index + 1} name`} /><button type="button" className="btn btn-ghost btn-xs btn-square text-red-600" data-component-id={component.id} onClick={handleRemoveComponent} disabled={!canEdit} aria-label={`Remove ${component.name}`}><Trash2 size={14} /></button></div>
-                      <select className="select select-bordered select-sm w-full bg-white" data-component-id={component.id} value={component.domainId ?? ""} onChange={handleComponentTypeChange} disabled={!canEdit} aria-label={`${component.name} type`}><option value="">Undefined</option>{componentCandidates.map((domain) => <option key={domain.id} value={domain.id}>{domain.name}</option>)}</select>
+                      <select className="select select-bordered select-sm w-full bg-white" data-component-id={component.id} value={component.domainId ?? ""} onChange={handleComponentTypeChange} disabled={!canEdit} aria-label={`${component.name} type`}><option value="">Undefined</option>{componentCandidates.map((domain) => <option key={domain.id} value={domain.id}>{getCachedDisplayName(vocabularyCache, `domain:${domain.id}`, domain.name, domain.names, nameDisplayMode)}</option>)}</select>
                       <div className="flex flex-wrap items-center gap-3"><input key={`${component.id}:${component.description ?? ""}`} className="input input-bordered input-sm min-w-[160px] flex-1 bg-white text-xs" data-component-id={component.id} defaultValue={component.description ?? ""} onBlur={handleComponentDescriptionCommit} onKeyDown={handleComponentInputKeyDown} disabled={!canEdit} placeholder="Description" aria-label={`${component.name} description`} /><label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-semibold text-slate-600"><input type="checkbox" className="checkbox checkbox-sm" data-component-id={component.id} checked={component.required} onChange={handleComponentRequiredChange} disabled={!canEdit} />Required</label><label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-semibold text-cyan-800"><input type="checkbox" className="checkbox checkbox-sm checkbox-info" data-component-id={component.id} checked={component.partitionKey ?? false} onChange={handleComponentPartitionKeyChange} disabled={!canEdit} />Partition key</label></div>
                     </div>
                   ))}

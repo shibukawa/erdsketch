@@ -13,16 +13,22 @@ import {
   type WheelEvent
 } from "react";
 import { createPortal } from "react-dom";
-import type { DataDomain, DomainCategory, ModelField, ModelSeed, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
-import { sortFieldListItems } from "../../features/modeling/utils";
+import type { DataDomain, DomainCategory, ModelField, ModelSeed, NameDisplayMode, NameSet, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
+import { getDisplayName, sortFieldListItems, updateNameSet } from "../../features/modeling/utils";
 import { FieldListRow } from "./FieldListRow";
 import { RelationshipReferenceRow } from "./RelationshipReferenceRow";
 import { DomainDictionaryPanel } from "./DomainDictionaryPanel";
 import { RefinementPanel } from "./RefinementPanel";
+import { NameModeControl } from "./NameModeControl";
+import type { VocabularyMatchCache } from "../../features/modeling/vocabulary";
+import { VocabularyDisplayName } from "./VocabularyDisplayName";
 
 type FieldListDialogProps = {
   modelId: string;
   modelTitle: string;
+  modelNames?: NameSet;
+  initialNameDisplayMode: NameDisplayMode;
+  vocabularyCache: VocabularyMatchCache;
   modelMaturedLevel: number;
   fields: ModelField[];
   domains: DataDomain[];
@@ -55,7 +61,7 @@ function reorderFields(fields: ModelField[], sourceId: string, targetId: string)
   return [...remaining.slice(0, targetIndex), source, ...remaining.slice(targetIndex)];
 }
 
-export function FieldListDialog({ modelId, modelTitle, modelMaturedLevel, fields, domains, domainCategories, relationshipReferences, seeds, allRelationships, allRelationshipReferences, canEdit, onChange, onClose, onUpdateReference, onDeleteReference, onCreateDomain, onOpenDomainDictionary, onApplyRefinement }: FieldListDialogProps) {
+export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDisplayMode, vocabularyCache, modelMaturedLevel, fields, domains, domainCategories, relationshipReferences, seeds, allRelationships, allRelationshipReferences, canEdit, onChange, onClose, onUpdateReference, onDeleteReference, onCreateDomain, onOpenDomainDictionary, onApplyRefinement }: FieldListDialogProps) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const quickEntryRef = useRef<HTMLInputElement | null>(null);
   const fieldsRef = useRef(fields);
@@ -69,6 +75,7 @@ export function FieldListDialog({ modelId, modelTitle, modelMaturedLevel, fields
   const [selectedRefinementFieldIds, setSelectedRefinementFieldIds] = useState<string[]>([]);
   const [selectedRefinementRelationshipIds, setSelectedRefinementRelationshipIds] = useState<string[]>([]);
   const [sideTab, setSideTab] = useState<"domains" | "refinement">("domains");
+  const [nameDisplayMode, setNameDisplayMode] = useState(initialNameDisplayMode);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -199,7 +206,7 @@ export function FieldListDialog({ modelId, modelTitle, modelMaturedLevel, fields
     (fieldId: string, name: string) => {
       const field = fieldsRef.current.find((candidate) => candidate.id === fieldId);
       if (!field || (!name && !(field.domainId && field.useDomainName))) return;
-      commitFields(replaceField(fieldsRef.current, fieldId, { name }));
+      commitFields(replaceField(fieldsRef.current, fieldId, { names: updateNameSet(field.name, field.names, "business", name), vocabularyBinding: undefined }));
     },
     [commitFields]
   );
@@ -322,13 +329,15 @@ export function FieldListDialog({ modelId, modelTitle, modelMaturedLevel, fields
           <div className="flex items-start justify-between gap-5">
             <div className="flex min-w-0 items-baseline gap-3">
               <h2 id="field-list-title" className="text-xl font-bold">Fields</h2>
-              <p className="truncate text-xs font-bold uppercase tracking-[0.14em] text-blue-600">{modelTitle}</p>
+              <p className="truncate text-xs font-bold uppercase tracking-[0.14em] text-blue-600"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`table:${modelId}`} legacyName={modelTitle} names={modelNames} mode={nameDisplayMode} /></p>
               <span className="text-xs font-semibold text-slate-400">{fields.length + relationshipReferences.length} items</span>
             </div>
             <button type="button" className="btn btn-ghost btn-sm btn-square -mr-1 -mt-1" aria-label="Close field list" onClick={onClose}>
               <X size={18} />
             </button>
           </div>
+
+          <div className="mt-3 w-72"><NameModeControl value={nameDisplayMode} onChange={setNameDisplayMode} compact /></div>
 
           <div className="mt-3 flex items-center gap-3">
             <label
@@ -403,7 +412,7 @@ export function FieldListDialog({ modelId, modelTitle, modelMaturedLevel, fields
               {sortedItems.map((item) => {
                 if (item.type === "field") {
                   const field = item.item;
-                  return <FieldListRow key={field.id} field={field} domain={domains.find((domain) => domain.id === field.domainId)} domains={domains} selected={editingFieldId === field.id && canEdit} refinementSelected={selectedRefinementFieldIds.includes(field.id)} dragging={draggingFieldId === field.id} dropTarget={dropTargetFieldId === field.id && draggingFieldId !== field.id} domainDropTarget={domainDropTargetFieldId === field.id} canEdit={canEdit} onSelect={handleSelectField} onToggleRefinement={handleToggleRefinement} onNameChange={handleFieldNameChange} onTogglePrimaryKey={handleTogglePrimaryKey} onToggleImportant={handleToggleImportant} onToggleUseDomainName={handleToggleUseDomainName} onDelete={handleDelete} onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={clearDragState} onDomainDrop={handleDomainAssign} />;
+                  return <FieldListRow key={field.id} field={field} modelId={modelId} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} domain={domains.find((domain) => domain.id === field.domainId)} domains={domains} selected={editingFieldId === field.id && canEdit && nameDisplayMode === "business"} refinementSelected={selectedRefinementFieldIds.includes(field.id)} dragging={draggingFieldId === field.id} dropTarget={dropTargetFieldId === field.id && draggingFieldId !== field.id} domainDropTarget={domainDropTargetFieldId === field.id} canEdit={canEdit} onSelect={handleSelectField} onToggleRefinement={handleToggleRefinement} onNameChange={handleFieldNameChange} onTogglePrimaryKey={handleTogglePrimaryKey} onToggleImportant={handleToggleImportant} onToggleUseDomainName={handleToggleUseDomainName} onDelete={handleDelete} onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={clearDragState} onDomainDrop={handleDomainAssign} />;
                 }
                 const referenceItem = relationshipReferenceByID.get(item.item.id);
                 return referenceItem ? <RelationshipReferenceRow key={item.item.id} modelId={modelId} relationship={referenceItem.relationship} reference={referenceItem.reference} canEdit={canEdit} refinementSelected={selectedRefinementRelationshipIds.includes(referenceItem.relationship.id)} onToggleRefinement={handleToggleRelationshipRefinement} onTogglePrimaryKey={handleToggleReferencePrimaryKey} onToggleForeignKey={handleToggleReferenceForeignKey} onToggleVisibility={handleToggleReferenceVisibility} onDelete={onDeleteReference} /> : null;
@@ -411,7 +420,7 @@ export function FieldListDialog({ modelId, modelTitle, modelMaturedLevel, fields
             </ul>
           )}
         </div>
-        <aside className="flex w-[310px] shrink-0 flex-col"><div role="tablist" className="tabs tabs-box mx-3 mt-3"><button type="button" role="tab" className={`tab text-xs ${sideTab === "domains" ? "tab-active" : ""}`} onClick={handleDomainsTab}>Domains</button><button type="button" role="tab" className={`tab text-xs ${sideTab === "refinement" ? "tab-active" : ""}`} onClick={handleRefinementTab}>Refinement</button></div><div className="min-h-0 flex-1">{sideTab === "domains" ? <DomainDictionaryPanel domains={domains} categories={domainCategories} canEdit={canEdit} onCreate={onCreateDomain} onOpen={() => onOpenDomainDictionary(editingFieldId ?? undefined)} /> : <RefinementPanel source={seeds.find((seed) => seed.id === modelId)!} seeds={seeds} relationships={allRelationships} relationshipReferences={allRelationshipReferences} domains={domains} selectedFieldIds={selectedRefinementFieldIds} selectedRelationshipIds={selectedRefinementRelationshipIds} canEdit={canEdit} onApply={handleApplyRefinement}/>}</div></aside>
+        <aside className="flex w-[310px] shrink-0 flex-col"><div role="tablist" className="tabs tabs-box mx-3 mt-3"><button type="button" role="tab" className={`tab text-xs ${sideTab === "domains" ? "tab-active" : ""}`} onClick={handleDomainsTab}>Domains</button><button type="button" role="tab" className={`tab text-xs ${sideTab === "refinement" ? "tab-active" : ""}`} onClick={handleRefinementTab}>Refinement</button></div><div className="min-h-0 flex-1">{sideTab === "domains" ? <DomainDictionaryPanel domains={domains} categories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} canEdit={canEdit} onCreate={onCreateDomain} onOpen={() => onOpenDomainDictionary(editingFieldId ?? undefined)} /> : <RefinementPanel source={seeds.find((seed) => seed.id === modelId)!} seeds={seeds} relationships={allRelationships} relationshipReferences={allRelationshipReferences} domains={domains} selectedFieldIds={selectedRefinementFieldIds} selectedRelationshipIds={selectedRefinementRelationshipIds} canEdit={canEdit} onApply={handleApplyRefinement}/>}</div></aside>
         </div>
       </div>
     </dialog>,

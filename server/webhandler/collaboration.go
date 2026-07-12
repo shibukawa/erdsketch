@@ -22,14 +22,15 @@ func (h *Handler) join(w http.ResponseWriter, r *http.Request) {
 		Relationships          []collaboration.Relationship          `json:"relationships"`
 		RelationshipReferences []collaboration.RelationshipReference `json:"relationshipReferences"`
 		Domains                []collaboration.DataDomain            `json:"domains"`
+		AssignAvailableName    bool                                  `json:"assignAvailableName"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.User.ID == "" || request.User.Name == "" {
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.User.ID == "" || (!request.AssignAvailableName && request.User.Name == "") {
 		http.Error(w, "invalid join request", http.StatusBadRequest)
 		return
 	}
-	result := h.hub.Join(request.User, request.Seeds, request.Relationships, request.RelationshipReferences, request.Domains)
+	result := h.hub.JoinWithNameAssignment(request.User, request.AssignAvailableName, request.Seeds, request.Relationships, request.RelationshipReferences, request.Domains)
 	if !result.AlreadyJoined {
-		h.logger.Printf("[collab] join user=%q client=%s online=%d", request.User.Name, request.User.ID, result.Online)
+		h.logger.Printf("[collab] join user=%q client=%s online=%d", result.User.Name, request.User.ID, result.Online)
 	}
 	writeJSON(w, result.State)
 }
@@ -87,6 +88,49 @@ func (h *Handler) updateDomainCategory(w http.ResponseWriter, r *http.Request) {
 		h.logger.Printf("[collab] create domain category user=%q client=%s category=%s", result.User.Name, request.ClientID, result.Category.ID)
 	} else {
 		h.logger.Printf("[collab] edit domain category user=%q client=%s category=%s", result.User.Name, request.ClientID, result.Category.ID)
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) updateNamingPolicy(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var request struct {
+		ClientID string                     `json:"clientId"`
+		Policy   collaboration.NamingPolicy `json:"policy"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.ClientID == "" {
+		http.Error(w, "invalid naming policy", http.StatusBadRequest)
+		return
+	}
+	if _, err := h.hub.UpdateNamingPolicy(request.ClientID, request.Policy); err != nil {
+		writeCollaborationError(w, err)
+		return
+	}
+	h.logger.Printf("[collab] naming policy client=%s table_pluralization=%s", request.ClientID, request.Policy.TablePluralization)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) updateVocabulary(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var request struct {
+		ClientID string                        `json:"clientId"`
+		Entry    collaboration.VocabularyEntry `json:"entry"`
+		Create   bool                          `json:"create"`
+		Delete   bool                          `json:"delete"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.ClientID == "" || request.Entry.ID == "" {
+		http.Error(w, "invalid vocabulary update", http.StatusBadRequest)
+		return
+	}
+	if _, err := h.hub.UpdateVocabulary(request.ClientID, request.Entry, request.Create, request.Delete); err != nil {
+		writeCollaborationError(w, err)
+		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -306,11 +350,11 @@ func writeEvent(w http.ResponseWriter, state collaboration.State) bool {
 func writeCollaborationError(w http.ResponseWriter, err error) {
 	status := http.StatusInternalServerError
 	switch {
-	case errors.Is(err, collaboration.ErrUnknownClient), errors.Is(err, collaboration.ErrSeedNotFound), errors.Is(err, collaboration.ErrRelationshipNotFound), errors.Is(err, collaboration.ErrDomainNotFound), errors.Is(err, collaboration.ErrCategoryNotFound):
+	case errors.Is(err, collaboration.ErrUnknownClient), errors.Is(err, collaboration.ErrSeedNotFound), errors.Is(err, collaboration.ErrRelationshipNotFound), errors.Is(err, collaboration.ErrDomainNotFound), errors.Is(err, collaboration.ErrCategoryNotFound), errors.Is(err, collaboration.ErrVocabularyNotFound):
 		status = http.StatusNotFound
-	case errors.Is(err, collaboration.ErrSeedExists), errors.Is(err, collaboration.ErrLockRequired), errors.Is(err, collaboration.ErrLockConflict), errors.Is(err, collaboration.ErrDomainExists), errors.Is(err, collaboration.ErrDomainInUse), errors.Is(err, collaboration.ErrCategoryExists):
+	case errors.Is(err, collaboration.ErrSeedExists), errors.Is(err, collaboration.ErrLockRequired), errors.Is(err, collaboration.ErrLockConflict), errors.Is(err, collaboration.ErrDomainExists), errors.Is(err, collaboration.ErrDomainInUse), errors.Is(err, collaboration.ErrCategoryExists), errors.Is(err, collaboration.ErrVocabularyExists):
 		status = http.StatusConflict
-	case errors.Is(err, collaboration.ErrRelationshipInvalid), errors.Is(err, collaboration.ErrDomainInvalid), errors.Is(err, collaboration.ErrCategoryInvalid):
+	case errors.Is(err, collaboration.ErrRelationshipInvalid), errors.Is(err, collaboration.ErrDomainInvalid), errors.Is(err, collaboration.ErrCategoryInvalid), errors.Is(err, collaboration.ErrNamingPolicyInvalid), errors.Is(err, collaboration.ErrVocabularyInvalid):
 		status = http.StatusBadRequest
 	}
 	http.Error(w, err.Error(), status)

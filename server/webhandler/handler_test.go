@@ -64,6 +64,39 @@ func TestEventsRequireClientID(t *testing.T) {
 	}
 }
 
+func TestNamingPolicyEndpointUpdatesProjectPolicy(t *testing.T) {
+	hub := collaboration.NewHub()
+	hub.Join(collaboration.Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
+	handler := New(hub, seedListerStub{}, log.New(io.Discard, "", 0))
+
+	response := post(handler, "/api/collaboration/naming-policy", `{"clientId":"lion","policy":{"tablePluralization":"plural"}}`)
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("update naming policy: got %d, want %d; body=%q", response.Code, http.StatusNoContent, response.Body.String())
+	}
+	invalid := post(handler, "/api/collaboration/naming-policy", `{"clientId":"lion","policy":{"tablePluralization":"sometimes"}}`)
+	if invalid.Code != http.StatusBadRequest {
+		t.Fatalf("invalid naming policy: got %d, want %d", invalid.Code, http.StatusBadRequest)
+	}
+}
+
+func TestVocabularyEndpointCreatesAndRejectsDuplicateTerms(t *testing.T) {
+	hub := collaboration.NewHub()
+	hub.Join(collaboration.Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
+	handler := New(hub, seedListerStub{}, log.New(io.Discard, "", 0))
+	created := post(handler, "/api/collaboration/vocabulary", `{"clientId":"lion","create":true,"entry":{"id":"order","businessName":"Order","systemName":"Order","physicalName":"order","meaning":"","memo":"","aliases":[]}}`)
+	if created.Code != http.StatusNoContent {
+		t.Fatalf("create vocabulary: got %d body=%q", created.Code, created.Body.String())
+	}
+	duplicate := post(handler, "/api/collaboration/vocabulary", `{"clientId":"lion","create":true,"entry":{"id":"order-2","businessName":"order","systemName":"","physicalName":"","meaning":"","memo":"","aliases":[]}}`)
+	if duplicate.Code != http.StatusConflict {
+		t.Fatalf("duplicate vocabulary: got %d, want %d", duplicate.Code, http.StatusConflict)
+	}
+	aliasConflict := post(handler, "/api/collaboration/vocabulary", `{"clientId":"lion","create":true,"entry":{"id":"purchase","businessName":"Purchase","systemName":"","physicalName":"","meaning":"","memo":"","aliases":["ORDER"]}}`)
+	if aliasConflict.Code != http.StatusConflict {
+		t.Fatalf("alias conflict: got %d, want %d", aliasConflict.Code, http.StatusConflict)
+	}
+}
+
 func newTestHandler(seeds SeedLister) http.Handler {
 	return New(collaboration.NewHub(), seeds, log.New(io.Discard, "", 0))
 }

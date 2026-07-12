@@ -35,6 +35,14 @@ control:
   scope: canvas_view
   interaction: explicit_mode_switch
   default: description
+name_display:
+  control: ui:model-card-display-mode
+  scope: canvas_view
+  modes:
+    - business_name
+    - system_name
+    - physical_name
+  independent_of_content_mode: true
 transition:
   required: true
   properties:
@@ -51,6 +59,7 @@ acceptance:
   - Primary-key attributes are not repeated in the remaining favorite rows.
   - Every remaining favorite attribute is rendered without truncating the list or using `+N` summaries.
   - Switching back restores descriptions.
+  - Switching name mode preserves the selected description or key-fields mode.
   - The content change is animated unless reduced motion is requested.
 related:
   - ui:model-card-display-mode

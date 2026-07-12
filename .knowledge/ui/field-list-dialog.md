@@ -18,6 +18,18 @@ ui:
     kind: dialog
     id: model-field-list
     title: Fields
+    name-display-mode:
+      requirement: requirement:name-display-switching
+      kind: segmented-control
+      options:
+        - business_name
+        - system_name
+        - physical_name
+      applies_to:
+        - containing_table_label
+        - attribute_rows
+        - relationship_reference_rows
+        - assigned_domain_labels
     children:
       - kind: text-input
         id: field-quick-entry
@@ -79,6 +91,7 @@ constraints:
   - Composite domain assignments render as one logical attribute row.
   - ui:domain-dictionary-panel provides only quick name capture and launch.
   - Detailed domain assignment is performed in ui:domain-dictionary-dialog.
+  - Name display mode changes labels only and preserves all edits and references.
 related:
   - requirement:field-list-management
   - data:attribute

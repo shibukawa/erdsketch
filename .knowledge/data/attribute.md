@@ -12,6 +12,9 @@ fields:
     type: identifier
   - name: name
     type: text
+  - name: vocabulary
+    type: data:vocabulary-binding
+    optional: true
   - name: data_type
     type: text
     optional: true

@@ -7,6 +7,9 @@ title: Data Domain
 Data domain is a named reusable semantic type assigned consistently across models.
 
 ```yaml
+naming:
+  vocabulary: data:vocabulary-binding
+  display: requirement:name-display-switching
 examples:
   user_id:
     definition_state: defined

@@ -14,9 +14,13 @@ import { Sidebar } from "../components/layout/Sidebar";
 import { WorkspaceHeader } from "../components/layout/WorkspaceHeader";
 import { RelationshipEditorDialog } from "../components/diagram/RelationshipEditorDialog";
 import { DomainDictionaryDialog } from "../components/diagram/DomainDictionaryDialog";
+import { VocabularyDialog } from "../components/diagram/VocabularyDialog";
+import { VocabularyNavigationProvider } from "../components/diagram/VocabularyNavigationContext";
 import { initialDomainCategories, initialDomains, initialRelationshipReferences, initialRelationships, initialSeeds } from "../features/modeling/constants";
-import type { CardDisplayMode, DataDomain, DomainCategory, DomainCategoryBundle, DragState, ModelSeed, RefinementResult, Relationship, RelationshipReference, Viewport } from "../features/modeling/types";
-import { clampScale, flattenLabels, getFieldEffectiveName, getRelatedDragSeedIDs, getRelationshipDropTarget, getRelationshipReference } from "../features/modeling/utils";
+import type { CardDisplayMode, DataDomain, DomainCategory, DomainCategoryBundle, DragState, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference, Viewport, VocabularyBinding, VocabularyEntry } from "../features/modeling/types";
+import { getCachedDisplayName, replaceAliasInSource, type VocabularyMatch } from "../features/modeling/vocabulary";
+import { useVocabularyMatchCache } from "../features/modeling/useVocabularyMatchCache";
+import { clampScale, flattenLabels, getFieldEffectiveName, getRelatedDragSeedIDs, getRelationshipDropTarget, getRelationshipReference, updateNameSet } from "../features/modeling/utils";
 
 export function ModelingWorkspacePage() {
   const {
@@ -26,6 +30,8 @@ export function ModelingWorkspacePage() {
     relationshipReferences,
     domains,
     domainCategories,
+    namingPolicy,
+    vocabularyEntries,
     users,
     locks,
     connected,
@@ -40,13 +46,19 @@ export function ModelingWorkspacePage() {
     saveRefinement,
     saveDomain,
     saveDomainCategory,
+    saveNamingPolicy,
+    saveVocabularyEntry,
     setLocalSeeds,
     setLocalRelationships,
     setLocalDomains,
-    setLocalDomainCategories
+    setLocalDomainCategories,
+    setLocalVocabularyEntries
   } = useCollaboration(initialSeeds, initialRelationships, initialRelationshipReferences, initialDomains, initialDomainCategories);
   const [query, setQuery] = useState("");
   const [cardDisplayMode, setCardDisplayMode] = useState<CardDisplayMode>("description");
+  const [nameDisplayMode, setNameDisplayMode] = useState<NameDisplayMode>("business");
+  const [vocabularyOpen, setVocabularyOpen] = useState(false);
+  const [vocabularyFocusKey, setVocabularyFocusKey] = useState<string | null>(null);
   const [viewport, setViewport] = useState<Viewport>({ x: 260, y: 140, scale: 1 });
   const [dragState, setDragState] = useState<DragState>(null);
   const [selectedId, setSelectedId] = useState("order");
@@ -54,16 +66,17 @@ export function ModelingWorkspacePage() {
   const [domainDictionaryContext, setDomainDictionaryContext] = useState<{ seedId?: string; fieldId?: string; label?: string } | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const historyRef = useRef<Record<string, { x: number; y: number }>[] >([]);
+  const { cache: vocabularyCache, indexing: vocabularyIndexing } = useVocabularyMatchCache(seeds, domains, vocabularyEntries, namingPolicy);
 
   const visibleSeeds = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return seeds;
     return seeds.filter((seed) =>
-      [seed.title, seed.description, String(seed.maturedLevel), ...flattenLabels(seed), ...(seed.fields ?? []).map((field) => getFieldEffectiveName(field, domains))].some((value) =>
+      [seed.title, ...(["business", "system", "physical"] as NameDisplayMode[]).map((mode) => getCachedDisplayName(vocabularyCache, `table:${seed.id}`, seed.title, seed.names, mode)), seed.description, String(seed.maturedLevel), ...flattenLabels(seed), ...(seed.fields ?? []).flatMap((field) => (["business", "system", "physical"] as NameDisplayMode[]).map((mode) => getCachedDisplayName(vocabularyCache, `field:${seed.id}:${field.id}`, getFieldEffectiveName(field, domains, mode), field.names, mode)))].some((value) =>
         value.toLowerCase().includes(normalized)
       )
     );
-  }, [domains, query, seeds]);
+  }, [domains, query, seeds, vocabularyCache]);
 
   const selectedSeed = useMemo(() => seeds.find((seed) => seed.id === selectedId) ?? seeds[0], [seeds, selectedId]);
   const selectedOwner = selectedSeed ? locks[selectedSeed.id] : undefined;
@@ -623,20 +636,92 @@ export function ModelingWorkspacePage() {
     return true;
   }, [lockAll, relationships, saveRefinement, seeds, setLocalDomains, setLocalRelationships, setLocalSeeds]);
 
+  const createVocabularyEntry = useCallback(async (entry: VocabularyEntry) => {
+    if (!(await saveVocabularyEntry(entry, { create: true }))) {
+      window.alert("The term conflicts with an earlier business name or alias, or is invalid. Earlier definitions take priority.");
+      return false;
+    }
+    setLocalVocabularyEntries((current) => [...current, entry]);
+    return true;
+  }, [saveVocabularyEntry, setLocalVocabularyEntries]);
+
+  const changeVocabularyEntry = useCallback(async (entry: VocabularyEntry) => {
+    if (!(await saveVocabularyEntry(entry))) {
+      window.alert("The vocabulary entry could not be updated. Business names and aliases must not duplicate an earlier definition.");
+      return false;
+    }
+    setLocalVocabularyEntries((current) => current.map((item) => item.id === entry.id ? entry : item));
+    return true;
+  }, [saveVocabularyEntry, setLocalVocabularyEntries]);
+
+  const deleteVocabularyEntry = useCallback(async (entry: VocabularyEntry) => {
+    if (!(await saveVocabularyEntry(entry, { delete: true }))) return false;
+    setLocalVocabularyEntries((current) => current.filter((item) => item.id !== entry.id));
+    return true;
+  }, [saveVocabularyEntry, setLocalVocabularyEntries]);
+
+  const changeVocabularyBinding = useCallback(async (match: VocabularyMatch, binding: VocabularyBinding) => {
+    if (match.target === "domain") {
+      const domain = domains.find((item) => item.id === match.ownerId);
+      if (!domain) return false;
+      await changeDomain({ ...domain, vocabularyBinding: binding });
+      return true;
+    }
+    const seed = seeds.find((item) => item.id === match.ownerId);
+    if (!seed) return false;
+    if (locks[seed.id]?.id !== me.id && !(await lock(seed.id))) {
+      window.alert(`The model “${seed.title}” must be unlocked before its vocabulary binding can be changed.`);
+      return false;
+    }
+    if (match.target === "table") updateSeed(seed.id, { vocabularyBinding: binding });
+    else updateSeed(seed.id, { fields: seed.fields.map((field) => field.id === match.fieldId ? { ...field, vocabularyBinding: binding } : field) });
+    return true;
+  }, [changeDomain, domains, lock, locks, me.id, seeds, updateSeed]);
+
+  const replaceVocabularyAlias = useCallback(async (match: VocabularyMatch, segmentIndex: number) => {
+    const businessName = replaceAliasInSource(match, segmentIndex);
+    if (businessName === match.sourceText) return false;
+    if (match.target === "domain") {
+      const domain = domains.find((item) => item.id === match.ownerId);
+      if (!domain) return false;
+      await changeDomain({ ...domain, names: updateNameSet(domain.name, domain.names, "business", businessName), vocabularyBinding: undefined });
+      return true;
+    }
+    const seed = seeds.find((item) => item.id === match.ownerId);
+    if (!seed) return false;
+    if (locks[seed.id]?.id !== me.id && !(await lock(seed.id))) {
+      window.alert(`The model “${seed.title}” must be unlocked before its name can be corrected.`);
+      return false;
+    }
+    if (match.target === "table") {
+      updateSeed(seed.id, { names: updateNameSet(seed.title, seed.names, "business", businessName), vocabularyBinding: undefined });
+    } else {
+      updateSeed(seed.id, { fields: seed.fields.map((field) => field.id === match.fieldId ? { ...field, names: updateNameSet(field.name, field.names, "business", businessName), vocabularyBinding: undefined } : field) });
+    }
+    return true;
+  }, [changeDomain, domains, lock, locks, me.id, seeds, updateSeed]);
+
+  const openVocabulary = useCallback(() => { setVocabularyFocusKey(null); setVocabularyOpen(true); }, []);
+  const openVocabularyAt = useCallback((matchKey: string) => { setVocabularyFocusKey(matchKey); setVocabularyOpen(true); }, []);
+  const closeVocabulary = useCallback(() => { setVocabularyOpen(false); setVocabularyFocusKey(null); }, []);
+
   return (
-    <main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
+    <VocabularyNavigationProvider onOpen={openVocabularyAt}><main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
       <div className="flex h-full">
         <Sidebar
           query={query}
           cardDisplayMode={cardDisplayMode}
+          nameDisplayMode={nameDisplayMode}
           selectedSeed={selectedSeed}
           selectedOwner={selectedOwner}
           canEditSelected={canEditSelected}
           onQueryChange={setQuery}
           onCardDisplayModeChange={setCardDisplayMode}
+          onNameDisplayModeChange={setNameDisplayMode}
           onAddSeed={addSeedAt}
           onUpdateSeed={updateSeed}
           onOpenDomainDictionary={() => openDomainDictionary()}
+          onOpenVocabulary={openVocabulary}
         />
 
         <section className="flex min-w-0 flex-1 flex-col">
@@ -661,6 +746,8 @@ export function ModelingWorkspacePage() {
             domainCategories={domainCategories}
             selectedId={selectedId}
             displayMode={cardDisplayMode}
+            nameDisplayMode={nameDisplayMode}
+            vocabularyCache={vocabularyCache}
             locks={locks}
             me={me}
             remoteUsers={remoteUsers}
@@ -701,6 +788,8 @@ export function ModelingWorkspacePage() {
           domains={domains}
           categories={domainCategories}
           canEdit
+          initialNameDisplayMode={nameDisplayMode}
+          vocabularyCache={vocabularyCache}
           assignmentTarget={domainDictionaryContext.fieldId && domainDictionaryContext.label ? { fieldId: domainDictionaryContext.fieldId, label: domainDictionaryContext.label } : undefined}
           onChange={(domain) => void changeDomain(domain)}
           onCreateDomain={(name, categoryId) => void createDomain(name, categoryId)}
@@ -712,6 +801,24 @@ export function ModelingWorkspacePage() {
           onClose={closeDomainDictionary}
         />
       )}
-    </main>
+      {vocabularyOpen && (
+        <VocabularyDialog
+          seeds={seeds}
+          domains={domains}
+          entries={vocabularyEntries}
+          cache={vocabularyCache}
+          indexing={vocabularyIndexing}
+          namingPolicy={namingPolicy}
+          onNamingPolicyChange={(policy) => void saveNamingPolicy(policy)}
+          onCreateEntry={createVocabularyEntry}
+          onChangeEntry={changeVocabularyEntry}
+          onDeleteEntry={deleteVocabularyEntry}
+          onBindingChange={changeVocabularyBinding}
+          onAliasReplace={replaceVocabularyAlias}
+          focusMatchKey={vocabularyFocusKey}
+          onClose={closeVocabulary}
+        />
+      )}
+    </main></VocabularyNavigationProvider>
   );
 }

@@ -4,13 +4,14 @@ import type {
   RefObject
 } from "react";
 import type { Collaborator } from "../../collaboration";
-import type { CardDisplayMode, DataDomain, DomainCategory, DragState, ModelSeed, RefinementResult, Relationship, RelationshipReference, Viewport } from "../../features/modeling/types";
+import type { CardDisplayMode, DataDomain, DomainCategory, DragState, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference, Viewport } from "../../features/modeling/types";
 import { getCardBoundaryPoint, getRelationshipDropTarget, relationshipVisibleOnCanvas } from "../../features/modeling/utils";
 import { ModelSeedCard } from "./ModelSeedCard";
 import { RemoteCursor } from "./RemoteCursor";
 import { RelationshipLink } from "./RelationshipLink";
 import { RoughLink } from "./RoughLink";
 import { CanvasTips } from "./CanvasTips";
+import type { VocabularyMatchCache } from "../../features/modeling/vocabulary";
 
 type DiagramCanvasProps = {
   canvasRef: RefObject<HTMLDivElement | null>;
@@ -24,6 +25,8 @@ type DiagramCanvasProps = {
   domainCategories: DomainCategory[];
   selectedId: string;
   displayMode: CardDisplayMode;
+  nameDisplayMode: NameDisplayMode;
+  vocabularyCache: VocabularyMatchCache;
   locks: Record<string, Collaborator>;
   me: Collaborator;
   remoteUsers: Collaborator[];
@@ -56,6 +59,8 @@ export function DiagramCanvas({
   domainCategories,
   selectedId,
   displayMode,
+  nameDisplayMode,
+  vocabularyCache,
   locks,
   me,
   remoteUsers,
@@ -120,6 +125,8 @@ export function DiagramCanvas({
             selected={selectedId === seed.id}
             relationshipDropTarget={relationshipDropTargetId === seed.id}
             displayMode={displayMode}
+            nameDisplayMode={nameDisplayMode}
+            vocabularyCache={vocabularyCache}
             owner={locks[seed.id]}
             me={me}
             onPointerDown={onSeedPointerDown}

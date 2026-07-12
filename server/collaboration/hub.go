@@ -15,6 +15,8 @@ type Hub struct {
 	relationshipReferences []RelationshipReference
 	domains                []DataDomain
 	domainCategories       []DomainCategory
+	namingPolicy           NamingPolicy
+	vocabularyEntries      []VocabularyEntry
 	users                  map[string]Collaborator
 	locks                  map[string]string
 	streams                map[string]chan State
@@ -23,17 +25,135 @@ type Hub struct {
 func NewHub() *Hub {
 	return &Hub{
 		domainCategories: []DomainCategory{{ID: "primitive", Name: "Primitive", System: true}, {ID: "user-defined", Name: "User Defined"}},
-		users:            make(map[string]Collaborator),
-		locks:            make(map[string]string),
-		streams:          make(map[string]chan State),
+		namingPolicy: NamingPolicy{
+			TablePluralization: "singular",
+			TableJoinMode:      "separator", TableSeparator: "_",
+			FieldJoinMode: "separator", FieldSeparator: "_",
+			DomainJoinMode: "concatenate", DomainSeparator: "_",
+		},
+		users:   make(map[string]Collaborator),
+		locks:   make(map[string]string),
+		streams: make(map[string]chan State),
 	}
 }
 
+func (h *Hub) UpdateNamingPolicy(clientID string, next NamingPolicy) (NamingPolicyUpdate, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	user, ok := h.users[clientID]
+	if !ok {
+		return NamingPolicyUpdate{}, ErrUnknownClient
+	}
+	next = normalizeNamingPolicy(next, h.namingPolicy)
+	if !validNamingPolicy(next) {
+		return NamingPolicyUpdate{}, ErrNamingPolicyInvalid
+	}
+	h.namingPolicy = next
+	h.broadcastLocked()
+	return NamingPolicyUpdate{User: user, Policy: next}, nil
+}
+
+func (h *Hub) UpdateVocabulary(clientID string, next VocabularyEntry, create, remove bool) (VocabularyUpdate, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	user, ok := h.users[clientID]
+	if !ok {
+		return VocabularyUpdate{}, ErrUnknownClient
+	}
+	index := vocabularyIndex(h.vocabularyEntries, next.ID)
+	result := VocabularyUpdate{User: user, Entry: next}
+	if remove {
+		if index < 0 {
+			return VocabularyUpdate{}, ErrVocabularyNotFound
+		}
+		h.vocabularyEntries = append(h.vocabularyEntries[:index], h.vocabularyEntries[index+1:]...)
+		result.Deleted = true
+		h.broadcastLocked()
+		return result, nil
+	}
+	if next.ID == "" || strings.TrimSpace(next.BusinessName) == "" {
+		return VocabularyUpdate{}, ErrVocabularyInvalid
+	}
+	next.BusinessName = strings.TrimSpace(next.BusinessName)
+	next.SystemName = strings.TrimSpace(next.SystemName)
+	next.PhysicalName = strings.TrimSpace(next.PhysicalName)
+	next.Aliases = normalizedVocabularyAliases(next.Aliases)
+	if vocabularyTermConflicts(h.vocabularyEntries, index, next) {
+		return VocabularyUpdate{}, ErrVocabularyExists
+	}
+	if index >= 0 {
+		if create {
+			return VocabularyUpdate{}, ErrVocabularyExists
+		}
+		h.vocabularyEntries[index] = next
+	} else {
+		if !create {
+			return VocabularyUpdate{}, ErrVocabularyNotFound
+		}
+		h.vocabularyEntries = append(h.vocabularyEntries, next)
+		result.Created = true
+	}
+	h.broadcastLocked()
+	return result, nil
+}
+
+func normalizedVocabularyAliases(aliases []string) []string {
+	result := make([]string, 0, len(aliases))
+	for _, alias := range aliases {
+		if trimmed := strings.TrimSpace(alias); trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
+}
+
+func vocabularyTermConflicts(entries []VocabularyEntry, replacedIndex int, next VocabularyEntry) bool {
+	claimed := make(map[string]struct{})
+	for index, entry := range entries {
+		if index == replacedIndex {
+			continue
+		}
+		for _, term := range append([]string{entry.BusinessName}, entry.Aliases...) {
+			claimed[strings.ToLower(strings.TrimSpace(term))] = struct{}{}
+		}
+	}
+	local := make(map[string]struct{})
+	for _, term := range append([]string{next.BusinessName}, next.Aliases...) {
+		normalized := strings.ToLower(strings.TrimSpace(term))
+		if normalized == "" {
+			continue
+		}
+		if _, exists := claimed[normalized]; exists {
+			return true
+		}
+		if _, exists := local[normalized]; exists {
+			return true
+		}
+		local[normalized] = struct{}{}
+	}
+	return false
+}
+
 func (h *Hub) Join(user Collaborator, seeds []ModelSeed, relationships []Relationship, references []RelationshipReference, initialDomains ...[]DataDomain) JoinResult {
+	return h.join(user, false, seeds, relationships, references, initialDomains...)
+}
+
+func (h *Hub) JoinWithNameAssignment(user Collaborator, assignAvailableName bool, seeds []ModelSeed, relationships []Relationship, references []RelationshipReference, initialDomains ...[]DataDomain) JoinResult {
+	return h.join(user, assignAvailableName, seeds, relationships, references, initialDomains...)
+}
+
+func (h *Hub) join(user Collaborator, assignAvailableName bool, seeds []ModelSeed, relationships []Relationship, references []RelationshipReference, initialDomains ...[]DataDomain) JoinResult {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	_, alreadyJoined := h.users[user.ID]
+	existingUser, alreadyJoined := h.users[user.ID]
+	if assignAvailableName {
+		if alreadyJoined {
+			user.Name = existingUser.Name
+		} else {
+			user.Name = availableAnimalName(h.users)
+		}
+	}
 	user.Online = true
 	h.users[user.ID] = user
 	if len(h.seeds) == 0 && len(seeds) > 0 {
@@ -46,6 +166,7 @@ func (h *Hub) Join(user Collaborator, seeds []ModelSeed, relationships []Relatio
 	}
 	result := JoinResult{
 		State:         h.snapshotLocked(),
+		User:          user,
 		AlreadyJoined: alreadyJoined,
 		Online:        len(h.users),
 	}
@@ -448,6 +569,8 @@ func (h *Hub) snapshotLocked() State {
 		RelationshipReferences: append([]RelationshipReference(nil), h.relationshipReferences...),
 		Domains:                append([]DataDomain(nil), h.domains...),
 		DomainCategories:       append([]DomainCategory(nil), h.domainCategories...),
+		NamingPolicy:           h.namingPolicy,
+		VocabularyEntries:      append([]VocabularyEntry(nil), h.vocabularyEntries...),
 		Users:                  users,
 		Locks:                  locks,
 	}
@@ -483,6 +606,52 @@ func domainIndex(domains []DataDomain, id string) int {
 		}
 	}
 	return -1
+}
+
+func vocabularyIndex(entries []VocabularyEntry, id string) int {
+	for index, entry := range entries {
+		if entry.ID == id {
+			return index
+		}
+	}
+	return -1
+}
+
+func validNamingPolicy(policy NamingPolicy) bool {
+	if policy.TablePluralization != "singular" && policy.TablePluralization != "plural" {
+		return false
+	}
+	for _, mode := range []string{policy.TableJoinMode, policy.FieldJoinMode, policy.DomainJoinMode} {
+		if mode != "separator" && mode != "concatenate" {
+			return false
+		}
+	}
+	return len(policy.TableSeparator) <= 3 && len(policy.FieldSeparator) <= 3 && len(policy.DomainSeparator) <= 3
+}
+
+func normalizeNamingPolicy(policy, fallback NamingPolicy) NamingPolicy {
+	if policy.TablePluralization == "" {
+		policy.TablePluralization = fallback.TablePluralization
+	}
+	if policy.TableJoinMode == "" {
+		policy.TableJoinMode = fallback.TableJoinMode
+	}
+	if policy.TableSeparator == "" && policy.TableJoinMode == "separator" {
+		policy.TableSeparator = fallback.TableSeparator
+	}
+	if policy.FieldJoinMode == "" {
+		policy.FieldJoinMode = fallback.FieldJoinMode
+	}
+	if policy.FieldSeparator == "" && policy.FieldJoinMode == "separator" {
+		policy.FieldSeparator = fallback.FieldSeparator
+	}
+	if policy.DomainJoinMode == "" {
+		policy.DomainJoinMode = fallback.DomainJoinMode
+	}
+	if policy.DomainSeparator == "" && policy.DomainJoinMode == "separator" {
+		policy.DomainSeparator = fallback.DomainSeparator
+	}
+	return policy
 }
 
 func domainAssigned(seeds []ModelSeed, domainID string) bool {
@@ -690,9 +859,15 @@ func (h *Hub) broadcastLocked() {
 }
 
 func seedChanges(previous, next ModelSeed) []string {
-	changes := make([]string, 0, 9)
+	changes := make([]string, 0, 10)
 	if previous.Title != next.Title {
 		changes = append(changes, "title")
+	}
+	if !reflect.DeepEqual(previous.Names, next.Names) {
+		changes = append(changes, "names")
+	}
+	if !reflect.DeepEqual(previous.VocabularyBinding, next.VocabularyBinding) {
+		changes = append(changes, "vocabularyBinding")
 	}
 	if previous.Description != next.Description {
 		changes = append(changes, "description")

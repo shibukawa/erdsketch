@@ -14,6 +14,17 @@ ui:
     title: Domain dictionary
     height: same_as_ui:field-list-dialog
     layout: three_pane
+    name-display-mode:
+      requirement: requirement:name-display-switching
+      kind: segmented-control
+      options:
+        - business_name
+        - system_name
+        - physical_name
+      applies_to:
+        - domain_list
+        - domain_details
+        - component_domain_labels
     children:
       - kind: list
         id: domain-categories
@@ -100,4 +111,5 @@ constraints:
   - Assignment stores a data:data-domain reference, not copied type metadata.
   - code_set editing follows requirement:code-set-management and stores data:code-set.
   - code_set is projected as its selected scalar storage type, never as a database-native enum.
+  - Name display mode changes domain labels only and preserves definitions and assignments.
 ```

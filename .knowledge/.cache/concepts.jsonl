@@ -18,6 +18,7 @@
 {"category": "structure", "id": "data:data-ownership", "path": ".knowledge/data/data-ownership.md", "role": "supporting", "title": "Data Ownership", "type": "data"}
 {"category": "structure", "id": "data:dependent-entity", "path": ".knowledge/data/dependent-entity.md", "role": "supporting", "title": "Dependent Entity", "type": "data"}
 {"category": "structure", "id": "data:design-pattern", "path": ".knowledge/data/design-pattern.md", "role": "supporting", "title": "Design Pattern", "type": "data"}
+{"category": "structure", "id": "data:dfd-canvas", "path": ".knowledge/data/dfd-canvas.md", "role": "supporting", "title": "DFD Canvas", "type": "data"}
 {"category": "structure", "id": "data:domain-component", "path": ".knowledge/data/domain-component.md", "role": "supporting", "title": "Domain Component", "type": "data"}
 {"category": "structure", "id": "data:entity", "path": ".knowledge/data/entity.md", "role": "supporting", "title": "Entity", "type": "data"}
 {"category": "structure", "id": "data:extract-domain-pattern", "path": ".knowledge/data/extract-domain-pattern.md", "role": "supporting", "title": "Extract New Domain Pattern", "type": "data"}
@@ -31,6 +32,7 @@
 {"category": "structure", "id": "data:model-transformation", "path": ".knowledge/data/model-transformation.md", "role": "supporting", "title": "Model Transformation", "type": "data"}
 {"category": "structure", "id": "data:multiple-items-pattern", "path": ".knowledge/data/multiple-items-pattern.md", "role": "supporting", "title": "Multiple Items Pattern", "type": "data"}
 {"category": "structure", "id": "data:primitive-type", "path": ".knowledge/data/primitive-type.md", "role": "supporting", "title": "Primitive Type", "type": "data"}
+{"category": "structure", "id": "data:project", "path": ".knowledge/data/project.md", "role": "supporting", "title": "Modeling Project", "type": "data"}
 {"category": "structure", "id": "data:query-profile", "path": ".knowledge/data/query-profile.md", "role": "supporting", "title": "Query Profile", "type": "data"}
 {"category": "structure", "id": "data:reconciliation-pattern", "path": ".knowledge/data/reconciliation-pattern.md", "role": "supporting", "title": "Reconciliation Pattern", "type": "data"}
 {"category": "structure", "id": "data:reference-actual-value", "path": ".knowledge/data/reference-actual-value.md", "role": "supporting", "title": "Reference Value and Actual Value", "type": "data"}
@@ -43,12 +45,20 @@
 {"category": "structure", "id": "data:system-boundary-pattern", "path": ".knowledge/data/system-boundary-pattern.md", "role": "supporting", "title": "System Boundary Pattern", "type": "data"}
 {"category": "structure", "id": "data:time-characteristic", "path": ".knowledge/data/time-characteristic.md", "role": "supporting", "title": "Time Characteristic", "type": "data"}
 {"category": "structure", "id": "data:value-object", "path": ".knowledge/data/value-object.md", "role": "supporting", "title": "Value Object", "type": "data"}
+{"category": "structure", "id": "data:vocabulary-binding", "path": ".knowledge/data/vocabulary-binding.md", "role": "supporting", "title": "Vocabulary Binding", "type": "data"}
+{"category": "structure", "id": "data:vocabulary-entry", "path": ".knowledge/data/vocabulary-entry.md", "role": "supporting", "title": "Vocabulary Entry", "type": "data"}
+{"category": "structure", "id": "data:vocabulary-match-cache", "path": ".knowledge/data/vocabulary-match-cache.md", "role": "supporting", "title": "Vocabulary Match Cache", "type": "data"}
+{"category": "structure", "id": "data:vocabulary-suggestion", "path": ".knowledge/data/vocabulary-suggestion.md", "role": "supporting", "title": "Vocabulary Suggestion", "type": "data"}
+{"category": "structure", "id": "data:vocabulary-usage", "path": ".knowledge/data/vocabulary-usage.md", "role": "supporting", "title": "Vocabulary Usage", "type": "data"}
 {"category": "structure", "id": "data:volume-estimate", "path": ".knowledge/data/volume-estimate.md", "role": "supporting", "title": "Volume Estimate", "type": "data"}
 {"category": "interface", "id": "event:data-change-event", "path": ".knowledge/event/data-change-event.md", "role": "supporting", "title": "Data Change Event", "type": "event"}
 {"category": "behavior", "id": "flow:dfd-first-modeling", "path": ".knowledge/flow/dfd-first-modeling.md", "role": "primary", "title": "DFD First Modeling", "type": "flow"}
 {"category": "behavior", "id": "flow:modeling-lifecycle", "path": ".knowledge/flow/modeling-lifecycle.md", "role": "primary", "title": "Modeling Lifecycle", "type": "flow"}
+{"category": "behavior", "id": "flow:vocabulary-cache-lifecycle", "path": ".knowledge/flow/vocabulary-cache-lifecycle.md", "role": "primary", "title": "Vocabulary Cache Lifecycle", "type": "flow"}
+{"category": "behavior", "id": "flow:vocabulary-first-naming", "path": ".knowledge/flow/vocabulary-first-naming.md", "role": "primary", "title": "Vocabulary First Naming", "type": "flow"}
 {"category": "constraint", "id": "policy:deletion-policy", "path": ".knowledge/policy/deletion-policy.md", "role": "supporting", "title": "Deletion Policy", "type": "policy"}
 {"category": "objective", "id": "requirement:ai-review", "path": ".knowledge/requirement/ai-review.md", "role": "primary", "title": "AI Review", "type": "requirement"}
+{"category": "objective", "id": "requirement:ai-vocabulary-assistance", "path": ".knowledge/requirement/ai-vocabulary-assistance.md", "role": "primary", "title": "AI Vocabulary Assistance", "type": "requirement"}
 {"category": "objective", "id": "requirement:code-set-management", "path": ".knowledge/requirement/code-set-management.md", "role": "primary", "title": "Code Set Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:design-decision-history", "path": ".knowledge/requirement/design-decision-history.md", "role": "primary", "title": "Design Decision History", "type": "requirement"}
 {"category": "objective", "id": "requirement:domain-dictionary-management", "path": ".knowledge/requirement/domain-dictionary-management.md", "role": "primary", "title": "Domain Dictionary Management", "type": "requirement"}
@@ -60,11 +70,18 @@
 {"category": "objective", "id": "requirement:model-card-field-summary", "path": ".knowledge/requirement/model-card-field-summary.md", "role": "primary", "title": "Model Card Field Summary", "type": "requirement"}
 {"category": "objective", "id": "requirement:model-refinement-patterns", "path": ".knowledge/requirement/model-refinement-patterns.md", "role": "primary", "title": "Model Refinement Patterns", "type": "requirement"}
 {"category": "objective", "id": "requirement:model-state-management", "path": ".knowledge/requirement/model-state-management.md", "role": "primary", "title": "Model State Management", "type": "requirement"}
+{"category": "objective", "id": "requirement:name-display-switching", "path": ".knowledge/requirement/name-display-switching.md", "role": "primary", "title": "Name Display Switching", "type": "requirement"}
 {"category": "objective", "id": "requirement:normalization-support", "path": ".knowledge/requirement/normalization-support.md", "role": "primary", "title": "Normalization Support", "type": "requirement"}
 {"category": "objective", "id": "requirement:pattern-library-experience", "path": ".knowledge/requirement/pattern-library-experience.md", "role": "primary", "title": "Pattern Library Experience", "type": "requirement"}
 {"category": "objective", "id": "requirement:performance-design", "path": ".knowledge/requirement/performance-design.md", "role": "primary", "title": "Performance Design", "type": "requirement"}
 {"category": "objective", "id": "requirement:relationship-management", "path": ".knowledge/requirement/relationship-management.md", "role": "primary", "title": "Relationship Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:relationship-validation", "path": ".knowledge/requirement/relationship-validation.md", "role": "primary", "title": "Relationship Validation Inventory", "type": "requirement"}
+{"category": "objective", "id": "requirement:unmatched-name-presentation", "path": ".knowledge/requirement/unmatched-name-presentation.md", "role": "primary", "title": "Unmatched Name Presentation", "type": "requirement"}
+{"category": "objective", "id": "requirement:vocabulary-alias-correction", "path": ".knowledge/requirement/vocabulary-alias-correction.md", "role": "primary", "title": "Vocabulary Alias Correction", "type": "requirement"}
+{"category": "objective", "id": "requirement:vocabulary-cache-maintenance", "path": ".knowledge/requirement/vocabulary-cache-maintenance.md", "role": "primary", "title": "Vocabulary Cache Maintenance", "type": "requirement"}
+{"category": "objective", "id": "requirement:vocabulary-management", "path": ".knowledge/requirement/vocabulary-management.md", "role": "primary", "title": "Vocabulary Management", "type": "requirement"}
+{"category": "objective", "id": "requirement:vocabulary-segmentation-registration", "path": ".knowledge/requirement/vocabulary-segmentation-registration.md", "role": "primary", "title": "Vocabulary Segmentation Registration", "type": "requirement"}
+{"category": "objective", "id": "requirement:vocabulary-usage-inspection", "path": ".knowledge/requirement/vocabulary-usage-inspection.md", "role": "primary", "title": "Vocabulary Usage Inspection", "type": "requirement"}
 {"category": "constraint", "id": "rule:dependent-drag-follow", "path": ".knowledge/rule/dependent-drag-follow.md", "role": "supporting", "title": "Dependent Drag Follow", "type": "rule"}
 {"category": "constraint", "id": "rule:domain-expansion", "path": ".knowledge/rule/domain-expansion.md", "role": "supporting", "title": "Domain Expansion", "type": "rule"}
 {"category": "constraint", "id": "rule:domain-key-projection", "path": ".knowledge/rule/domain-key-projection.md", "role": "supporting", "title": "Domain Key Projection", "type": "rule"}
@@ -76,6 +93,8 @@
 {"category": "constraint", "id": "rule:relationship-move-lock", "path": ".knowledge/rule/relationship-move-lock.md", "role": "supporting", "title": "Relationship Move Lock", "type": "rule"}
 {"category": "constraint", "id": "rule:relationship-operation-history", "path": ".knowledge/rule/relationship-operation-history.md", "role": "supporting", "title": "Relationship Operation History", "type": "rule"}
 {"category": "constraint", "id": "rule:relationship-roughness", "path": ".knowledge/rule/relationship-roughness.md", "role": "supporting", "title": "Relationship Roughness", "type": "rule"}
+{"category": "constraint", "id": "rule:sql-naming-policy", "path": ".knowledge/rule/sql-naming-policy.md", "role": "supporting", "title": "SQL Naming Policy", "type": "rule"}
+{"category": "constraint", "id": "rule:vocabulary-resolution", "path": ".knowledge/rule/vocabulary-resolution.md", "role": "supporting", "title": "Vocabulary Resolution", "type": "rule"}
 {"category": "external", "id": "system:storage-target", "path": ".knowledge/system/storage-target.md", "role": "supporting", "title": "Storage Target", "type": "system"}
 {"category": "vocabulary", "id": "term:relationship-vocabulary", "path": ".knowledge/term/relationship-vocabulary.md", "role": "supporting", "title": "Relationship Vocabulary", "type": "term"}
 {"category": "vocabulary", "id": "term:vocabulary", "path": ".knowledge/term/vocabulary.md", "role": "supporting", "title": "Vocabulary", "type": "term"}
@@ -89,9 +108,11 @@
 {"category": "interface", "id": "ui:model-refinement-panel", "path": ".knowledge/ui/model-refinement-panel.md", "role": "primary", "title": "Model Refinement Panel", "type": "ui"}
 {"category": "interface", "id": "ui:normalization-view", "path": ".knowledge/ui/normalization-view.md", "role": "primary", "title": "Normalization View", "type": "ui"}
 {"category": "interface", "id": "ui:pattern-library-view", "path": ".knowledge/ui/pattern-library-view.md", "role": "primary", "title": "Pattern Library View", "type": "ui"}
+{"category": "interface", "id": "ui:project-settings-view", "path": ".knowledge/ui/project-settings-view.md", "role": "primary", "title": "Project Settings View", "type": "ui"}
 {"category": "interface", "id": "ui:relationship-view", "path": ".knowledge/ui/relationship-view.md", "role": "primary", "title": "Relationship View", "type": "ui"}
 {"category": "interface", "id": "ui:storage-view", "path": ".knowledge/ui/storage-view.md", "role": "primary", "title": "Storage View", "type": "ui"}
 {"category": "interface", "id": "ui:transformation-view", "path": ".knowledge/ui/transformation-view.md", "role": "primary", "title": "Transformation View", "type": "ui"}
+{"category": "interface", "id": "ui:vocabulary-registration-dialog", "path": ".knowledge/ui/vocabulary-registration-dialog.md", "role": "primary", "title": "Vocabulary Registration Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:vocabulary-view", "path": ".knowledge/ui/vocabulary-view.md", "role": "primary", "title": "Vocabulary View", "type": "ui"}
 {"category": "interface", "id": "ui:volume-view", "path": ".knowledge/ui/volume-view.md", "role": "primary", "title": "Volume View", "type": "ui"}
 {"category": "objective", "id": "vision:modeling-workbench", "path": ".knowledge/vision/modeling-workbench.md", "role": "primary", "title": "Modeling Workbench", "type": "vision"}

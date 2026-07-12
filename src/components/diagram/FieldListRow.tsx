@@ -6,11 +6,16 @@ import {
   type KeyboardEvent,
   type MouseEvent
 } from "react";
-import type { DataDomain, ModelField } from "../../features/modeling/types";
+import type { DataDomain, ModelField, NameDisplayMode } from "../../features/modeling/types";
 import { expandDomainField, getFieldEffectiveName, isPartitionKeyField } from "../../features/modeling/utils";
+import { getCachedDisplayName, type VocabularyMatchCache } from "../../features/modeling/vocabulary";
+import { VocabularyDisplayName } from "./VocabularyDisplayName";
 
 type FieldListRowProps = {
   field: ModelField;
+  modelId: string;
+  nameDisplayMode: NameDisplayMode;
+  vocabularyCache: VocabularyMatchCache;
   selected: boolean;
   refinementSelected: boolean;
   dragging: boolean;
@@ -35,6 +40,9 @@ type FieldListRowProps = {
 
 export function FieldListRow({
   field,
+  modelId,
+  nameDisplayMode,
+  vocabularyCache,
   selected,
   refinementSelected,
   dragging,
@@ -58,7 +66,8 @@ export function FieldListRow({
 }: FieldListRowProps) {
   const effectiveImportant = field.important || field.primaryKey;
   const expandedNames = expandDomainField(field, domains).map((item) => item.name);
-  const effectiveName = getFieldEffectiveName(field, domains);
+  const effectiveName = getCachedDisplayName(vocabularyCache, `field:${modelId}:${field.id}`, getFieldEffectiveName(field, domains, nameDisplayMode), field.names, nameDisplayMode);
+  const domainDisplayName = domain ? getCachedDisplayName(vocabularyCache, `domain:${domain.id}`, domain.name, domain.names, nameDisplayMode) : undefined;
   const partitionKey = isPartitionKeyField(field, domains);
   const handleSelect = useCallback(() => {
     if (canEdit) onSelect(field.id);
@@ -180,7 +189,7 @@ export function FieldListRow({
               autoFocus
               type="text"
               className="h-7 min-w-0 flex-1 rounded border border-blue-300 bg-white px-2 font-mono text-[13px] font-semibold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              value={field.name}
+              value={effectiveName}
               aria-label={`Edit ${effectiveName || "field"} name`}
               onChange={handleNameChange}
               onClick={handleInputClick}
@@ -188,12 +197,12 @@ export function FieldListRow({
             {domain && <label className="flex w-[118px] shrink-0 grow-0 cursor-pointer items-center justify-end gap-1.5 whitespace-nowrap text-[10px] font-semibold text-slate-600" onClick={handleInputClick}><input type="checkbox" className="checkbox checkbox-xs" checked={field.useDomainName ?? false} onChange={handleUseDomainNameChange} disabled={!canEdit} />Use domain name</label>}
           </div>
         ) : (
-          <span className="flex truncate px-2 font-mono text-[13px] font-semibold text-slate-700">{partitionKey && <Columns3 size={14} className="mr-1.5 shrink-0 text-cyan-700" aria-label="Partition key" />}{effectiveName || "Untitled field"}</span>
+          <span className="flex truncate px-2 font-mono text-[13px] font-semibold text-slate-700">{partitionKey && <Columns3 size={14} className="mr-1.5 shrink-0 text-cyan-700" aria-label="Partition key" />}<VocabularyDisplayName cache={vocabularyCache} cacheKey={`field:${modelId}:${field.id}`} legacyName={getFieldEffectiveName(field, domains, nameDisplayMode)} names={field.names} mode={nameDisplayMode} /></span>
         )}
       </div>
 
-      <span className={`truncate rounded px-2 py-1 font-mono text-[10px] font-semibold ${domainDropTarget ? "bg-blue-600 text-white ring-2 ring-blue-300" : "bg-slate-100 text-slate-600"}`} title={domain ? `Domain: ${domain.name}${domain.shape === "composite" ? `\nExpands to: ${expandedNames.join(", ")}` : ""}` : "No domain assigned"}>
-        {domain?.shape === "composite" ? `${domain.name} · ${expandedNames.length}` : domain?.name ?? "—"}
+      <span className={`truncate rounded px-2 py-1 font-mono text-[10px] font-semibold ${domainDropTarget ? "bg-blue-600 text-white ring-2 ring-blue-300" : "bg-slate-100 text-slate-600"}`} title={domain ? `Domain: ${domainDisplayName}${domain.shape === "composite" ? `\nExpands to: ${expandedNames.join(", ")}` : ""}` : "No domain assigned"}>
+        {domain ? <><VocabularyDisplayName cache={vocabularyCache} cacheKey={`domain:${domain.id}`} legacyName={domain.name} names={domain.names} mode={nameDisplayMode} />{domain.shape === "composite" && ` · ${expandedNames.length}`}</> : "—"}
       </span>
 
       <button

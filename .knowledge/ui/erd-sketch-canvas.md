@@ -100,11 +100,15 @@ ui:
       pan: drag_empty_space_or_trackpad_scroll
       zoom: trackpad_pinch_or_ctrl_wheel
     persistence:
+      owner: data:project
+      cardinality_per_project: many
       format: plain_text
       expected_files:
         - model/seeds/*.seed.yaml
 constraints:
   - Canvas is the product's primary surface.
+  - A project may own multiple ERD canvases.
+  - Each ERD canvas uses the project domain dictionary and vocabulary.
   - Users decide placement and grouping.
   - The app should not mechanically grid seeds.
   - Roughness expresses maturity and sketch state.

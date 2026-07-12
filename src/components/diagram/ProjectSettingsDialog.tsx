@@ -1,0 +1,14 @@
+import { useCallback, useState, type ChangeEvent, type FormEvent } from "react";
+import type { NamingPolicy } from "../../features/modeling/types";
+
+type ProjectSettingsDialogProps = { policy: NamingPolicy; onChange: (policy: NamingPolicy) => void; onClose: () => void };
+
+export function ProjectSettingsDialog({ policy, onChange, onClose }: ProjectSettingsDialogProps) {
+  const [draft, setDraft] = useState(policy);
+  const handleChange = useCallback((event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const key = event.currentTarget.dataset.key as keyof NamingPolicy;
+    setDraft((current) => ({ ...current, [key]: event.target.value }));
+  }, []);
+  const handleSubmit = useCallback((event: FormEvent) => { event.preventDefault(); onChange(draft); onClose(); }, [draft, onChange, onClose]);
+  return <div role="dialog" aria-modal="true" aria-labelledby="project-settings-title" className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/35 p-4"><form className="w-[min(92vw,700px)] rounded-xl border border-slate-200 bg-white shadow-2xl" onSubmit={handleSubmit}><header className="border-b border-slate-200 px-5 py-4"><h3 id="project-settings-title" className="text-lg font-bold">Project naming settings</h3></header><div className="space-y-4 p-5"><label className="flex items-center justify-between">Table pluralization<select data-key="tablePluralization" className="select select-bordered" value={draft.tablePluralization} onChange={handleChange}><option value="singular">Singular</option><option value="plural">Plural</option></select></label>{(["table", "field", "domain"] as const).map((target) => <div key={target} className="grid grid-cols-[120px_1fr_120px] items-center gap-3"><strong className="capitalize">{target}</strong><select data-key={`${target}JoinMode`} className="select select-bordered" value={draft[`${target}JoinMode`]} onChange={handleChange}><option value="separator">Use separator</option><option value="concatenate">Concatenate</option></select><input data-key={`${target}Separator`} className="input input-bordered font-mono" value={draft[`${target}Separator`]} disabled={draft[`${target}JoinMode`] === "concatenate"} maxLength={3} onChange={handleChange} /></div>)}<div className="rounded-lg bg-slate-50 p-3 text-sm"><strong>Preview</strong><div className="mt-2 grid grid-cols-3 gap-2 font-mono"><span>order{draft.tableJoinMode === "separator" ? draft.tableSeparator : ""}item</span><span>order{draft.fieldJoinMode === "separator" ? draft.fieldSeparator : ""}date</span><span>Order{draft.domainJoinMode === "separator" ? draft.domainSeparator : ""}ID</span></div></div></div><footer className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4"><button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button><button type="submit" className="btn btn-primary">Save settings</button></footer></form></div>;
+}

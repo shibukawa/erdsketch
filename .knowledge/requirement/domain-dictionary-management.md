@@ -8,6 +8,10 @@ Users rapidly capture domain names, then define and reuse domains in a dedicated
 
 ```yaml
 requirements:
+  scope:
+    owner: data:project
+    cardinality_per_project: one
+    shared_by_all_erd_and_dfd_canvases: true
   quick_entry:
     interaction: type_domain_name_then_press_Enter
     result: append_domain_and_keep_input_ready

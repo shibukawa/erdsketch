@@ -27,6 +27,7 @@ purposes:
   - expose_data_ownership
   - connect_erd_dwh_and_event_driven_architecture
   - support_lineage_and_governance_extensions
+canvas: data:dfd-canvas
 related:
   - event:data-change-event
   - system:storage-target

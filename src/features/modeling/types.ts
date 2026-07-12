@@ -2,9 +2,49 @@ export type EntityRole = "master" | "transaction" | "summary" | "history" | "wor
 
 export type Dependency = "independent" | "dependent";
 
+export type NameDisplayMode = "business" | "system" | "physical";
+
+export type NameSet = {
+  business: string;
+  system: string;
+  physical: string;
+};
+
+export type NamingPolicy = {
+  tablePluralization: "singular" | "plural";
+  tableJoinMode: "separator" | "concatenate";
+  tableSeparator: string;
+  fieldJoinMode: "separator" | "concatenate";
+  fieldSeparator: string;
+  domainJoinMode: "separator" | "concatenate";
+  domainSeparator: string;
+};
+
+export type VocabularyEntry = {
+  id: string;
+  businessName: string;
+  systemName: string;
+  physicalName: string;
+  meaning: string;
+  memo: string;
+  aliases: string[];
+};
+
+export type VocabularySegment =
+  | { type: "entry"; entryId: string; source: string; matchKind?: "preferred" | "alias" }
+  | { type: "unmatched"; text: string };
+
+export type VocabularyBinding = {
+  sourceText: string;
+  segments: VocabularySegment[];
+  manual: boolean;
+};
+
 export type ModelField = {
   id: string;
   name: string;
+  names?: NameSet;
+  vocabularyBinding?: VocabularyBinding;
   primaryKey: boolean;
   important: boolean;
   domainId?: string;
@@ -98,6 +138,8 @@ export type DomainCategory = {
 export type DataDomain = {
   id: string;
   name: string;
+  names?: NameSet;
+  vocabularyBinding?: VocabularyBinding;
   categoryId: string;
   shape: DomainShape;
   primitiveType?: PrimitiveType;
@@ -155,6 +197,8 @@ export type CardDisplayMode = "description" | "key-fields";
 export type ModelSeed = {
   id: string;
   title: string;
+  names?: NameSet;
+  vocabularyBinding?: VocabularyBinding;
   description: string;
   fields: ModelField[];
   x: number;

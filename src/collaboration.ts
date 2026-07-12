@@ -1,5 +1,5 @@
 import { startTransition, useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
-import type { DataDomain, DomainCategory, RefinementResult, Relationship, RelationshipReference } from "./features/modeling/types";
+import type { DataDomain, DomainCategory, NamingPolicy, RefinementResult, Relationship, RelationshipReference, VocabularyEntry } from "./features/modeling/types";
 
 export type Collaborator = {
   id: string;
@@ -16,11 +16,12 @@ type CollaborationState<T> = {
   relationshipReferences: RelationshipReference[];
   domains: DataDomain[];
   domainCategories: DomainCategory[];
+  namingPolicy: NamingPolicy;
+  vocabularyEntries: VocabularyEntry[];
   users: Collaborator[];
   locks: Record<string, Collaborator>;
 };
 
-const animals = ["Lion", "Koara", "Panda", "Fox", "Otter", "Tiger", "Rabbit", "Falcon", "Dolphin", "Bear"];
 const colors = ["#e11d48", "#7c3aed", "#2563eb", "#0891b2", "#059669", "#ca8a04", "#ea580c", "#db2777"];
 
 function randomItem<T>(items: T[]) {
@@ -33,12 +34,8 @@ function getIdentity() {
     clientId = crypto.randomUUID();
     sessionStorage.setItem("erdsketch-client-id", clientId);
   }
-  let name = localStorage.getItem("erdsketch-user-name");
-  if (!name) {
-    name = randomItem(animals);
-    localStorage.setItem("erdsketch-user-name", name);
-  }
-  return { id: clientId, name, color: randomItem(colors), x: 0, y: 0, online: true };
+  const name = localStorage.getItem("erdsketch-user-name") ?? "";
+  return { user: { id: clientId, name, color: randomItem(colors), x: 0, y: 0, online: true }, assignAvailableName: !name };
 }
 
 async function post(path: string, body: unknown) {
@@ -50,13 +47,21 @@ async function post(path: string, body: unknown) {
 }
 
 export function useCollaboration<T extends { id: string }>(initialSeeds: T[], initialRelationships: Relationship[] = [], initialReferences: RelationshipReference[] = [], initialDomains: DataDomain[] = [], initialDomainCategories: DomainCategory[] = []) {
-  const [me, setMe] = useState<Collaborator>(() => getIdentity());
+  const [identity] = useState(getIdentity);
+  const [me, setMe] = useState<Collaborator>(identity.user);
   const [state, setState] = useState<CollaborationState<T>>({
     seeds: initialSeeds,
     relationships: initialRelationships,
     relationshipReferences: initialReferences,
     domains: initialDomains,
     domainCategories: initialDomainCategories,
+    namingPolicy: {
+      tablePluralization: "singular",
+      tableJoinMode: "separator", tableSeparator: "_",
+      fieldJoinMode: "separator", fieldSeparator: "_",
+      domainJoinMode: "concatenate", domainSeparator: "_"
+    },
+    vocabularyEntries: [],
     users: [],
     locks: {}
   });
@@ -84,7 +89,17 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[], in
         for (const pending of pendingSeedsRef.current.values()) {
           if (!serverIDs.has(pending.id)) seeds.push(pending);
         }
-        return { ...incoming, seeds };
+        return {
+          ...incoming,
+          namingPolicy: incoming.namingPolicy ?? {
+            tablePluralization: "singular",
+            tableJoinMode: "separator", tableSeparator: "_",
+            fieldJoinMode: "separator", fieldSeparator: "_",
+            domainJoinMode: "concatenate", domainSeparator: "_"
+          },
+          vocabularyEntries: incoming.vocabularyEntries ?? [],
+          seeds
+        };
       });
     });
   }, []);
@@ -112,12 +127,18 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[], in
       seeds: initialSeeds,
       relationships: initialRelationships,
       relationshipReferences: initialReferences,
-      domains: initialDomains
+      domains: initialDomains,
+      assignAvailableName: identity.assignAvailableName
     })
       .then(async (response) => {
         if (!response.ok) throw new Error("Could not join collaboration session");
         const joinedState = (await response.json()) as CollaborationState<T>;
         if (cancelled) return;
+        const assignedUser = joinedState.users.find((user) => user.id === sessionUser.id);
+        if (assignedUser) {
+          setMe(assignedUser);
+          if (identity.assignAvailableName) localStorage.setItem("erdsketch-user-name", assignedUser.name);
+        }
         joinedRef.current = true;
         handleIncomingState(joinedState);
         events = new EventSource(`/api/collaboration/events?clientId=${encodeURIComponent(sessionUser.id)}`);
@@ -131,7 +152,7 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[], in
       events?.close();
       if (cursorFrameRef.current !== undefined) cancelAnimationFrame(cursorFrameRef.current);
     };
-  }, [initialDomainCategories, initialDomains, initialReferences, initialRelationships, initialSeeds, me.id]);
+  }, [identity.assignAvailableName, initialDomainCategories, initialDomains, initialReferences, initialRelationships, initialSeeds, me.id]);
 
   const rename = useCallback(
     async (name: string) => {
@@ -297,6 +318,26 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[], in
     [me.id]
   );
 
+  const saveNamingPolicy = useCallback(async (policy: NamingPolicy) => {
+    const response = await post("/api/collaboration/naming-policy", { clientId: me.id, policy });
+    if (response.ok) setState((current) => ({ ...current, namingPolicy: policy }));
+    return response.ok;
+  }, [me.id]);
+
+  const saveVocabularyEntry = useCallback(async (entry: VocabularyEntry, options: { create?: boolean; delete?: boolean } = {}) => {
+    const response = await post("/api/collaboration/vocabulary", {
+      clientId: me.id,
+      entry,
+      create: options.create ?? false,
+      delete: options.delete ?? false
+    });
+    return response.ok;
+  }, [me.id]);
+
+  const setLocalVocabularyEntries = useCallback((next: VocabularyEntry[] | ((current: VocabularyEntry[]) => VocabularyEntry[])) => {
+    setState((current) => ({ ...current, vocabularyEntries: typeof next === "function" ? next(current.vocabularyEntries) : next }));
+  }, []);
+
   const saveRelationship = useCallback(
     async (relationship: Relationship, reference: RelationshipReference, options: { create?: boolean; delete?: boolean } = {}) => {
       const response = await post("/api/collaboration/relationship", {
@@ -325,6 +366,8 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[], in
     relationshipReferences: state.relationshipReferences,
     domains: state.domains,
     domainCategories: state.domainCategories,
+    namingPolicy: state.namingPolicy,
+    vocabularyEntries: state.vocabularyEntries,
     connected,
     rename,
     moveCursor,
@@ -337,9 +380,12 @@ export function useCollaboration<T extends { id: string }>(initialSeeds: T[], in
     saveRefinement,
     saveDomain,
     saveDomainCategory,
+    saveNamingPolicy,
+    saveVocabularyEntry,
     setLocalSeeds,
     setLocalRelationships,
     setLocalDomains,
-    setLocalDomainCategories
+    setLocalDomainCategories,
+    setLocalVocabularyEntries
   };
 }

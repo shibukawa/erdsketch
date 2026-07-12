@@ -5,6 +5,112 @@ import (
 	"testing"
 )
 
+func TestJoinAssignsDifferentAvailableAnimalNames(t *testing.T) {
+	hub := NewHub()
+	first := hub.JoinWithNameAssignment(Collaborator{ID: "first"}, true, nil, nil, nil)
+	second := hub.JoinWithNameAssignment(Collaborator{ID: "second"}, true, nil, nil, nil)
+	if first.User.Name == "" || second.User.Name == "" {
+		t.Fatalf("assigned names must not be empty: first=%q second=%q", first.User.Name, second.User.Name)
+	}
+	if first.User.Name == second.User.Name {
+		t.Fatalf("assigned names must differ: %q", first.User.Name)
+	}
+	custom := hub.JoinWithNameAssignment(Collaborator{ID: "custom", Name: "Architect"}, false, nil, nil, nil)
+	if custom.User.Name != "Architect" {
+		t.Fatalf("configured name changed: got %q", custom.User.Name)
+	}
+}
+
+func TestNamingPolicyDefaultsToSingularAndSynchronizes(t *testing.T) {
+	hub := NewHub()
+	joined := hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
+	if got := joined.State.NamingPolicy.TablePluralization; got != "singular" {
+		t.Fatalf("default pluralization: got %q, want singular", got)
+	}
+	if _, err := hub.UpdateNamingPolicy("lion", NamingPolicy{TablePluralization: "plural"}); err != nil {
+		t.Fatalf("update naming policy: %v", err)
+	}
+	if got := hub.snapshotLocked().NamingPolicy.TablePluralization; got != "plural" {
+		t.Fatalf("updated pluralization: got %q, want plural", got)
+	}
+	if _, err := hub.UpdateNamingPolicy("lion", NamingPolicy{TablePluralization: "sometimes"}); !errors.Is(err, ErrNamingPolicyInvalid) {
+		t.Fatalf("invalid naming policy: got %v, want %v", err, ErrNamingPolicyInvalid)
+	}
+}
+
+func TestVocabularyNamesPersistOnSeedsFieldsAndDomains(t *testing.T) {
+	hub := NewHub()
+	domain := DataDomain{ID: "customer-id", Name: "Customer ID", Names: &NameSet{Business: "顧客番号", System: "顧客ID", Physical: "customer_id"}, Shape: "scalar", PrimitiveType: "varchar"}
+	seed := ModelSeed{ID: "customer", Title: "Customer", Names: &NameSet{Business: "顧客", System: "顧客", Physical: "customer"}, Fields: []ModelField{{ID: "id", Name: "id", Names: &NameSet{Business: "顧客番号", System: "顧客ID", Physical: "customer_id"}}}}
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{seed}, nil, nil, []DataDomain{domain})
+	state := hub.snapshotLocked()
+	if state.Seeds[0].Names == nil || state.Seeds[0].Names.Physical != "customer" || state.Seeds[0].Fields[0].Names == nil || state.Seeds[0].Fields[0].Names.Business != "顧客番号" {
+		t.Fatalf("seed vocabulary names: %+v", state.Seeds[0])
+	}
+	if state.Domains[0].Names == nil || state.Domains[0].Names.System != "顧客ID" {
+		t.Fatalf("domain vocabulary names: %+v", state.Domains[0])
+	}
+}
+
+func TestVocabularyEntriesAreProjectOwnedAndRejectDuplicateBusinessNames(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
+	entry := VocabularyEntry{ID: "shopping", BusinessName: "Shopping", SystemName: "Shopping", PhysicalName: "shopping"}
+	if _, err := hub.UpdateVocabulary("lion", entry, true, false); err != nil {
+		t.Fatalf("create vocabulary: %v", err)
+	}
+	duplicate := VocabularyEntry{ID: "shopping-duplicate", BusinessName: "shopping"}
+	if _, err := hub.UpdateVocabulary("lion", duplicate, true, false); !errors.Is(err, ErrVocabularyExists) {
+		t.Fatalf("duplicate vocabulary: got %v, want %v", err, ErrVocabularyExists)
+	}
+	entry.Meaning = "Purchasing activity"
+	if _, err := hub.UpdateVocabulary("lion", entry, false, false); err != nil {
+		t.Fatalf("update vocabulary: %v", err)
+	}
+	state := hub.snapshotLocked()
+	if len(state.VocabularyEntries) != 1 || state.VocabularyEntries[0].Meaning != "Purchasing activity" {
+		t.Fatalf("vocabulary state: %+v", state.VocabularyEntries)
+	}
+	if _, err := hub.UpdateVocabulary("lion", entry, false, true); err != nil {
+		t.Fatalf("delete vocabulary: %v", err)
+	}
+	if got := len(hub.snapshotLocked().VocabularyEntries); got != 0 {
+		t.Fatalf("vocabulary count after delete: %d", got)
+	}
+}
+
+func TestVocabularyTermsUseFirstDefinitionAcrossBusinessNamesAndAliases(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
+	preferred := VocabularyEntry{ID: "item", BusinessName: "Item", Aliases: []string{"Product"}}
+	if _, err := hub.UpdateVocabulary("lion", preferred, true, false); err != nil {
+		t.Fatalf("create preferred vocabulary: %v", err)
+	}
+	for _, conflicting := range []VocabularyEntry{
+		{ID: "product", BusinessName: "product"},
+		{ID: "goods", BusinessName: "Goods", Aliases: []string{"ITEM"}},
+		{ID: "stock", BusinessName: "Stock", Aliases: []string{" product "}},
+	} {
+		if _, err := hub.UpdateVocabulary("lion", conflicting, true, false); !errors.Is(err, ErrVocabularyExists) {
+			t.Errorf("conflicting term %+v: got %v, want %v", conflicting, err, ErrVocabularyExists)
+		}
+	}
+	preferred.Aliases = []string{"Item"}
+	if _, err := hub.UpdateVocabulary("lion", preferred, false, false); !errors.Is(err, ErrVocabularyExists) {
+		t.Fatalf("alias matching its own business name: got %v, want %v", err, ErrVocabularyExists)
+	}
+}
+
+func TestVocabularyBindingPersistsOnModelNames(t *testing.T) {
+	binding := &VocabularyBinding{SourceText: "Shopping Item", Manual: true, Segments: []VocabularySegment{{Type: "entry", EntryID: "shopping", Source: "Shopping"}, {Type: "entry", EntryID: "item", Source: "Item"}}}
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "items", Title: "Shopping Item", VocabularyBinding: binding, Fields: []ModelField{{ID: "code", Name: "Item Code", VocabularyBinding: binding}}}}, nil, nil, []DataDomain{{ID: "item-code", Name: "Item Code", Shape: "scalar", VocabularyBinding: binding}})
+	state := hub.snapshotLocked()
+	if state.Seeds[0].VocabularyBinding == nil || !state.Seeds[0].VocabularyBinding.Manual || state.Seeds[0].Fields[0].VocabularyBinding == nil || state.Domains[0].VocabularyBinding == nil {
+		t.Fatalf("bindings not preserved: %+v", state)
+	}
+}
+
 func TestSeedUpdateRequiresOwningLock(t *testing.T) {
 	hub := NewHub()
 	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order", Title: "Order"}}, nil, nil)
