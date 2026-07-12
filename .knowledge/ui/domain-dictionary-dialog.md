@@ -58,6 +58,19 @@ ui:
             controls:
               - primitive_type
               - primitive_parameters
+            primitive_type_states:
+              code_set:
+                controls:
+                  - storage_type_select_varchar_decimal_integer
+                  - code_name_quick_entry_with_Enter
+                  - ordered_code_entries
+                entry_controls:
+                  - name
+                  - value
+                interactions:
+                  - add_code_name_on_Enter_when_not_ime_composing
+                  - edit_name_and_value
+                  - drag_to_reorder_code
           multi_field:
             controls:
               - component_name_quick_entry_with_Enter
@@ -85,4 +98,6 @@ constraints:
   - Each component type may remain undefined or select a primitive or single-field domain.
   - A component cannot select a multi-field domain.
   - Assignment stores a data:data-domain reference, not copied type metadata.
+  - code_set editing follows requirement:code-set-management and stores data:code-set.
+  - code_set is projected as its selected scalar storage type, never as a database-native enum.
 ```

@@ -38,7 +38,14 @@ kinds:
   datetime_with_timezone: {}
   boolean: {}
   uuid: {}
+  code_set:
+    definition: data:code-set
+    base_types:
+      - varchar
+      - decimal
+      - integer
 constraints:
   - Primitive types are generic built-in data:data-domain entries.
   - Storage-specific types are chosen only during projection or export.
+  - code_set is a semantic named-value vocabulary, not a database-native enum.
 ```

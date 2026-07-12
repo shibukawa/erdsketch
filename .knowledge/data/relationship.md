@@ -4,10 +4,13 @@ type: data
 title: Relationship
 ---
 
-Relationship is a first-class semantic association between models, not a SQL table or foreign-key primitive.
+Relationship is a first-class semantic association between models. Its kind determines whether physical SQL projection creates a foreign key, expands inherited attributes, or has no effect.
 
 ```yaml
 relationship_types:
+  - foreign_key
+  - inherit
+  - label
   - has-a
   - is-a
   - Aggregation
@@ -50,6 +53,10 @@ rendering:
   roughness: rule:relationship-roughness
 export_projection:
   timing: code_export_only
+  by_kind:
+    foreign_key: existing_cardinality_based_projection
+    inherit: rule:inherit-attribute-projection
+    label: none
   one_to_many_or_many_to_one:
     relationship_name_becomes: foreign_key_reference_name
   many_to_many:
@@ -92,6 +99,18 @@ dependent_fields:
   - identity_scope
 is_a_fields:
   - inheritance_mapping
+reference_kinds:
+  foreign_key:
+    sql_effect: foreign_key_or_join_table
+  inherit:
+    direction: child_to_parent
+    sql_effect: copy_all_parent_attributes_into_child_table
+    projection: rule:inherit-attribute-projection
+  label:
+    sql_effect: none
+    display: relationship_name_only
+    multiplicity: none
+    reading_direction: none
 inheritance_mapping_values:
   - Single Table
   - Class Table
@@ -100,9 +119,14 @@ examples:
   - source: Order
     type: has-a
     target: OrderLine
-  - source: Customer
-    type: is-a
-    target: CorporateCustomer
+  - source: CorporateCustomer
+    type: inherit
+    target: Customer
+    direction: child_to_parent
+  - source: OrderHistory
+    type: label
+    target: Order
+    name: history
   - source: Order
     type: Composition
     target: OrderLine
@@ -121,4 +145,5 @@ related:
   - data:relationship-reference
   - requirement:relationship-validation
   - rule:relationship-roughness
+  - rule:inherit-attribute-projection
 ```

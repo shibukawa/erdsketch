@@ -74,6 +74,7 @@ export type ExpandedDomainField = {
 export type Multiplicity = "0..1" | "1" | "0..*" | "1..*";
 
 export type RelationshipDirection = "source-to-target" | "target-to-source";
+export type RelationshipKind = "foreign-key" | "inherit" | "label";
 
 export type Relationship = {
   id: string;
@@ -83,6 +84,7 @@ export type Relationship = {
   sourceMultiplicity: Multiplicity;
   targetMultiplicity: Multiplicity;
   direction: RelationshipDirection;
+  kind: RelationshipKind;
 };
 
 export type RelationshipReference = {
@@ -90,6 +92,7 @@ export type RelationshipReference = {
   relationshipId: string;
   primaryKey: boolean;
   foreignKey: boolean;
+  hiddenOnModelIds: string[];
 };
 
 export type CardDisplayMode = "description" | "key-fields";
@@ -131,6 +134,7 @@ export type DragState =
       seedIds: string[];
       origins: Record<string, { x: number; y: number }>;
       groupLocked: boolean;
+      ready: boolean;
     }
   | {
       type: "relationship";

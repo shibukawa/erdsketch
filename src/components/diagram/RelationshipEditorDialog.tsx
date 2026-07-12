@@ -1,7 +1,7 @@
 import { ArrowLeftRight, Link2, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent, type SyntheticEvent } from "react";
 import { createPortal } from "react-dom";
-import type { ModelSeed, Multiplicity, Relationship, RelationshipDirection } from "../../features/modeling/types";
+import type { ModelSeed, Multiplicity, Relationship, RelationshipDirection, RelationshipKind } from "../../features/modeling/types";
 
 const multiplicities: Multiplicity[] = ["0..1", "1", "0..*", "1..*"];
 
@@ -16,11 +16,11 @@ type RelationshipEditorDialogProps = {
 };
 
 export function RelationshipEditorDialog({ relationship, source, target, canDelete, onSave, onDelete, onClose }: RelationshipEditorDialogProps) {
-  const [draft, setDraft] = useState(relationship);
+  const [draft, setDraft] = useState<Relationship>(() => ({ ...relationship, kind: relationship.kind ?? "foreign-key" }));
   const dialogRef = useRef<HTMLDialogElement | null>(null);
 
   useEffect(() => {
-    setDraft(relationship);
+    setDraft({ ...relationship, kind: relationship.kind ?? "foreign-key" });
   }, [relationship]);
 
   useEffect(() => {
@@ -36,6 +36,9 @@ export function RelationshipEditorDialog({ relationship, source, target, canDele
   }, []);
   const handleTargetMultiplicity = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
     setDraft((current) => ({ ...current, targetMultiplicity: event.target.value as Multiplicity }));
+  }, []);
+  const handleKindChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
+    setDraft((current) => ({ ...current, kind: event.target.value as RelationshipKind }));
   }, []);
   const handleDirection = useCallback(() => {
     setDraft((current) => ({
@@ -86,7 +89,18 @@ export function RelationshipEditorDialog({ relationship, source, target, canDele
             <span className="text-sm font-bold text-slate-700">Name</span>
             <input autoFocus className="input input-bordered mt-2 w-full" value={draft.name} onChange={handleNameChange} placeholder="e.g. ownership" />
           </label>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+          <div>
+            <label className="block">
+              <span className="text-sm font-bold text-slate-700">Reference kind</span>
+              <select className="select select-bordered mt-2 w-full" value={draft.kind} onChange={handleKindChange}>
+                <option value="foreign-key">Foreign key</option>
+                <option value="inherit">Inherit</option>
+                <option value="label">Label</option>
+              </select>
+            </label>
+          </div>
+          {draft.kind === "inherit" && <p className="rounded-lg bg-violet-50 px-3 py-2 text-xs text-violet-900">The source is the child and the target is the parent. SQL export copies every effective parent field into the child table.</p>}
+          {draft.kind !== "label" && <><div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
             <label className="block">
               <span className="block truncate text-sm font-bold text-slate-700">{source?.title ?? "Source"}</span>
               <select className="select select-bordered mt-2 w-full" value={draft.sourceMultiplicity} onChange={handleSourceMultiplicity}>
@@ -113,10 +127,10 @@ export function RelationshipEditorDialog({ relationship, source, target, canDele
                 {target?.title ?? "Target"} → {source?.title ?? "Source"}
               </button>
             </div>
-          </fieldset>
+          </fieldset></>}
           <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
             <Link2 size={13} className="mr-1 inline" />
-            The arrow reads {draft.direction === "source-to-target" ? `${source?.title ?? "Source"} → ${target?.title ?? "Target"}` : `${target?.title ?? "Target"} → ${source?.title ?? "Source"}`}. This remains a relationship entity; SQL projection is deferred to export.
+            {draft.kind === "label" ? "A label relationship displays only its name; multiplicity and reading direction are not shown." : <>The arrow reads {draft.direction === "source-to-target" ? `${source?.title ?? "Source"} → ${target?.title ?? "Target"}` : `${target?.title ?? "Target"} → ${source?.title ?? "Source"}`}. This remains a relationship entity; SQL projection is deferred to export.</>}
           </p>
         </div>
         <footer className="flex items-center justify-between border-t border-slate-200 px-5 py-4">

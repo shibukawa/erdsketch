@@ -37,8 +37,8 @@ export const roleMeta: Record<EntityRole, { label: string; fill: string; stroke:
 };
 
 export const maturedLevelSteps = [0.5, 1.25, 3.5, 6];
-export const cardWidth = 270;
-export const cardHeight = 214;
+export const cardWidth = 300;
+export const cardHeight = 194;
 
 export const initialDomainCategories: DomainCategory[] = [
   { id: "primitive", name: "Primitive", system: true },
@@ -146,7 +146,8 @@ export const initialRelationships: Relationship[] = [
     targetId: "order",
     sourceMultiplicity: "1",
     targetMultiplicity: "0..*",
-    direction: "source-to-target"
+    direction: "source-to-target",
+    kind: "foreign-key"
   },
   {
     id: "order-items",
@@ -155,7 +156,8 @@ export const initialRelationships: Relationship[] = [
     targetId: "order-item",
     sourceMultiplicity: "1",
     targetMultiplicity: "1..*",
-    direction: "source-to-target"
+    direction: "source-to-target",
+    kind: "foreign-key"
   },
   {
     id: "order-products",
@@ -164,7 +166,8 @@ export const initialRelationships: Relationship[] = [
     targetId: "product",
     sourceMultiplicity: "0..*",
     targetMultiplicity: "0..*",
-    direction: "source-to-target"
+    direction: "source-to-target",
+    kind: "foreign-key"
   }
 ];
 
@@ -172,5 +175,6 @@ export const initialRelationshipReferences: RelationshipReference[] = initialRel
   id: `${relationship.id}-reference`,
   relationshipId: relationship.id,
   primaryKey: false,
-  foreignKey: true
+  foreignKey: true,
+  hiddenOnModelIds: []
 }));

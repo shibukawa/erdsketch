@@ -7,6 +7,7 @@
 {"category": "concept", "id": "concept:pattern-discovery", "path": ".knowledge/concept/pattern-discovery.md", "role": "supporting", "title": "Pattern Discovery", "type": "concept"}
 {"category": "concept", "id": "concept:pattern-heuristic", "path": ".knowledge/concept/pattern-heuristic.md", "role": "supporting", "title": "Pattern Heuristic", "type": "concept"}
 {"category": "structure", "id": "data:attribute", "path": ".knowledge/data/attribute.md", "role": "supporting", "title": "Attribute", "type": "data"}
+{"category": "structure", "id": "data:code-set", "path": ".knowledge/data/code-set.md", "role": "supporting", "title": "Code Set", "type": "data"}
 {"category": "structure", "id": "data:concept-projection", "path": ".knowledge/data/concept-projection.md", "role": "supporting", "title": "Concept Projection", "type": "data"}
 {"category": "structure", "id": "data:correction-pattern", "path": ".knowledge/data/correction-pattern.md", "role": "supporting", "title": "Correction Pattern", "type": "data"}
 {"category": "structure", "id": "data:data-domain", "path": ".knowledge/data/data-domain.md", "role": "supporting", "title": "Data Domain", "type": "data"}
@@ -40,6 +41,7 @@
 {"category": "behavior", "id": "flow:modeling-lifecycle", "path": ".knowledge/flow/modeling-lifecycle.md", "role": "primary", "title": "Modeling Lifecycle", "type": "flow"}
 {"category": "constraint", "id": "policy:deletion-policy", "path": ".knowledge/policy/deletion-policy.md", "role": "supporting", "title": "Deletion Policy", "type": "policy"}
 {"category": "objective", "id": "requirement:ai-review", "path": ".knowledge/requirement/ai-review.md", "role": "primary", "title": "AI Review", "type": "requirement"}
+{"category": "objective", "id": "requirement:code-set-management", "path": ".knowledge/requirement/code-set-management.md", "role": "primary", "title": "Code Set Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:design-decision-history", "path": ".knowledge/requirement/design-decision-history.md", "role": "primary", "title": "Design Decision History", "type": "requirement"}
 {"category": "objective", "id": "requirement:domain-dictionary-management", "path": ".knowledge/requirement/domain-dictionary-management.md", "role": "primary", "title": "Domain Dictionary Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:domain-name-field-naming", "path": ".knowledge/requirement/domain-name-field-naming.md", "role": "primary", "title": "Domain Name Field Naming", "type": "requirement"}
@@ -59,6 +61,7 @@
 {"category": "constraint", "id": "rule:domain-key-projection", "path": ".knowledge/rule/domain-key-projection.md", "role": "supporting", "title": "Domain Key Projection", "type": "rule"}
 {"category": "constraint", "id": "rule:entity-classification", "path": ".knowledge/rule/entity-classification.md", "role": "supporting", "title": "Entity Classification", "type": "rule"}
 {"category": "constraint", "id": "rule:field-list-sort", "path": ".knowledge/rule/field-list-sort.md", "role": "supporting", "title": "Field List Sort", "type": "rule"}
+{"category": "constraint", "id": "rule:inherit-attribute-projection", "path": ".knowledge/rule/inherit-attribute-projection.md", "role": "supporting", "title": "Inherit Attribute Projection", "type": "rule"}
 {"category": "constraint", "id": "rule:model-seed-labels", "path": ".knowledge/rule/model-seed-labels.md", "role": "supporting", "title": "Model Seed Structured Hints", "type": "rule"}
 {"category": "constraint", "id": "rule:primary-key-favorite", "path": ".knowledge/rule/primary-key-favorite.md", "role": "supporting", "title": "Primary Key Is Favorite", "type": "rule"}
 {"category": "constraint", "id": "rule:relationship-move-lock", "path": ".knowledge/rule/relationship-move-lock.md", "role": "supporting", "title": "Relationship Move Lock", "type": "rule"}

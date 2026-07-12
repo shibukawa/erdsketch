@@ -16,6 +16,7 @@ rules:
       edge_direction: dependent_to_independent
       recursive: true
       reverse_edges: excluded
+      hidden_relationships: excluded
   when_dragging_independent:
     move:
       - dragged_independent_model
@@ -38,6 +39,7 @@ rules:
 constraints:
   - Relationship dependency direction determines the transitive movement set.
   - Every reachable model moves even when outside selection bounds or viewport.
+  - A hidden relationship stops traversal; models reachable only beyond that relationship do not move.
   - Traversal never follows an independent-to-dependent reverse edge.
   - Cycles require no special domain restriction; identity deduplication keeps traversal finite.
 related:

@@ -6,8 +6,7 @@ import {
   useRef,
   useState,
   type MouseEvent,
-  type PointerEvent,
-  type WheelEvent
+  type PointerEvent
 } from "react";
 import { useCollaboration } from "../collaboration";
 import { DiagramCanvas } from "../components/diagram/DiagramCanvas";
@@ -71,6 +70,17 @@ export function ModelingWorkspacePage() {
   const remoteUsers = useMemo(
     () => users.filter((user) => user.id !== me.id && (user.x !== 0 || user.y !== 0)),
     [me.id, users]
+  );
+
+  const unlockOwnedExcept = useCallback(
+    async (keepSeedIds: string[]) => {
+      const keep = new Set(keepSeedIds);
+      const seedIds = Object.entries(locks)
+        .filter(([seedId, owner]) => owner.id === me.id && !keep.has(seedId))
+        .map(([seedId]) => seedId);
+      if (seedIds.length > 0) await unlockAll(seedIds);
+    },
+    [locks, me.id, unlockAll]
   );
 
   const updateSeed = useCallback(
@@ -229,7 +239,8 @@ export function ModelingWorkspacePage() {
         id: `${relationship.id}-reference`,
         relationshipId: relationship.id,
         primaryKey: false,
-        foreignKey: false
+        foreignKey: false,
+        hiddenOnModelIds: []
       };
       const nextRelationships = create ? [...relationships, relationship] : relationships.map((item) => (item.id === relationship.id ? relationship : item));
       const nextReferences = existingReference ? relationshipReferences : [...relationshipReferences, reference];
@@ -237,17 +248,23 @@ export function ModelingWorkspacePage() {
       if (saved) {
         setLocalRelationships(nextRelationships, nextReferences);
         setEditingRelationship(null);
+        await unlockOwnedExcept([relationship.sourceId]);
       } else {
         window.alert("The relationship could not be saved. Check that both models are still locked by you.");
       }
     },
-    [relationshipReferences, relationships, saveRelationship, setLocalRelationships]
+    [relationshipReferences, relationships, saveRelationship, setLocalRelationships, unlockOwnedExcept]
   );
+
+  const closeRelationshipEditor = useCallback(() => {
+    if (editingRelationship) void unlockOwnedExcept([editingRelationship.relationship.sourceId]);
+    setEditingRelationship(null);
+  }, [editingRelationship, unlockOwnedExcept]);
 
   const deleteRelationship = useCallback(
     async (relationship: Relationship) => {
       const reference = getRelationshipReference(relationshipReferences, relationship.id) ?? {
-        id: `${relationship.id}-reference`, relationshipId: relationship.id, primaryKey: false, foreignKey: false
+        id: `${relationship.id}-reference`, relationshipId: relationship.id, primaryKey: false, foreignKey: false, hiddenOnModelIds: []
       };
       if (!(await lockAll([relationship.sourceId, relationship.targetId]))) return;
       if (await saveRelationship(relationship, reference, { delete: true })) {
@@ -330,10 +347,11 @@ export function ModelingWorkspacePage() {
       });
 
       if (await saveSeed(seed, true)) {
+        await unlockOwnedExcept([seed.id]);
         await lock(seed.id);
       }
     },
-    [lock, saveSeed, screenToWorld, seeds, setLocalSeeds]
+    [lock, saveSeed, screenToWorld, seeds, setLocalSeeds, unlockOwnedExcept]
   );
 
   const updateScale = useCallback(
@@ -357,7 +375,7 @@ export function ModelingWorkspacePage() {
   );
 
   const handleWheel = useCallback(
-    (event: WheelEvent<HTMLDivElement>) => {
+    (event: WheelEvent) => {
       event.preventDefault();
       if (event.ctrlKey || event.metaKey) {
         updateScale(viewport.scale * (event.deltaY > 0 ? 0.9 : 1.1), {
@@ -374,6 +392,13 @@ export function ModelingWorkspacePage() {
     },
     [updateScale, viewport.scale]
   );
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", handleWheel);
+  }, [handleWheel]);
 
   const handleCanvasPointerDown = useCallback(
     (event: PointerEvent<HTMLDivElement>) => {
@@ -399,13 +424,26 @@ export function ModelingWorkspacePage() {
       const target = event.target as HTMLElement;
       const noDrag = !!target.closest("[data-no-drag='true']");
       const point = screenToWorld(event.clientX, event.clientY);
+      const relatedSeedIDs = getRelatedDragSeedIDs(seed, seeds, relationships, relationshipReferences);
       if (!noDrag) {
         try {
           event.currentTarget.setPointerCapture(event.pointerId);
         } catch {
           return;
         }
+        setDragState({
+          type: "seed",
+          pointerId: event.pointerId,
+          seedId: seed.id,
+          offsetX: point.x - seed.x,
+          offsetY: point.y - seed.y,
+          seedIds: relatedSeedIDs,
+          origins: Object.fromEntries(seeds.filter((item) => relatedSeedIDs.includes(item.id)).map((item) => [item.id, { x: item.x, y: item.y }])),
+          groupLocked: false,
+          ready: false
+        });
       }
+      await unlockOwnedExcept([seed.id]);
       if (!owner && !(await lock(seed.id))) {
         if (!noDrag && event.currentTarget.hasPointerCapture(event.pointerId)) {
           event.currentTarget.releasePointerCapture(event.pointerId);
@@ -416,30 +454,23 @@ export function ModelingWorkspacePage() {
         if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) target.focus();
         return;
       }
-      const relatedSeedIDs = getRelatedDragSeedIDs(seed, seeds, relationships);
-      setDragState({
-        type: "seed",
-        pointerId: event.pointerId,
-        seedId: seed.id,
-        offsetX: point.x - seed.x,
-        offsetY: point.y - seed.y,
-        seedIds: relatedSeedIDs,
-        origins: Object.fromEntries(seeds.filter((item) => relatedSeedIDs.includes(item.id)).map((item) => [item.id, { x: item.x, y: item.y }])),
-        groupLocked: relatedSeedIDs.length === 1
-      });
+      setDragState((current) => current?.type === "seed" && current.pointerId === event.pointerId
+        ? { ...current, groupLocked: relatedSeedIDs.length === 1, ready: true }
+        : current);
     },
-    [lock, locks, me.id, relationships, screenToWorld, seeds]
+    [lock, locks, me.id, relationshipReferences, relationships, screenToWorld, seeds, unlockOwnedExcept]
   );
 
   const handleRelationshipPointerDown = useCallback(
-    (event: PointerEvent<HTMLButtonElement>, seed: ModelSeed) => {
+    async (event: PointerEvent<HTMLButtonElement>, seed: ModelSeed) => {
       event.preventDefault();
       event.stopPropagation();
       const point = screenToWorld(event.clientX, event.clientY);
       canvasRef.current?.setPointerCapture(event.pointerId);
       setDragState({ type: "relationship", pointerId: event.pointerId, sourceId: seed.id, x: point.x, y: point.y });
+      await unlockOwnedExcept([seed.id]);
     },
-    [screenToWorld]
+    [screenToWorld, unlockOwnedExcept]
   );
 
   const handlePointerMove = useCallback(
@@ -462,6 +493,8 @@ export function ModelingWorkspacePage() {
         setDragState({ ...dragState, x: point.x, y: point.y });
         return;
       }
+
+      if (!dragState.ready) return;
 
       if (!dragState.groupLocked) {
         if (await lockAll(dragState.seedIds)) {
@@ -510,7 +543,7 @@ export function ModelingWorkspacePage() {
             create: true,
             relationship: {
               id: crypto.randomUUID(), name: "", sourceId: dragState.sourceId, targetId: target.id,
-              sourceMultiplicity: "1", targetMultiplicity: "0..*", direction: "source-to-target"
+              sourceMultiplicity: "1", targetMultiplicity: "0..*", direction: "source-to-target", kind: "foreign-key"
             }
           });
         }
@@ -613,7 +646,6 @@ export function ModelingWorkspacePage() {
             onPointerMove={handlePointerMove}
             onPointerLeave={handlePointerLeave}
             onPointerUp={stopDragging}
-            onWheel={handleWheel}
             onSeedPointerDown={handleSeedPointerDown}
             onUpdateSeed={updateSeed}
             onUnlockSeed={unlock}
@@ -637,7 +669,7 @@ export function ModelingWorkspacePage() {
           canDelete={!editingRelationship.create}
           onSave={(relationship) => void saveRelationshipChange(relationship, editingRelationship.create)}
           onDelete={() => void deleteRelationship(editingRelationship.relationship)}
-          onClose={() => setEditingRelationship(null)}
+          onClose={closeRelationshipEditor}
         />
       )}
       {domainDictionaryContext && (

@@ -41,15 +41,16 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
     primaryKeyFields.length > 1
       ? `(${primaryKeyFields.map((field) => getFieldEffectiveName(field, domains)).join(", ")})`
       : primaryKeyFields[0] ? getFieldEffectiveName(primaryKeyFields[0], domains) : undefined;
-  const summaryRowCount = (primaryKeySummary ? 1 : 0) + favoriteFields.length + partitionKeyFields.length;
-  const summaryBodyHeight = Math.max(64, summaryRowCount * 20 + 12);
-  const renderedCardHeight = displayMode === "key-fields" ? cardHeight + summaryBodyHeight - 64 : cardHeight;
   const modelStageLabel = getModelStageLabel(seed.maturedLevel);
-  const visibleRelationshipReferences = relationships.flatMap((relationship) => {
+  const projectedRelationshipReferences = relationships.flatMap((relationship) => {
     if (!relationshipDisplaySeedIDs(relationship).includes(seed.id)) return [];
     const reference = relationshipReferences.find((item) => item.relationshipId === relationship.id);
     return reference ? [{ relationship, reference }] : [];
   });
+  const visibleRelationshipReferences = projectedRelationshipReferences.filter(({ reference }) => !(reference.hiddenOnModelIds ?? []).includes(seed.id));
+  const summaryRowCount = (primaryKeySummary ? 1 : 0) + favoriteFields.length + partitionKeyFields.length + visibleRelationshipReferences.length;
+  const summaryBodyHeight = Math.max(64, summaryRowCount * 20 + 12);
+  const renderedCardHeight = displayMode === "key-fields" ? cardHeight + summaryBodyHeight - 64 : cardHeight;
 
   const handlePointerDown = useCallback(
     (event: PointerEvent<HTMLElement>) => {
@@ -118,7 +119,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
 
   return (
     <article
-      className={`model-seed-card absolute w-[270px] select-none p-4 ${selected || relationshipDropTarget ? "is-selected" : ""} ${relationshipDropTarget ? "is-relationship-drop-target" : ""} ${
+      className={`model-seed-card absolute w-[300px] select-none p-4 ${selected || relationshipDropTarget ? "is-selected" : ""} ${relationshipDropTarget ? "is-relationship-drop-target" : ""} ${
         lockedByOther ? "is-locked" : ""
       }`}
       style={{
@@ -133,9 +134,10 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
         width={cardWidth}
         height={renderedCardHeight}
         roughness={seed.maturedLevel}
-        fill={meta.fill}
-        stroke={meta.stroke}
+        fill={seed.dependency === "independent" ? meta.fill.replace("0.96", "0.58") : meta.fill}
+        stroke={seed.dependency === "independent" ? `${meta.stroke}88` : meta.stroke}
         selected={selected || relationshipDropTarget}
+        subtle={seed.dependency === "independent"}
       />
 
       <div className="relative">
@@ -216,13 +218,19 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
                       <span className="font-semibold">{field.name}</span>
                     </li>
                   ))}
+                  {visibleRelationshipReferences.map(({ relationship }) => (
+                    <li key={relationship.id} className="flex min-w-0 items-center gap-1.5 rounded bg-blue-50 px-1 font-mono text-xs text-blue-900">
+                      <Link2 size={12} className="shrink-0 text-blue-700" aria-label="Relationship reference" />
+                      <span className="truncate font-semibold">{relationship.name}</span>
+                    </li>
+                  ))}
                 </ul>
               )}
             </div>
           )}
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-1.5">
+        <div className="mt-4 flex flex-nowrap gap-1.5 whitespace-nowrap">
           {flattenLabels(seed).map((tag) => (
             <span
               key={tag}
@@ -255,12 +263,13 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
       )}
       {fieldListOpen && (
         <FieldListDialog
+          modelId={seed.id}
           modelTitle={seed.title}
           modelMaturedLevel={seed.maturedLevel}
           fields={fields}
           domains={domains}
           domainCategories={domainCategories}
-          relationshipReferences={visibleRelationshipReferences}
+          relationshipReferences={projectedRelationshipReferences}
           canEdit={lockedByMe}
           onChange={handleFieldsChange}
           onUpdateReference={onUpdateRelationshipReference}

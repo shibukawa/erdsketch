@@ -12,6 +12,13 @@ type SeedInspectorProps = {
   onUpdate: (seedId: string, patch: Partial<ModelSeed>) => void;
 };
 
+const maturedStepLabels = new Map([
+  [6, "seed"],
+  [3.5, "concept"],
+  [1.25, "logical"],
+  [0.5, "matured"]
+]);
+
 export function SeedInspector({ seed, owner, canEdit, onUpdate }: SeedInspectorProps) {
   const handleMaturedLevelChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -76,17 +83,18 @@ export function SeedInspector({ seed, owner, canEdit, onUpdate }: SeedInspectorP
             step={0.25}
             value={seed.maturedLevel}
             onChange={handleMaturedLevelChange}
+            style={{ direction: "rtl" }}
           />
         </label>
         <div className="mt-2 grid grid-cols-4 gap-1">
-          {maturedLevelSteps.map((step) => (
+          {[...maturedLevelSteps].reverse().map((step) => (
             <button
               key={step}
               data-matured-level={step}
-              className={`btn btn-xs min-h-8 rounded-md ${seed.maturedLevel === step ? "btn-neutral" : "btn-outline"}`}
+              className={`btn btn-xs min-h-8 rounded-md px-1 text-[7px] ${seed.maturedLevel === step ? "btn-neutral" : "btn-outline"}`}
               onClick={handleMaturedLevelClick}
             >
-              {step}
+              {maturedStepLabels.get(step)}
             </button>
           ))}
         </div>

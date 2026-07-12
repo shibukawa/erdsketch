@@ -19,6 +19,9 @@ fields:
   - name: foreign_key
     type: boolean
     default: false
+  - name: hidden_on_model_ids
+    type: identifier_set
+    default: []
 flags:
   independent:
     - primary_key
@@ -39,6 +42,11 @@ derived_presentation:
     many_to_many: both_endpoints
   ownership_semantics: none
   sort: rule:field-list-sort
+  canvas_visibility:
+    default: visible
+    hidden_when: projected_model_id_in_hidden_on_model_ids
+    field_list_dialog_row_always_visible: true
+    relationship_line_hidden_when_any_endpoint_projection_hidden: true
 persistence:
   collection: relationship_references
   separate_from: attributes
@@ -52,6 +60,8 @@ invariants:
   - Exactly one relationship reference record exists per projected relationship.
   - Model visibility is derived from relationship multiplicity and arrow direction, not stored ownership.
   - Relationship name is not duplicated; display reads it from data:relationship.
+  - Hiding a projection never deletes or changes the relationship.
+  - Visibility has no SQL or physical-export effect.
   - Deleting the relationship deletes its relationship references after confirmation.
   - Persistent inconsistency is a load or save error, never silently repaired.
 related:

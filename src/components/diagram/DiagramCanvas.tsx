@@ -1,16 +1,16 @@
 import type {
   PointerEvent,
   PointerEventHandler,
-  RefObject,
-  WheelEventHandler
+  RefObject
 } from "react";
 import type { Collaborator } from "../../collaboration";
 import type { CardDisplayMode, DataDomain, DomainCategory, DragState, ModelSeed, Relationship, RelationshipReference, Viewport } from "../../features/modeling/types";
-import { getCardBoundaryPoint, getRelationshipDropTarget } from "../../features/modeling/utils";
+import { getCardBoundaryPoint, getRelationshipDropTarget, relationshipVisibleOnCanvas } from "../../features/modeling/utils";
 import { ModelSeedCard } from "./ModelSeedCard";
 import { RemoteCursor } from "./RemoteCursor";
 import { RelationshipLink } from "./RelationshipLink";
 import { RoughLink } from "./RoughLink";
+import { CanvasTips } from "./CanvasTips";
 
 type DiagramCanvasProps = {
   canvasRef: RefObject<HTMLDivElement | null>;
@@ -32,7 +32,6 @@ type DiagramCanvasProps = {
   onPointerMove: PointerEventHandler<HTMLDivElement>;
   onPointerLeave: PointerEventHandler<HTMLDivElement>;
   onPointerUp: PointerEventHandler<HTMLDivElement>;
-  onWheel: WheelEventHandler<HTMLDivElement>;
   onSeedPointerDown: (event: PointerEvent<HTMLElement>, seed: ModelSeed) => void;
   onUpdateSeed: (seedId: string, patch: Partial<ModelSeed>) => void;
   onUnlockSeed: (seedId: string) => void;
@@ -64,7 +63,6 @@ export function DiagramCanvas({
   onPointerMove,
   onPointerLeave,
   onPointerUp,
-  onWheel,
   onSeedPointerDown,
   onUpdateSeed,
   onUnlockSeed,
@@ -83,20 +81,23 @@ export function DiagramCanvas({
     <div
       ref={canvasRef}
       className={`erd-canvas relative min-h-0 flex-1 overflow-hidden ${dragState?.type === "pan" ? "cursor-grabbing" : "cursor-grab"}`}
+      style={{
+        backgroundPosition: `${viewport.x}px ${viewport.y}px, ${viewport.x}px ${viewport.y}px, ${viewport.x}px ${viewport.y}px`,
+        backgroundSize: `${24 * viewport.scale}px ${24 * viewport.scale}px, ${120 * viewport.scale}px ${120 * viewport.scale}px, ${120 * viewport.scale}px ${120 * viewport.scale}px`
+      }}
       onDoubleClick={onDoubleClick}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerLeave={onPointerLeave}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      onWheel={onWheel}
     >
       <div
         className="absolute left-0 top-0 h-[2400px] w-[3200px] origin-top-left"
         style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})` }}
       >
         <div className="pointer-events-none absolute inset-0">
-          {relationships.map((relationship) => <RelationshipLink key={relationship.id} relationship={relationship} seeds={allSeeds} onEdit={onEditRelationship} />)}
+          {relationships.filter((relationship) => relationshipVisibleOnCanvas(relationship, relationshipReferences)).map((relationship) => <RelationshipLink key={relationship.id} relationship={relationship} seeds={allSeeds} onEdit={onEditRelationship} />)}
           {dragState?.type === "relationship" && (() => {
             const source = allSeeds.find((seed) => seed.id === dragState.sourceId);
             if (!source) return null;
@@ -138,6 +139,7 @@ export function DiagramCanvas({
           <RemoteCursor key={user.id} user={user} />
         ))}
       </div>
+      <CanvasTips />
     </div>
   );
 }

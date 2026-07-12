@@ -6,6 +6,8 @@ declare module "roughjs/bundled/rough.esm" {
     strokeWidth?: number;
     fill?: string;
     fillStyle?: string;
+    hachureGap?: number;
+    hachureAngle?: number;
   };
 
   type RoughSVG = {

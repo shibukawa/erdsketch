@@ -54,12 +54,20 @@ ui:
             controls:
               - primary_key
               - foreign_key
+              - canvas_visibility
+            canvas_visibility:
+              values:
+                - shown
+                - hidden
+              scope: current_model
+              hidden_row_behavior: keep_in_dialog_with_hidden_state
 accessibility:
   - Icon button has an accessible name and visible focus state.
   - Dialog traps focus and supports Escape to close.
   - Flag controls expose checked state and text labels.
 constraints:
   - The list visually integrates attributes and relationship references without sharing their data model.
+  - Canvas visibility changes only the current model projection and has no SQL effect.
   - Quick entry creates only data:attribute.
   - Do not offer foreign-key controls for data:attribute rows.
   - Important is presentational metadata only.

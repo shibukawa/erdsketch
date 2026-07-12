@@ -53,6 +53,12 @@ requirements:
     flag_behavior:
       independent: true
       primary_key_and_foreign_key_allowed: true
+    visibility_control:
+      scope: projected_model
+      action: hide_or_show_on_canvas
+      persistence: data:relationship-reference.hidden_on_model_ids
+      dialog_row_remains_visible: true
+      affects_sql_export: false
     deletion:
       effect: delete_relationship
       confirmation_required: true
@@ -88,6 +94,9 @@ acceptance:
   - One-to-one appears on the arrow-origin model and many-to-many appears on both models.
   - After save, primary-key items appear first, foreign-key-only items second, and all other items last.
   - Removing a projected relationship reference requires confirmation because it removes the relationship.
+  - Hiding a relationship reference removes it from that model's canvas field projection and hides the relationship line while retaining its row in the field-list dialog.
+  - Users can show a hidden relationship reference again from the field-list dialog.
+  - Hide or show does not delete the relationship, change other endpoint visibility, or affect SQL export.
   - A domain can be assigned to an attribute from the adjacent dictionary panel.
   - A composite domain remains one field-list row.
   - Domain shape and completeness never restrict assignment.

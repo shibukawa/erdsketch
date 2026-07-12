@@ -20,6 +20,7 @@ import { RelationshipReferenceRow } from "./RelationshipReferenceRow";
 import { DomainDictionaryPanel } from "./DomainDictionaryPanel";
 
 type FieldListDialogProps = {
+  modelId: string;
   modelTitle: string;
   modelMaturedLevel: number;
   fields: ModelField[];
@@ -49,7 +50,7 @@ function reorderFields(fields: ModelField[], sourceId: string, targetId: string)
   return [...remaining.slice(0, targetIndex), source, ...remaining.slice(targetIndex)];
 }
 
-export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, domains, domainCategories, relationshipReferences, canEdit, onChange, onClose, onUpdateReference, onDeleteReference, onCreateDomain, onOpenDomainDictionary }: FieldListDialogProps) {
+export function FieldListDialog({ modelId, modelTitle, modelMaturedLevel, fields, domains, domainCategories, relationshipReferences, canEdit, onChange, onClose, onUpdateReference, onDeleteReference, onCreateDomain, onOpenDomainDictionary }: FieldListDialogProps) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const quickEntryRef = useRef<HTMLInputElement | null>(null);
   const fieldsRef = useRef(fields);
@@ -269,6 +270,14 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, domains
     const item = relationshipReferences.find((candidate) => candidate.relationship.id === relationshipId);
     if (item) onUpdateReference(relationshipId, { foreignKey: !item.reference.foreignKey });
   }, [onUpdateReference, relationshipReferences]);
+  const handleToggleReferenceVisibility = useCallback((relationshipId: string) => {
+    const item = relationshipReferences.find((candidate) => candidate.relationship.id === relationshipId);
+    if (!item) return;
+    const hidden = item.reference.hiddenOnModelIds ?? [];
+    onUpdateReference(relationshipId, {
+      hiddenOnModelIds: hidden.includes(modelId) ? hidden.filter((id) => id !== modelId) : [...hidden, modelId]
+    });
+  }, [modelId, onUpdateReference, relationshipReferences]);
 
   return createPortal(
     <dialog
@@ -296,7 +305,7 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, domains
 
           <div className="mt-3 flex items-center gap-3">
             <label
-              className={`input input-bordered flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg bg-slate-50 focus-within:border-blue-500 ${quickEntryDomainDropTarget ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200" : ""}`}
+              className={`input input-bordered intent-add flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg ${quickEntryDomainDropTarget ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200" : ""}`}
               onDragOver={handleQuickEntryDragOver}
               onDragLeave={handleQuickEntryDragLeave}
               onDrop={handleQuickEntryDomainDrop}
@@ -347,7 +356,7 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, domains
         <div className="flex min-h-0 flex-1">
         <div className="field-list-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-3">
           <div
-            className="sticky top-0 z-10 grid h-8 grid-cols-[30px_minmax(140px,1fr)_120px_78px_70px_44px_40px] items-center border-b border-slate-200 bg-white/95 text-[10px] font-bold uppercase tracking-wider text-slate-400 backdrop-blur"
+            className="sticky top-0 z-10 grid h-8 grid-cols-[30px_minmax(140px,1fr)_120px_78px_70px_56px_44px_40px] items-center border-b border-slate-200 bg-white/95 text-[10px] font-bold uppercase tracking-wider text-slate-400 backdrop-blur"
             role="row"
           >
             <span aria-hidden="true" />
@@ -355,6 +364,7 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, domains
             <span className="px-2">Domain</span>
             <span className="text-center">Primary key</span>
             <span className="text-center">Foreign key</span>
+            <span className="text-center">Canvas</span>
             <span className="text-center">Fav</span>
             <span className="text-center">Delete</span>
           </div>
@@ -369,7 +379,7 @@ export function FieldListDialog({ modelTitle, modelMaturedLevel, fields, domains
                   return <FieldListRow key={field.id} field={field} domain={domains.find((domain) => domain.id === field.domainId)} domains={domains} selected={editingFieldId === field.id && canEdit} dragging={draggingFieldId === field.id} dropTarget={dropTargetFieldId === field.id && draggingFieldId !== field.id} domainDropTarget={domainDropTargetFieldId === field.id} canEdit={canEdit} onSelect={handleSelectField} onNameChange={handleFieldNameChange} onTogglePrimaryKey={handleTogglePrimaryKey} onToggleImportant={handleToggleImportant} onToggleUseDomainName={handleToggleUseDomainName} onDelete={handleDelete} onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={clearDragState} onDomainDrop={handleDomainAssign} />;
                 }
                 const referenceItem = relationshipReferenceByID.get(item.item.id);
-                return referenceItem ? <RelationshipReferenceRow key={item.item.id} relationship={referenceItem.relationship} reference={referenceItem.reference} canEdit={canEdit} onTogglePrimaryKey={handleToggleReferencePrimaryKey} onToggleForeignKey={handleToggleReferenceForeignKey} onDelete={onDeleteReference} /> : null;
+                return referenceItem ? <RelationshipReferenceRow key={item.item.id} modelId={modelId} relationship={referenceItem.relationship} reference={referenceItem.reference} canEdit={canEdit} onTogglePrimaryKey={handleToggleReferencePrimaryKey} onToggleForeignKey={handleToggleReferenceForeignKey} onToggleVisibility={handleToggleReferenceVisibility} onDelete={onDeleteReference} /> : null;
               })}
             </ul>
           )}

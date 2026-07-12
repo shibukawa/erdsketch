@@ -21,6 +21,7 @@ operations:
   - split_entity
   - extract_reference
   - create_snapshot
+  - inherit_parent_attributes
 example:
   operation: field_to_one_to_many
   intent: Need multiple values for one field.

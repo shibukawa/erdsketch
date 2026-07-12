@@ -37,6 +37,17 @@ requirements:
       follows_relationship_meaning: true
     name_example: ownership
     separate_relationship_flag: false
+    kinds:
+      foreign_key:
+        sql_effect: cardinality_based_reference_projection
+      inherit:
+        direction: child_to_parent
+        sql_effect: rule:inherit-attribute-projection
+      label:
+        sql_effect: none
+        display: relationship_name_only
+        multiplicity: none
+        reading_direction: none
   export_projection:
     timing: code_export
     one_to_many_or_many_to_one:
@@ -96,6 +107,10 @@ acceptance:
   - The linked reference shows a chain icon and relationship name; primary-key and foreign-key flags are independent and may both be enabled.
   - Deleting the relationship or linked reference asks for confirmation and explains that the relationship disappears.
   - Relationship meaning remains available even when it has no SQL representation.
+  - Inherit export creates a child table containing all effective parent attributes and the child's own attributes.
+  - Label relationships display only their name, have no multiplicity or reading direction, and never alter SQL output.
+  - A relationship projection may be hidden on one model without deleting the relationship or changing SQL output.
+  - Hidden relationships do not propagate grouped drag movement to connected models beyond them.
   - Dragging a dependent moves every independent reachable through dependency direction, including offscreen models.
   - The complete movement set is locked atomically before movement; failure to lock any model prevents the drag.
   - Cyclic dependencies are allowed and each model in a cycle moves at most once per drag.
@@ -112,4 +127,5 @@ related:
   - rule:relationship-operation-history
   - requirement:relationship-validation
   - rule:relationship-roughness
+  - rule:inherit-attribute-projection
 ```

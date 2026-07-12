@@ -19,12 +19,18 @@ export function flattenLabels(seed: ModelSeed) {
 export const isMany = (multiplicity: Multiplicity) => multiplicity === "0..*" || multiplicity === "1..*";
 
 export function relationshipDisplaySeedIDs(relationship: Relationship) {
+  if (relationship.kind === "inherit" || relationship.kind === "label") return [relationship.sourceId, relationship.targetId];
   const sourceMany = isMany(relationship.sourceMultiplicity);
   const targetMany = isMany(relationship.targetMultiplicity);
   if (sourceMany && targetMany) return [relationship.sourceId, relationship.targetId];
   if (sourceMany) return [relationship.sourceId];
   if (targetMany) return [relationship.targetId];
   return [relationship.direction === "source-to-target" ? relationship.sourceId : relationship.targetId];
+}
+
+export function relationshipVisibleOnCanvas(relationship: Relationship, references: RelationshipReference[]) {
+  const reference = getRelationshipReference(references, relationship.id);
+  return !reference || (reference.hiddenOnModelIds ?? []).length === 0;
 }
 
 export function getRelationshipReference(relationshipReferences: RelationshipReference[], relationshipId: string) {
@@ -163,13 +169,14 @@ export function relationshipDirectionEndpoints(relationship: Relationship, direc
     : { originId: relationship.targetId, destinationId: relationship.sourceId };
 }
 
-export function getRelatedDragSeedIDs(startSeed: ModelSeed, seeds: ModelSeed[], relationships: Relationship[]) {
+export function getRelatedDragSeedIDs(startSeed: ModelSeed, seeds: ModelSeed[], relationships: Relationship[], relationshipReferences: RelationshipReference[]) {
   if (startSeed.dependency !== "dependent") return [startSeed.id];
   const ids = new Set<string>([startSeed.id]);
   const queue = [startSeed.id];
   while (queue.length > 0) {
     const currentID = queue.shift()!;
     for (const relationship of relationships) {
+      if (!relationshipVisibleOnCanvas(relationship, relationshipReferences)) continue;
       const neighborID = relationship.sourceId === currentID ? relationship.targetId : relationship.targetId === currentID ? relationship.sourceId : undefined;
       const neighbor = seeds.find((seed) => seed.id === neighborID);
       if (neighbor && neighbor.dependency === "independent" && !ids.has(neighbor.id)) {

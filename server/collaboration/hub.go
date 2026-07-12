@@ -150,7 +150,7 @@ func (h *Hub) UpdateRelationship(clientID string, next Relationship, reference R
 	if !ok {
 		return RelationshipUpdate{}, ErrUnknownClient
 	}
-	if next.ID == "" || next.SourceID == "" || next.TargetID == "" || next.SourceID == next.TargetID || next.Name == "" || !h.hasSeed(next.SourceID) || !h.hasSeed(next.TargetID) || !validMultiplicity(next.SourceMultiplicity) || !validMultiplicity(next.TargetMultiplicity) || !validDirection(next.Direction) {
+	if next.ID == "" || next.SourceID == "" || next.TargetID == "" || next.SourceID == next.TargetID || next.Name == "" || !h.hasSeed(next.SourceID) || !h.hasSeed(next.TargetID) || !validMultiplicity(next.SourceMultiplicity) || !validMultiplicity(next.TargetMultiplicity) || !validDirection(next.Direction) || !validRelationshipKind(next.Kind) {
 		return RelationshipUpdate{}, ErrRelationshipInvalid
 	}
 	if !h.hasSeedLockedBy(next.SourceID, clientID) || !h.hasSeedLockedBy(next.TargetID, clientID) {
@@ -171,6 +171,11 @@ func (h *Hub) UpdateRelationship(clientID string, next Relationship, reference R
 	}
 	if reference.ID == "" || reference.RelationshipID != next.ID {
 		return RelationshipUpdate{}, ErrRelationshipInvalid
+	}
+	for _, seedID := range reference.HiddenOnModelIDs {
+		if seedID != next.SourceID && seedID != next.TargetID {
+			return RelationshipUpdate{}, ErrRelationshipInvalid
+		}
 	}
 	if index >= 0 {
 		if create {
@@ -531,6 +536,15 @@ func validMultiplicity(value string) bool {
 
 func validDirection(value string) bool {
 	return value == "source-to-target" || value == "target-to-source"
+}
+
+func validRelationshipKind(value string) bool {
+	switch value {
+	case "", "foreign-key", "inherit", "label":
+		return true
+	default:
+		return false
+	}
 }
 
 func (h *Hub) broadcastLocked() {

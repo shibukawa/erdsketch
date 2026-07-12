@@ -1,4 +1,4 @@
-import { AlignLeft, BookOpen, Braces, KeyRound, MousePointer2, Move, Plus, Search, Sparkles, ZoomIn } from "lucide-react";
+import { AlignLeft, BookOpen, Braces, KeyRound, Plus, Search } from "lucide-react";
 import { useCallback, type ChangeEvent, type MouseEvent } from "react";
 import type { Collaborator } from "../../collaboration";
 import type { CardDisplayMode, ModelSeed } from "../../features/modeling/types";
@@ -63,12 +63,12 @@ export function Sidebar({
         </div>
       </div>
 
-      <button className="btn btn-neutral mt-6 w-full gap-2 rounded-lg" onClick={handleAddSeed}>
+      <button className="btn intent-add mt-6 w-full gap-2 rounded-lg text-red-900 hover:bg-red-100" onClick={handleAddSeed}>
         <Plus size={18} />
         Add Model Seed
       </button>
 
-      <label className="input input-bordered mt-4 flex h-11 items-center gap-2 rounded-lg bg-slate-50">
+      <label className="input input-bordered intent-search mt-4 flex h-11 items-center gap-2 rounded-lg">
         <Search size={16} className="text-slate-400" />
         <input
           type="text"
@@ -107,38 +107,9 @@ export function Sidebar({
         </div>
       </section>
 
-      <section className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
-          <MousePointer2 size={16} />
-          Canvas controls
-        </div>
-        <div className="mt-3 space-y-2 text-sm text-slate-600">
-          <p className="flex items-center gap-2">
-            <Move size={14} />
-            Drag empty space to pan
-          </p>
-          <p className="flex items-center gap-2">
-            <ZoomIn size={14} />
-            Pinch or Ctrl-wheel to zoom
-          </p>
-          <p className="flex items-center gap-2">
-            <Plus size={14} />
-            Double click canvas to add
-          </p>
-        </div>
-      </section>
-
       {selectedSeed && (
         <SeedInspector seed={selectedSeed} owner={selectedOwner} canEdit={canEditSelected} onUpdate={onUpdateSeed} />
       )}
-
-      <section className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-950">
-        <div className="flex items-center gap-2 font-bold">
-          <Sparkles size={17} />
-          Matured level
-        </div>
-        <p className="mt-2 text-sm leading-5">New models start at level 6. Lower values move through conceptual and logical stages toward matured.</p>
-      </section>
 
       <div className="mt-auto pt-6">
         <button type="button" className="btn btn-outline w-full justify-start gap-2" onClick={handleOpenDomainDictionary}>

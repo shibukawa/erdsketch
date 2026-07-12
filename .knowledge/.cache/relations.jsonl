@@ -38,6 +38,7 @@
 {"context": "body", "path": ".knowledge/data/attribute.md", "source": "data:attribute", "target": "requirement:design-decision-history", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/data/attribute.md", "source": "data:attribute", "target": "requirement:field-list-management", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/data/attribute.md", "source": "data:attribute", "target": "ui:field-list-dialog", "target_category": "interface", "target_type": "ui"}
+{"context": "body", "path": ".knowledge/data/code-set.md", "source": "data:code-set", "target": "data:primitive-type", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/data/concept-projection.md", "source": "data:concept-projection", "target": "system:storage-target", "target_category": "external", "target_type": "system"}
 {"context": "body", "path": ".knowledge/data/concept-projection.md", "source": "data:concept-projection", "target": "ui:storage-view", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/data/correction-pattern.md", "source": "data:correction-pattern", "target": "data:state-transition", "target_category": "structure", "target_type": "data"}
@@ -101,6 +102,7 @@
 {"context": "body", "path": ".knowledge/data/model-transformation.md", "source": "data:model-transformation", "target": "requirement:design-decision-history", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/data/model-transformation.md", "source": "data:model-transformation", "target": "requirement:normalization-support", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/data/model-transformation.md", "source": "data:model-transformation", "target": "data:design-pattern", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/data/primitive-type.md", "source": "data:primitive-type", "target": "data:code-set", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/data/primitive-type.md", "source": "data:primitive-type", "target": "data:data-domain", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/data/query-profile.md", "source": "data:query-profile", "target": "requirement:performance-design", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/data/reconciliation-pattern.md", "source": "data:reconciliation-pattern", "target": "data:relationship", "target_category": "structure", "target_type": "data"}
@@ -117,6 +119,7 @@
 {"context": "body", "path": ".knowledge/data/relationship-reference.md", "source": "data:relationship-reference", "target": "ui:field-list-dialog", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/data/relationship-reference.md", "source": "data:relationship-reference", "target": "requirement:relationship-validation", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/data/relationship.md", "source": "data:relationship", "target": "rule:relationship-roughness", "target_category": "constraint", "target_type": "rule"}
+{"context": "body", "path": ".knowledge/data/relationship.md", "source": "data:relationship", "target": "rule:inherit-attribute-projection", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/data/relationship.md", "source": "data:relationship", "target": "data:relationship-reference", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/data/relationship.md", "source": "data:relationship", "target": "data:attribute", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/data/relationship.md", "source": "data:relationship", "target": "term:relationship-vocabulary", "target_category": "vocabulary", "target_type": "term"}
@@ -187,6 +190,7 @@
 {"context": "body", "path": ".knowledge/requirement/ai-review.md", "source": "requirement:ai-review", "target": "data:snapshot-reference", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/ai-review.md", "source": "requirement:ai-review", "target": "data:correction-pattern", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/ai-review.md", "source": "requirement:ai-review", "target": "data:reconciliation-pattern", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/requirement/code-set-management.md", "source": "requirement:code-set-management", "target": "ui:domain-dictionary-dialog", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/requirement/design-decision-history.md", "source": "requirement:design-decision-history", "target": "data:model-transformation", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/design-decision-history.md", "source": "requirement:design-decision-history", "target": "data:dependent-entity", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/design-decision-history.md", "source": "requirement:design-decision-history", "target": "concept:model-growth", "target_category": "concept", "target_type": "concept"}
@@ -195,6 +199,8 @@
 {"context": "body", "path": ".knowledge/requirement/domain-dictionary-management.md", "source": "requirement:domain-dictionary-management", "target": "data:primitive-type", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/domain-dictionary-management.md", "source": "requirement:domain-dictionary-management", "target": "data:attribute", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/domain-dictionary-management.md", "source": "requirement:domain-dictionary-management", "target": "rule:domain-expansion", "target_category": "constraint", "target_type": "rule"}
+{"context": "body", "path": ".knowledge/requirement/domain-dictionary-management.md", "source": "requirement:domain-dictionary-management", "target": "data:code-set", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/requirement/domain-dictionary-management.md", "source": "requirement:domain-dictionary-management", "target": "requirement:code-set-management", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/requirement/domain-dictionary-management.md", "source": "requirement:domain-dictionary-management", "target": "ui:field-list-dialog", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/requirement/domain-dictionary-management.md", "source": "requirement:domain-dictionary-management", "target": "rule:domain-key-projection", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/requirement/domain-name-field-naming.md", "source": "requirement:domain-name-field-naming", "target": "ui:field-list-dialog", "target_category": "interface", "target_type": "ui"}
@@ -251,6 +257,7 @@
 {"context": "body", "path": ".knowledge/requirement/performance-design.md", "source": "requirement:performance-design", "target": "data:volume-estimate", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/performance-design.md", "source": "requirement:performance-design", "target": "data:query-profile", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/performance-design.md", "source": "requirement:performance-design", "target": "data:relationship", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/requirement/relationship-management.md", "source": "requirement:relationship-management", "target": "rule:inherit-attribute-projection", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/requirement/relationship-management.md", "source": "requirement:relationship-management", "target": "rule:relationship-roughness", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/requirement/relationship-management.md", "source": "requirement:relationship-management", "target": "data:relationship-reference", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/relationship-management.md", "source": "requirement:relationship-management", "target": "data:attribute", "target_category": "structure", "target_type": "data"}
@@ -279,6 +286,8 @@
 {"context": "body", "path": ".knowledge/rule/field-list-sort.md", "source": "rule:field-list-sort", "target": "data:relationship-reference", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/rule/field-list-sort.md", "source": "rule:field-list-sort", "target": "requirement:field-list-management", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/rule/field-list-sort.md", "source": "rule:field-list-sort", "target": "ui:field-list-dialog", "target_category": "interface", "target_type": "ui"}
+{"context": "body", "path": ".knowledge/rule/inherit-attribute-projection.md", "source": "rule:inherit-attribute-projection", "target": "data:relationship", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/rule/inherit-attribute-projection.md", "source": "rule:inherit-attribute-projection", "target": "data:model-transformation", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/rule/model-seed-labels.md", "source": "rule:model-seed-labels", "target": "data:model-seed", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/rule/model-seed-labels.md", "source": "rule:model-seed-labels", "target": "ui:erd-sketch-canvas", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/rule/primary-key-favorite.md", "source": "rule:primary-key-favorite", "target": "data:attribute", "target_category": "structure", "target_type": "data"}
@@ -303,6 +312,8 @@
 {"context": "body", "path": ".knowledge/term/relationship-vocabulary.md", "source": "term:relationship-vocabulary", "target": "term:vocabulary", "target_category": "vocabulary", "target_type": "term"}
 {"context": "body", "path": ".knowledge/term/vocabulary.md", "source": "term:vocabulary", "target": "ui:vocabulary-view", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/ui/domain-dictionary-dialog.md", "source": "ui:domain-dictionary-dialog", "target": "data:data-domain", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/ui/domain-dictionary-dialog.md", "source": "ui:domain-dictionary-dialog", "target": "requirement:code-set-management", "target_category": "objective", "target_type": "requirement"}
+{"context": "body", "path": ".knowledge/ui/domain-dictionary-dialog.md", "source": "ui:domain-dictionary-dialog", "target": "data:code-set", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/ui/domain-dictionary-panel.md", "source": "ui:domain-dictionary-panel", "target": "ui:domain-dictionary-dialog", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/ui/entity-candidate-view.md", "source": "ui:entity-candidate-view", "target": "ui:erd-sketch-canvas", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/ui/entity-candidate-view.md", "source": "ui:entity-candidate-view", "target": "data:model-seed", "target_category": "structure", "target_type": "data"}

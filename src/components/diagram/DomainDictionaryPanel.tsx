@@ -79,11 +79,11 @@ export function DomainDictionaryPanel({ domains, categories, canEdit, onCreate, 
   return (
     <aside className="flex w-[280px] min-h-0 shrink-0 flex-col border-l border-slate-200 bg-slate-50 p-4" aria-label="Domain candidates">
       <div className="flex items-center gap-2 text-sm font-bold text-slate-800"><BookOpen size={16} />Domain dictionary</div>
-      <label className="input input-bordered mt-3 flex h-10 items-center gap-2 bg-white">
+      <label className="input input-bordered intent-add mt-3 flex h-10 items-center gap-2">
         <Plus size={15} className="text-slate-400" />
         <input type="text" className="min-w-0 grow text-sm" value={quickEntry} onChange={handleQuickEntryChange} onKeyDown={handleQuickEntryKeyDown} disabled={!canEdit} placeholder="Add domain name + Enter" aria-label="New domain name" />
       </label>
-      <label className="input input-bordered mt-3 flex h-9 items-center gap-2 bg-white">
+      <label className="input input-bordered intent-search mt-3 flex h-9 items-center gap-2">
         <Search size={14} className="text-slate-400" />
         <input type="text" className="min-w-0 grow text-sm" value={query} onChange={handleQueryChange} placeholder="Search assignable domains" aria-label="Search assignable domains" />
       </label>

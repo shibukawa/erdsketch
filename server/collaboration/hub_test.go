@@ -135,6 +135,57 @@ func TestRelationshipUpdateRequiresBothEndpointLocksAndPersistsReference(t *test
 	}
 }
 
+func TestRelationshipKindAndVisibilityPersist(t *testing.T) {
+	hub := NewHub()
+	seeds := []ModelSeed{{ID: "order", Title: "Order"}, {ID: "history", Title: "OrderHistory"}}
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, seeds, nil, nil)
+	if _, err := hub.ChangeLocks("lion", []string{"order", "history"}, "lock"); err != nil {
+		t.Fatalf("lock endpoints: %v", err)
+	}
+	relationship := Relationship{
+		ID: "order-history", Name: "derived history", SourceID: "history", TargetID: "order",
+		SourceMultiplicity: "1", TargetMultiplicity: "1", Direction: "source-to-target",
+		Kind: "label",
+	}
+	reference := RelationshipReference{
+		ID: "order-history-reference", RelationshipID: relationship.ID,
+		HiddenOnModelIDs: []string{"history"},
+	}
+	if _, err := hub.UpdateRelationship("lion", relationship, reference, true, false); err != nil {
+		t.Fatalf("create label relationship: %v", err)
+	}
+
+	state := hub.snapshotLocked()
+	if got := state.Relationships[0]; got.Kind != "label" {
+		t.Fatalf("relationship metadata: %+v", got)
+	}
+	if got := state.RelationshipReferences[0].HiddenOnModelIDs; len(got) != 1 || got[0] != "history" {
+		t.Fatalf("hidden projections: %v", got)
+	}
+}
+
+func TestRelationshipUpdateRejectsInvalidKindAndVisibilityModel(t *testing.T) {
+	hub := NewHub()
+	seeds := []ModelSeed{{ID: "child"}, {ID: "parent"}, {ID: "other"}}
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, seeds, nil, nil)
+	if _, err := hub.ChangeLocks("lion", []string{"child", "parent"}, "lock"); err != nil {
+		t.Fatalf("lock endpoints: %v", err)
+	}
+	base := Relationship{ID: "inherit", Name: "inherits", SourceID: "child", TargetID: "parent", SourceMultiplicity: "1", TargetMultiplicity: "1", Direction: "source-to-target"}
+	reference := RelationshipReference{ID: "inherit-reference", RelationshipID: base.ID}
+
+	invalidKind := base
+	invalidKind.Kind = "snapshot"
+	if _, err := hub.UpdateRelationship("lion", invalidKind, reference, true, false); !errors.Is(err, ErrRelationshipInvalid) {
+		t.Fatalf("invalid kind: got %v, want %v", err, ErrRelationshipInvalid)
+	}
+	base.Kind = "inherit"
+	reference.HiddenOnModelIDs = []string{"other"}
+	if _, err := hub.UpdateRelationship("lion", base, reference, true, false); !errors.Is(err, ErrRelationshipInvalid) {
+		t.Fatalf("invalid hidden model: got %v, want %v", err, ErrRelationshipInvalid)
+	}
+}
+
 func TestChangeLocksIsAtomic(t *testing.T) {
 	hub := NewHub()
 	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)

@@ -20,13 +20,13 @@ export function RelationshipLink({ relationship, seeds, onEdit }: RelationshipLi
 
   return (
     <>
-      <RoughLink path={geometry.path} roughness={getRelationshipRoughness(relationship, seeds)} arrowPath={geometry.arrowPath} />
-      <span className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded bg-white/90 px-1.5 py-0.5 font-mono text-[11px] font-bold text-slate-600 shadow-sm" style={{ left: geometry.sourceLabel.x, top: geometry.sourceLabel.y }}>
+      <RoughLink path={geometry.path} roughness={getRelationshipRoughness(relationship, seeds)} arrowPath={relationship.kind === "label" ? undefined : geometry.arrowPath} />
+      {relationship.kind !== "label" && <><span className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded bg-white/90 px-1.5 py-0.5 font-mono text-[11px] font-bold text-slate-600 shadow-sm" style={{ left: geometry.sourceLabel.x, top: geometry.sourceLabel.y }}>
         {relationship.sourceMultiplicity}
       </span>
       <span className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded bg-white/90 px-1.5 py-0.5 font-mono text-[11px] font-bold text-slate-600 shadow-sm" style={{ left: geometry.targetLabel.x, top: geometry.targetLabel.y }}>
         {relationship.targetMultiplicity}
-      </span>
+      </span></>}
       <button
         type="button"
         data-no-pan="true"
@@ -34,7 +34,7 @@ export function RelationshipLink({ relationship, seeds, onEdit }: RelationshipLi
         style={{ left: geometry.namePosition.x, top: geometry.namePosition.y }}
         onClick={handleEdit}
         aria-label={`Edit ${relationship.name} relationship`}
-        title={`${originIsSource ? "Source to target" : "Target to source"}: ${relationship.name}`}
+        title={relationship.kind === "label" ? `Label: ${relationship.name}` : `${relationship.kind ?? "foreign-key"} · ${originIsSource ? "Source to target" : "Target to source"}: ${relationship.name}`}
       >
         {relationship.name}
       </button>

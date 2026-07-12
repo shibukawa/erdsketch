@@ -81,13 +81,15 @@ type Relationship struct {
 	SourceMultiplicity string `json:"sourceMultiplicity"`
 	TargetMultiplicity string `json:"targetMultiplicity"`
 	Direction          string `json:"direction"`
+	Kind               string `json:"kind"`
 }
 
 type RelationshipReference struct {
-	ID             string `json:"id"`
-	RelationshipID string `json:"relationshipId"`
-	PrimaryKey     bool   `json:"primaryKey"`
-	ForeignKey     bool   `json:"foreignKey"`
+	ID               string   `json:"id"`
+	RelationshipID   string   `json:"relationshipId"`
+	PrimaryKey       bool     `json:"primaryKey"`
+	ForeignKey       bool     `json:"foreignKey"`
+	HiddenOnModelIDs []string `json:"hiddenOnModelIds"`
 }
 
 type Collaborator struct {

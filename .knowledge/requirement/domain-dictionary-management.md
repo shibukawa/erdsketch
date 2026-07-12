@@ -24,6 +24,7 @@ requirements:
       - definition_state
       - primitive_type
       - primitive_parameters
+      - code_set_definition
       - components
   built_in_entries:
     source: data:primitive-type
@@ -70,6 +71,9 @@ requirements:
       initial_components: empty_allowed
       assignment: always_allowed
     component_ordering: drag_rows
+  code_set:
+    definition: data:code-set
+    management: requirement:code-set-management
 acceptance:
   - Users can enter multiple domain names without reopening an editor.
   - A newly entered domain has undefined type until defined in ui:domain-dictionary-dialog.
@@ -84,4 +88,5 @@ acceptance:
   - A composite assignment remains one row in ui:field-list-dialog.
   - Physical export expands a composite assignment through rule:domain-expansion.
   - Composite primary and foreign keys project through rule:domain-key-projection.
+  - Selecting code_set exposes its scalar base type and ordered named-value entries.
 ```
