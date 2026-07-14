@@ -11,9 +11,18 @@ ui:
   trigger:
     kind: icon-button
     id: model-field-menu
-    location: model_card_top_right
+    location:
+      erd: model_card_top_right
+      dfd: selected_model_top_right
     appearance: hamburger_like
     label: Open field list
+    surfaces:
+      erd:
+        source: ui:erd-sketch-canvas
+        visibility: model_card
+      dfd:
+        source: ui:dfd-sketch-canvas
+        visibility: selected_model
   root:
     kind: dialog
     id: model-field-list
@@ -80,6 +89,8 @@ accessibility:
   - Dialog traps focus and supports Escape to close.
   - Flag controls expose checked state and text labels.
 constraints:
+  - ERD and DFD open this same dialog component for the same project model definition.
+  - Opening from DFD must not copy fields into placement-local state.
   - The list visually integrates attributes and relationship references without sharing their data model.
   - Canvas visibility changes only the current model projection and has no SQL effect.
   - Quick entry creates only data:attribute.

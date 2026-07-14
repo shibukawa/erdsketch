@@ -97,6 +97,50 @@ func TestVocabularyEndpointCreatesAndRejectsDuplicateTerms(t *testing.T) {
 	}
 }
 
+func TestCanvasPlacementAndOwnershipEndpoints(t *testing.T) {
+	hub := collaboration.NewHub()
+	hub.Join(collaboration.Collaborator{ID: "lion", Name: "Lion"}, []collaboration.ModelSeed{{ID: "order", Title: "Order"}}, nil, nil)
+	handler := New(hub, seedListerStub{}, log.New(io.Discard, "", 0))
+	created := post(handler, "/api/collaboration/canvas", `{"clientId":"lion","create":true,"canvas":{"id":"billing","name":"Billing"}}`)
+	if created.Code != http.StatusNoContent {
+		t.Fatalf("create canvas: status=%d body=%q", created.Code, created.Body.String())
+	}
+	placed := post(handler, "/api/collaboration/placement", `{"clientId":"lion","create":true,"placement":{"canvasId":"billing","seedId":"order","x":20,"y":30,"accessMode":"owner"}}`)
+	if placed.Code != http.StatusNoContent {
+		t.Fatalf("place model: status=%d body=%q", placed.Code, placed.Body.String())
+	}
+	transferred := post(handler, "/api/collaboration/ownership", `{"clientId":"lion","seedId":"order","expectedOwnerId":"main","targetCanvasId":"billing"}`)
+	if transferred.Code != http.StatusNoContent {
+		t.Fatalf("transfer ownership: status=%d body=%q", transferred.Code, transferred.Body.String())
+	}
+	stale := post(handler, "/api/collaboration/ownership", `{"clientId":"lion","seedId":"order","expectedOwnerId":"main","targetCanvasId":"billing"}`)
+	if stale.Code != http.StatusConflict {
+		t.Fatalf("stale transfer: got %d, want conflict", stale.Code)
+	}
+}
+
+func TestDFDAndCatalogSeedEndpoints(t *testing.T) {
+	hub := collaboration.NewHub()
+	hub.Join(collaboration.Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
+	handler := New(hub, seedListerStub{}, log.New(io.Discard, "", 0))
+	created := post(handler, "/api/collaboration/catalog-seed", `{"clientId":"lion","create":true,"seed":{"id":"payload","title":"Payload","role":"work","dependency":"independent","usageScope":"dfd_only"}}`)
+	if created.Code != http.StatusNoContent {
+		t.Fatalf("catalog seed: status=%d body=%q", created.Code, created.Body.String())
+	}
+	dfd := post(handler, "/api/collaboration/dfd", `{"clientId":"lion","dfd":{"canvases":[{"id":"flow","name":"Flow"}],"nodes":[{"id":"payload-node","definitionId":"payload","canvasId":"flow","kind":"model","modelId":"payload","x":20,"y":30}],"flows":[],"groups":[]}}`)
+	if dfd.Code != http.StatusNoContent {
+		t.Fatalf("DFD update: status=%d body=%q", dfd.Code, dfd.Body.String())
+	}
+	legacyPhysical := post(handler, "/api/collaboration/dfd", `{"clientId":"lion","dfd":{"canvases":[{"id":"flow","name":"Flow"}],"nodes":[{"id":"checkout","definitionId":"checkout","canvasId":"flow","kind":"process","name":"Checkout","processKind":"ui","physicalProcesses":["Screen","Submit"]}],"flows":[],"groups":[]}}`)
+	if legacyPhysical.Code != http.StatusNoContent {
+		t.Fatalf("legacy physical processes: status=%d body=%q", legacyPhysical.Code, legacyPhysical.Body.String())
+	}
+	invalid := post(handler, "/api/collaboration/dfd", `{"clientId":"lion","dfd":{"canvases":[],"nodes":[],"flows":[],"groups":[]}}`)
+	if invalid.Code != http.StatusBadRequest {
+		t.Fatalf("invalid DFD: got %d, want %d", invalid.Code, http.StatusBadRequest)
+	}
+}
+
 func newTestHandler(seeds SeedLister) http.Handler {
 	return New(collaboration.NewHub(), seeds, log.New(io.Discard, "", 0))
 }

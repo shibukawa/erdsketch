@@ -1,0 +1,131 @@
+import { Download, GripVertical, Repeat2, X } from "lucide-react";
+import { useCallback, useMemo, useState, type ChangeEvent, type DragEvent } from "react";
+import type { CrudMatrixOrientation, CrudOperation, DfdCrudMatrix, DfdState, ModelSeed } from "../../features/modeling/types";
+import { crudAssignmentSpecs, normalizeFlowCrud, processUnits } from "../../features/dfd/dfd";
+
+type Props = {
+  dfd: DfdState;
+  models: ModelSeed[];
+  onChange: (dfd: DfdState) => void;
+  onClose: () => void;
+};
+
+type Axis = "process" | "model";
+type MatrixItem = { id: string; label: string };
+type Cell = { allowed: Set<CrudOperation>; operations: Set<CrudOperation> };
+
+const crudOrder: CrudOperation[] = ["C", "R", "U", "D"];
+
+function orderedItems(items: MatrixItem[], order: string[]) {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  return [...order.map((id) => byId.get(id)).filter((item): item is MatrixItem => Boolean(item)), ...items.filter((item) => !order.includes(item.id))];
+}
+
+function csvCell(value: string) {
+  return `"${value.split('"').join('""')}"`;
+}
+
+export function CrudMatrixDialog({ dfd, models, onChange, onClose }: Props) {
+  const [dragging, setDragging] = useState<{ axis: Axis; id: string } | null>(null);
+  const processItems = useMemo(() => {
+    const result = new Map<string, MatrixItem>();
+    for (const node of dfd.nodes) if (node.kind === "process") for (const unit of processUnits(node)) if (!result.has(unit.id)) result.set(unit.id, { id: unit.id, label: unit.name });
+    return [...result.values()];
+  }, [dfd.nodes]);
+  const modelItems = useMemo(() => models.map((model) => ({ id: model.id, label: model.title })), [models]);
+  const matrix: DfdCrudMatrix = dfd.crudMatrix ?? { orientation: "processes_rows", processOrder: [], modelOrder: [] };
+  const processes = orderedItems(processItems, matrix.processOrder);
+  const matrixModels = orderedItems(modelItems, matrix.modelOrder);
+  const cells = useMemo(() => {
+    const result = new Map<string, Cell>();
+    for (const flow of dfd.flows) {
+      const assignments = new Map((flow.crudAssignments ?? []).map((assignment) => [`${assignment.processUnitId}\0${assignment.modelId}`, assignment]));
+      for (const spec of crudAssignmentSpecs(flow, dfd.nodes, dfd.groups)) {
+        const key = `${spec.processUnitId}\0${spec.modelId}`;
+        const cell = result.get(key) ?? { allowed: new Set<CrudOperation>(), operations: new Set<CrudOperation>() };
+        spec.allowed.forEach((operation) => cell.allowed.add(operation));
+        (assignments.get(key)?.operations ?? spec.defaults).forEach((operation) => cell.operations.add(operation));
+        result.set(key, cell);
+      }
+    }
+    return result;
+  }, [dfd.flows, dfd.groups, dfd.nodes]);
+
+  const updateMatrix = useCallback((patch: Partial<DfdCrudMatrix>) => {
+    onChange({ ...dfd, crudMatrix: { ...matrix, ...patch } });
+  }, [dfd, matrix, onChange]);
+  const handleSwap = useCallback(() => updateMatrix({ orientation: matrix.orientation === "processes_rows" ? "models_rows" : "processes_rows" }), [matrix.orientation, updateMatrix]);
+  const handleDragStart = useCallback((event: DragEvent<HTMLElement>) => {
+    const item = { axis: event.currentTarget.dataset.axis as Axis, id: event.currentTarget.dataset.itemId! };
+    setDragging(item);
+    event.dataTransfer.setData("application/x-erdsketch-crud-axis", item.axis);
+    event.dataTransfer.setData("text/plain", item.id);
+    event.dataTransfer.effectAllowed = "move";
+  }, []);
+  const handleDragOver = useCallback((event: DragEvent<HTMLElement>) => event.preventDefault(), []);
+  const handleDrop = useCallback((event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    const axis = event.currentTarget.dataset.axis as Axis;
+    const targetId = event.currentTarget.dataset.itemId!;
+    const source = dragging ?? {
+      axis: event.dataTransfer.getData("application/x-erdsketch-crud-axis") as Axis,
+      id: event.dataTransfer.getData("text/plain")
+    };
+    if (!source.id || source.axis !== axis || source.id === targetId) return;
+    const items = axis === "process" ? processes : matrixModels;
+    const ids = items.map((item) => item.id).filter((id) => id !== source.id);
+    ids.splice(ids.indexOf(targetId), 0, source.id);
+    updateMatrix(axis === "process" ? { processOrder: ids } : { modelOrder: ids });
+    setDragging(null);
+  }, [dragging, matrixModels, processes, updateMatrix]);
+  const handleDragEnd = useCallback(() => setDragging(null), []);
+  const handleToggle = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const processUnitId = event.currentTarget.dataset.processUnitId!;
+    const modelId = event.currentTarget.dataset.modelId!;
+    const operation = event.currentTarget.value as CrudOperation;
+    const checked = event.currentTarget.checked;
+    const flows = dfd.flows.map((flow) => {
+      const specs = crudAssignmentSpecs(flow, dfd.nodes, dfd.groups);
+      const target = specs.find((spec) => spec.processUnitId === processUnitId && spec.modelId === modelId && spec.allowed.includes(operation));
+      if (!target) return flow;
+      const assignments = specs.map((spec) => {
+        const current = flow.crudAssignments?.find((assignment) => assignment.processUnitId === spec.processUnitId && assignment.modelId === spec.modelId)?.operations ?? spec.defaults;
+        if (spec.processUnitId !== processUnitId || spec.modelId !== modelId) return { processUnitId: spec.processUnitId, modelId: spec.modelId, operations: current };
+        const operations = checked ? [...new Set([...current, operation])] : current.filter((candidate) => candidate !== operation);
+        return { processUnitId, modelId, operations: operations.length ? operations : current };
+      });
+      return normalizeFlowCrud({ ...flow, crudAssignments: assignments }, dfd.nodes, dfd.groups);
+    });
+    onChange({ ...dfd, flows });
+  }, [dfd, onChange]);
+  const handleExport = useCallback(() => {
+    const orientation: CrudMatrixOrientation = matrix.orientation;
+    const rows = orientation === "processes_rows" ? processes : matrixModels;
+    const columns = orientation === "processes_rows" ? matrixModels : processes;
+    const lines = [[orientation === "processes_rows" ? "Process / Model" : "Model / Process", ...columns.map((item) => item.label)].map(csvCell).join(",")];
+    for (const row of rows) lines.push([row.label, ...columns.map((column) => {
+      const processId = orientation === "processes_rows" ? row.id : column.id;
+      const modelId = orientation === "processes_rows" ? column.id : row.id;
+      const operations = cells.get(`${processId}\0${modelId}`)?.operations;
+      return crudOrder.filter((operation) => operations?.has(operation)).join("");
+    })].map(csvCell).join(","));
+    const url = URL.createObjectURL(new Blob([`\uFEFF${lines.join("\n")}`], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "crud-matrix.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [cells, matrix.orientation, matrixModels, processes]);
+
+  const rows = matrix.orientation === "processes_rows" ? processes : matrixModels;
+  const columns = matrix.orientation === "processes_rows" ? matrixModels : processes;
+  const rowAxis: Axis = matrix.orientation === "processes_rows" ? "process" : "model";
+  const columnAxis: Axis = matrix.orientation === "processes_rows" ? "model" : "process";
+
+  return <div className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="crud-matrix-title"><div className="modal-box flex h-[min(88vh,900px)] max-w-[min(96vw,1400px)] flex-col rounded-xl bg-white p-0"><header className="flex items-center justify-between border-b border-slate-200 px-6 py-4"><div><p className="text-xs font-bold uppercase tracking-wide text-blue-700">Database design specification</p><h2 id="crud-matrix-title" className="text-xl font-bold">CRUD Matrix</h2><p className="text-xs text-slate-500">All project processes and models. Drag headers to reorder.</p></div><div className="flex items-center gap-2"><button type="button" className="btn btn-outline btn-sm gap-2" onClick={handleSwap}><Repeat2 size={15} />Swap axes</button><button type="button" className="btn btn-primary btn-sm gap-2" onClick={handleExport}><Download size={15} />CSV report</button><button type="button" className="btn btn-ghost btn-sm btn-square" onClick={onClose} aria-label="Close CRUD Matrix"><X size={18} /></button></div></header><div className="min-h-0 flex-1 overflow-auto p-5"><table className="table table-sm border-separate border-spacing-0"><thead><tr><th className="sticky left-0 top-0 z-30 min-w-52 border border-slate-200 bg-slate-100">{matrix.orientation === "processes_rows" ? "Process / Model" : "Model / Process"}</th>{columns.map((column) => <th key={column.id} draggable data-axis={columnAxis} data-item-id={column.id} className="sticky top-0 z-20 min-w-32 cursor-grab border border-slate-200 bg-slate-50 text-center active:cursor-grabbing" onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={handleDragEnd}><span className="flex items-center justify-center gap-1"><GripVertical size={13} className="text-slate-400" />{column.label}</span></th>)}</tr></thead><tbody>{rows.map((row) => <tr key={row.id}><th draggable data-axis={rowAxis} data-item-id={row.id} className="sticky left-0 z-10 cursor-grab border border-slate-200 bg-white active:cursor-grabbing" onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={handleDragEnd}><span className="flex items-center gap-1"><GripVertical size={13} className="text-slate-400" />{row.label}</span></th>{columns.map((column) => {
+    const processUnitId = matrix.orientation === "processes_rows" ? row.id : column.id;
+    const modelId = matrix.orientation === "processes_rows" ? column.id : row.id;
+    const cell = cells.get(`${processUnitId}\0${modelId}`);
+    return <td key={`${row.id}:${column.id}`} className="border border-slate-100 text-center">{cell ? <div className="flex justify-center gap-1">{crudOrder.filter((operation) => cell.allowed.has(operation)).map((operation) => <label key={operation} className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded border text-[10px] font-bold ${cell.operations.has(operation) ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 text-slate-500"}`}><input className="sr-only" type="checkbox" data-process-unit-id={processUnitId} data-model-id={modelId} value={operation} checked={cell.operations.has(operation)} onChange={handleToggle} />{operation}</label>)}</div> : <span className="text-slate-300">—</span>}</td>;
+  })}</tr>)}</tbody></table>{rows.length === 0 || columns.length === 0 ? <p className="mt-8 text-center text-sm text-slate-500">Create at least one process and one model to populate the matrix.</p> : null}</div><footer className="flex items-center justify-between border-t border-slate-200 px-6 py-3 text-xs text-slate-500"><span>Cells are derived from detailed DFD flow assignments.</span><span>C create · R read · U update · D delete</span></footer></div><button className="modal-backdrop" onClick={onClose} aria-label="Close CRUD Matrix" /></div>;
+}

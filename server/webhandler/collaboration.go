@@ -197,12 +197,13 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		Name     *string  `json:"name"`
 		X        *float64 `json:"x"`
 		Y        *float64 `json:"y"`
+		CanvasID *string  `json:"canvasId"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.ClientID == "" {
 		http.Error(w, "invalid user update", http.StatusBadRequest)
 		return
 	}
-	result, err := h.hub.UpdateUser(request.ClientID, request.Name, request.X, request.Y)
+	result, err := h.hub.UpdateUser(request.ClientID, request.Name, request.X, request.Y, request.CanvasID)
 	if err != nil {
 		writeCollaborationError(w, err)
 		return
@@ -222,12 +223,16 @@ func (h *Handler) updateSeed(w http.ResponseWriter, r *http.Request) {
 		ClientID string                  `json:"clientId"`
 		Seed     collaboration.ModelSeed `json:"seed"`
 		Create   bool                    `json:"create"`
+		CanvasID string                  `json:"canvasId"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.ClientID == "" || request.Seed.ID == "" {
 		http.Error(w, "invalid seed update", http.StatusBadRequest)
 		return
 	}
-	result, err := h.hub.UpdateSeed(request.ClientID, request.Seed, request.Create)
+	if request.CanvasID == "" {
+		request.CanvasID = collaboration.DefaultCanvasID
+	}
+	result, err := h.hub.UpdateSeedInCanvas(request.ClientID, request.CanvasID, request.Seed, request.Create)
 	if err != nil {
 		writeCollaborationError(w, err)
 		return
@@ -236,6 +241,70 @@ func (h *Handler) updateSeed(w http.ResponseWriter, r *http.Request) {
 		h.logger.Printf("[collab] create user=%q client=%s seed=%s title=%q position=(%.1f,%.1f)", result.User.Name, request.ClientID, result.Seed.ID, result.Seed.Title, result.Seed.X, result.Seed.Y)
 	} else {
 		h.logger.Printf("[collab] edit user=%q client=%s seed=%s fields=%s", result.User.Name, request.ClientID, result.Seed.ID, strings.Join(result.Changes, ","))
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) updateCanvas(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var request struct {
+		ClientID string               `json:"clientId"`
+		Canvas   collaboration.Canvas `json:"canvas"`
+		Create   bool                 `json:"create"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.ClientID == "" || request.Canvas.ID == "" {
+		http.Error(w, "invalid canvas update", http.StatusBadRequest)
+		return
+	}
+	if _, err := h.hub.UpdateCanvas(request.ClientID, request.Canvas, request.Create); err != nil {
+		writeCollaborationError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) updatePlacement(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var request struct {
+		ClientID  string                             `json:"clientId"`
+		Placement collaboration.CanvasModelPlacement `json:"placement"`
+		Create    bool                               `json:"create"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.ClientID == "" || request.Placement.CanvasID == "" || request.Placement.SeedID == "" {
+		http.Error(w, "invalid placement update", http.StatusBadRequest)
+		return
+	}
+	if _, err := h.hub.UpdatePlacement(request.ClientID, request.Placement, request.Create); err != nil {
+		writeCollaborationError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) transferOwnership(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var request struct {
+		ClientID        string `json:"clientId"`
+		SeedID          string `json:"seedId"`
+		ExpectedOwnerID string `json:"expectedOwnerId"`
+		TargetCanvasID  string `json:"targetCanvasId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.ClientID == "" || request.SeedID == "" || request.ExpectedOwnerID == "" || request.TargetCanvasID == "" {
+		http.Error(w, "invalid ownership transfer", http.StatusBadRequest)
+		return
+	}
+	if _, err := h.hub.TransferOwnership(request.ClientID, request.SeedID, request.ExpectedOwnerID, request.TargetCanvasID); err != nil {
+		writeCollaborationError(w, err)
+		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -350,11 +419,11 @@ func writeEvent(w http.ResponseWriter, state collaboration.State) bool {
 func writeCollaborationError(w http.ResponseWriter, err error) {
 	status := http.StatusInternalServerError
 	switch {
-	case errors.Is(err, collaboration.ErrUnknownClient), errors.Is(err, collaboration.ErrSeedNotFound), errors.Is(err, collaboration.ErrRelationshipNotFound), errors.Is(err, collaboration.ErrDomainNotFound), errors.Is(err, collaboration.ErrCategoryNotFound), errors.Is(err, collaboration.ErrVocabularyNotFound):
+	case errors.Is(err, collaboration.ErrUnknownClient), errors.Is(err, collaboration.ErrSeedNotFound), errors.Is(err, collaboration.ErrRelationshipNotFound), errors.Is(err, collaboration.ErrDomainNotFound), errors.Is(err, collaboration.ErrCategoryNotFound), errors.Is(err, collaboration.ErrVocabularyNotFound), errors.Is(err, collaboration.ErrCanvasNotFound), errors.Is(err, collaboration.ErrPlacementNotFound):
 		status = http.StatusNotFound
-	case errors.Is(err, collaboration.ErrSeedExists), errors.Is(err, collaboration.ErrLockRequired), errors.Is(err, collaboration.ErrLockConflict), errors.Is(err, collaboration.ErrDomainExists), errors.Is(err, collaboration.ErrDomainInUse), errors.Is(err, collaboration.ErrCategoryExists), errors.Is(err, collaboration.ErrVocabularyExists):
+	case errors.Is(err, collaboration.ErrSeedExists), errors.Is(err, collaboration.ErrLockRequired), errors.Is(err, collaboration.ErrLockConflict), errors.Is(err, collaboration.ErrDomainExists), errors.Is(err, collaboration.ErrDomainInUse), errors.Is(err, collaboration.ErrCategoryExists), errors.Is(err, collaboration.ErrVocabularyExists), errors.Is(err, collaboration.ErrCanvasExists), errors.Is(err, collaboration.ErrPlacementExists), errors.Is(err, collaboration.ErrReadonlyPlacement), errors.Is(err, collaboration.ErrOwnershipChanged):
 		status = http.StatusConflict
-	case errors.Is(err, collaboration.ErrRelationshipInvalid), errors.Is(err, collaboration.ErrDomainInvalid), errors.Is(err, collaboration.ErrCategoryInvalid), errors.Is(err, collaboration.ErrNamingPolicyInvalid), errors.Is(err, collaboration.ErrVocabularyInvalid):
+	case errors.Is(err, collaboration.ErrRelationshipInvalid), errors.Is(err, collaboration.ErrDomainInvalid), errors.Is(err, collaboration.ErrCategoryInvalid), errors.Is(err, collaboration.ErrNamingPolicyInvalid), errors.Is(err, collaboration.ErrVocabularyInvalid), errors.Is(err, collaboration.ErrCanvasInvalid), errors.Is(err, collaboration.ErrPlacementInvalid), errors.Is(err, collaboration.ErrDFDInvalid):
 		status = http.StatusBadRequest
 	}
 	http.Error(w, err.Error(), status)

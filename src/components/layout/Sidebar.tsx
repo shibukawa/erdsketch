@@ -1,7 +1,7 @@
-import { AlignLeft, BookOpen, Braces, KeyRound, Languages, Plus, Search } from "lucide-react";
-import { useCallback, type ChangeEvent, type MouseEvent } from "react";
+import { AlignLeft, BookOpen, Braces, KeyRound, Languages, Search } from "lucide-react";
+import { useCallback, useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from "react";
 import type { Collaborator } from "../../collaboration";
-import type { CardDisplayMode, ModelSeed, NameDisplayMode } from "../../features/modeling/types";
+import type { CanvasModelPlacement, CardDisplayMode, ModelSeed, NameDisplayMode } from "../../features/modeling/types";
 import { SeedInspector } from "../diagram/SeedInspector";
 import { NameModeControl } from "../diagram/NameModeControl";
 
@@ -12,13 +12,15 @@ type SidebarProps = {
   selectedSeed?: ModelSeed;
   selectedOwner?: Collaborator;
   canEditSelected: boolean;
+  selectedPlacement?: CanvasModelPlacement;
   onQueryChange: (query: string) => void;
   onCardDisplayModeChange: (mode: CardDisplayMode) => void;
   onNameDisplayModeChange: (mode: NameDisplayMode) => void;
-  onAddSeed: () => void;
+  onAddSeed: (name: string) => Promise<void>;
   onUpdateSeed: (seedId: string, patch: Partial<ModelSeed>) => void;
   onOpenDomainDictionary: () => void;
   onOpenVocabulary: () => void;
+  onOpenModelCatalog: () => void;
 };
 
 export function Sidebar({
@@ -28,17 +30,29 @@ export function Sidebar({
   selectedSeed,
   selectedOwner,
   canEditSelected,
+  selectedPlacement,
   onQueryChange,
   onCardDisplayModeChange,
   onNameDisplayModeChange,
   onAddSeed,
   onUpdateSeed,
   onOpenDomainDictionary,
-  onOpenVocabulary
+  onOpenVocabulary,
+  onOpenModelCatalog
 }: SidebarProps) {
-  const handleAddSeed = useCallback(() => {
-    onAddSeed();
-  }, [onAddSeed]);
+  const [newModelName, setNewModelName] = useState("");
+  const [creatingModel, setCreatingModel] = useState(false);
+  const newModelInputRef = useRef<HTMLInputElement | null>(null);
+  const handleAddSeed = useCallback(async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = newModelName.trim();
+    if (!name || creatingModel) return;
+    setCreatingModel(true);
+    await onAddSeed(name);
+    setCreatingModel(false);
+    setNewModelName("");
+    newModelInputRef.current?.focus();
+  }, [creatingModel, newModelName, onAddSeed]);
 
   const handleQueryChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -70,10 +84,7 @@ export function Sidebar({
         </div>
       </div>
 
-      <button className="btn intent-add mt-6 w-full gap-2 rounded-lg text-red-900 hover:bg-red-100" onClick={handleAddSeed}>
-        <Plus size={18} />
-        Add Model Seed
-      </button>
+      <form className="mt-6" onSubmit={handleAddSeed}><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Quick create</p><div className="mt-2 join intent-add w-full rounded-lg"><input ref={newModelInputRef} className="input input-sm input-bordered join-item min-w-0 flex-1 bg-transparent" value={newModelName} disabled={creatingModel} onChange={(event) => setNewModelName(event.target.value)} placeholder="New model name" aria-label="New model name" /><button className="btn btn-primary btn-sm join-item" disabled={!newModelName.trim() || creatingModel}>Add</button></div><p className="mt-1 text-[11px] text-slate-500">Enter creates a model and keeps this input ready.</p></form>
 
       <label className="input input-bordered intent-search mt-4 flex h-11 items-center gap-2 rounded-lg">
         <Search size={16} className="text-slate-400" />
@@ -120,10 +131,13 @@ export function Sidebar({
       </section>
 
       {selectedSeed && (
-        <SeedInspector seed={selectedSeed} owner={selectedOwner} canEdit={canEditSelected} onUpdate={onUpdateSeed} />
+        <SeedInspector seed={selectedSeed} owner={selectedOwner} canEdit={canEditSelected} placement={selectedPlacement} onUpdate={onUpdateSeed} />
       )}
 
       <div className="mt-auto pt-6">
+        <button type="button" className="btn btn-outline mb-2 w-full justify-start gap-2" onClick={onOpenModelCatalog}>
+          <Search size={17} />Models
+        </button>
         <button type="button" className="btn btn-outline mb-2 w-full justify-start gap-2" onClick={onOpenVocabulary}>
           <Languages size={17} />Vocabulary
         </button>

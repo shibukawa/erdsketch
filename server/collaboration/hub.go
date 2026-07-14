@@ -10,6 +10,8 @@ import (
 
 type Hub struct {
 	mu                     sync.Mutex
+	canvases               []Canvas
+	placements             []CanvasModelPlacement
 	seeds                  []ModelSeed
 	relationships          []Relationship
 	relationshipReferences []RelationshipReference
@@ -17,6 +19,7 @@ type Hub struct {
 	domainCategories       []DomainCategory
 	namingPolicy           NamingPolicy
 	vocabularyEntries      []VocabularyEntry
+	dfd                    DFDState
 	users                  map[string]Collaborator
 	locks                  map[string]string
 	streams                map[string]chan State
@@ -24,6 +27,7 @@ type Hub struct {
 
 func NewHub() *Hub {
 	return &Hub{
+		canvases:         []Canvas{{ID: DefaultCanvasID, Name: "Main canvas"}},
 		domainCategories: []DomainCategory{{ID: "primitive", Name: "Primitive", System: true}, {ID: "user-defined", Name: "User Defined"}},
 		namingPolicy: NamingPolicy{
 			TablePluralization: "singular",
@@ -34,6 +38,7 @@ func NewHub() *Hub {
 		users:   make(map[string]Collaborator),
 		locks:   make(map[string]string),
 		streams: make(map[string]chan State),
+		dfd:     defaultDFDState(),
 	}
 }
 
@@ -155,9 +160,16 @@ func (h *Hub) join(user Collaborator, assignAvailableName bool, seeds []ModelSee
 		}
 	}
 	user.Online = true
+	if canvasIndex(h.canvases, user.CanvasID) < 0 {
+		user.CanvasID = DefaultCanvasID
+	}
 	h.users[user.ID] = user
 	if len(h.seeds) == 0 && len(seeds) > 0 {
 		h.seeds = append([]ModelSeed(nil), seeds...)
+		h.placements = make([]CanvasModelPlacement, 0, len(seeds))
+		for _, seed := range seeds {
+			h.placements = append(h.placements, CanvasModelPlacement{CanvasID: DefaultCanvasID, SeedID: seed.ID, X: seed.X, Y: seed.Y, AccessMode: "owner"})
+		}
 		h.relationships = append([]Relationship(nil), relationships...)
 		h.relationshipReferences = append([]RelationshipReference(nil), references...)
 		if len(initialDomains) > 0 {
@@ -172,6 +184,112 @@ func (h *Hub) join(user Collaborator, assignAvailableName bool, seeds []ModelSee
 	}
 	h.broadcastLocked()
 	return result
+}
+
+func (h *Hub) UpdateCanvas(clientID string, next Canvas, create bool) (CanvasUpdate, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	user, ok := h.users[clientID]
+	if !ok {
+		return CanvasUpdate{}, ErrUnknownClient
+	}
+	next.Name = strings.TrimSpace(next.Name)
+	if next.ID == "" || next.Name == "" {
+		return CanvasUpdate{}, ErrCanvasInvalid
+	}
+	index := canvasIndex(h.canvases, next.ID)
+	for candidateIndex, candidate := range h.canvases {
+		if candidateIndex != index && strings.EqualFold(candidate.Name, next.Name) {
+			return CanvasUpdate{}, ErrCanvasExists
+		}
+	}
+	result := CanvasUpdate{User: user, Canvas: next}
+	if index >= 0 {
+		if create {
+			return CanvasUpdate{}, ErrCanvasExists
+		}
+		h.canvases[index] = next
+	} else {
+		if !create {
+			return CanvasUpdate{}, ErrCanvasNotFound
+		}
+		h.canvases = append(h.canvases, next)
+		result.Created = true
+	}
+	h.broadcastLocked()
+	return result, nil
+}
+
+func (h *Hub) UpdatePlacement(clientID string, next CanvasModelPlacement, create bool) (PlacementUpdate, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	user, ok := h.users[clientID]
+	if !ok {
+		return PlacementUpdate{}, ErrUnknownClient
+	}
+	if canvasIndex(h.canvases, next.CanvasID) < 0 {
+		return PlacementUpdate{}, ErrCanvasNotFound
+	}
+	seedIndex := seedIndexByID(h.seeds, next.SeedID)
+	if seedIndex < 0 {
+		return PlacementUpdate{}, ErrSeedNotFound
+	}
+	if normalizedUsageScope(h.seeds[seedIndex].UsageScope) == "dfd_only" {
+		return PlacementUpdate{}, ErrPlacementInvalid
+	}
+	index := placementIndex(h.placements, next.CanvasID, next.SeedID)
+	result := PlacementUpdate{User: user, Placement: next}
+	if index >= 0 {
+		if create {
+			return PlacementUpdate{}, ErrPlacementExists
+		}
+		next.AccessMode = h.placements[index].AccessMode
+		h.placements[index] = next
+	} else {
+		if !create {
+			return PlacementUpdate{}, ErrPlacementNotFound
+		}
+		next.AccessMode = "readonly"
+		if ownerCanvasID(h.placements, next.SeedID) == "" {
+			next.AccessMode = "owner"
+		}
+		h.placements = append(h.placements, next)
+		result.Created = true
+	}
+	result.Placement = next
+	h.broadcastLocked()
+	return result, nil
+}
+
+func (h *Hub) TransferOwnership(clientID, seedID, expectedOwnerID, targetCanvasID string) (OwnershipTransfer, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	user, ok := h.users[clientID]
+	if !ok {
+		return OwnershipTransfer{}, ErrUnknownClient
+	}
+	if seedIndexByID(h.seeds, seedID) < 0 {
+		return OwnershipTransfer{}, ErrSeedNotFound
+	}
+	if canvasIndex(h.canvases, targetCanvasID) < 0 {
+		return OwnershipTransfer{}, ErrCanvasNotFound
+	}
+	currentOwnerID := ownerCanvasID(h.placements, seedID)
+	if currentOwnerID == "" || currentOwnerID != expectedOwnerID || currentOwnerID == targetCanvasID {
+		return OwnershipTransfer{}, ErrOwnershipChanged
+	}
+	targetIndex := placementIndex(h.placements, targetCanvasID, seedID)
+	if targetIndex < 0 {
+		seed := h.seeds[seedIndexByID(h.seeds, seedID)]
+		h.placements = append(h.placements, CanvasModelPlacement{CanvasID: targetCanvasID, SeedID: seedID, X: seed.X + 40, Y: seed.Y + 40, AccessMode: "readonly"})
+		targetIndex = len(h.placements) - 1
+	}
+	previousIndex := placementIndex(h.placements, currentOwnerID, seedID)
+	h.placements[previousIndex].AccessMode = "readonly"
+	h.placements[targetIndex].AccessMode = "owner"
+	delete(h.locks, seedID)
+	h.broadcastLocked()
+	return OwnershipTransfer{User: user, SeedID: seedID, PreviousOwnerID: currentOwnerID, TargetOwnerID: targetCanvasID}, nil
 }
 
 func (h *Hub) UpdateCategory(clientID string, next DomainCategory, create bool) (CategoryUpdate, error) {
@@ -278,6 +396,12 @@ func (h *Hub) UpdateRelationship(clientID string, next Relationship, reference R
 	if !h.hasSeedLockedBy(next.SourceID, clientID) || !h.hasSeedLockedBy(next.TargetID, clientID) {
 		return RelationshipUpdate{}, ErrLockRequired
 	}
+	for _, seedID := range []string{next.SourceID, next.TargetID} {
+		placement := placementIndex(h.placements, user.CanvasID, seedID)
+		if placement < 0 || h.placements[placement].AccessMode != "owner" {
+			return RelationshipUpdate{}, ErrReadonlyPlacement
+		}
+	}
 
 	index := relationshipIndex(h.relationships, next.ID)
 	result := RelationshipUpdate{User: user, Relationship: next, Reference: reference}
@@ -331,7 +455,7 @@ func (h *Hub) Subscribe(clientID string) *Subscription {
 	return subscription
 }
 
-func (h *Hub) UpdateUser(clientID string, name *string, x, y *float64) (UserUpdate, error) {
+func (h *Hub) UpdateUser(clientID string, name *string, x, y *float64, canvasIDs ...*string) (UserUpdate, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -350,6 +474,12 @@ func (h *Hub) UpdateUser(clientID string, name *string, x, y *float64) (UserUpda
 	if y != nil {
 		user.Y = *y
 	}
+	if len(canvasIDs) > 0 && canvasIDs[0] != nil {
+		if canvasIndex(h.canvases, *canvasIDs[0]) < 0 {
+			return UserUpdate{}, ErrCanvasNotFound
+		}
+		user.CanvasID = *canvasIDs[0]
+	}
 	h.users[clientID] = user
 	result.User = user
 	h.broadcastLocked()
@@ -357,6 +487,10 @@ func (h *Hub) UpdateUser(clientID string, name *string, x, y *float64) (UserUpda
 }
 
 func (h *Hub) UpdateSeed(clientID string, next ModelSeed, create bool) (SeedUpdate, error) {
+	return h.UpdateSeedInCanvas(clientID, DefaultCanvasID, next, create)
+}
+
+func (h *Hub) UpdateSeedInCanvas(clientID, canvasID string, next ModelSeed, create bool) (SeedUpdate, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -367,6 +501,7 @@ func (h *Hub) UpdateSeed(clientID string, next ModelSeed, create bool) (SeedUpda
 	if !fieldDomainsExist(next.Fields, h.domains) {
 		return SeedUpdate{}, ErrDomainNotFound
 	}
+	next.UsageScope = normalizedUsageScope(next.UsageScope)
 	seedIndex := -1
 	for index := range h.seeds {
 		if h.seeds[index].ID == next.ID {
@@ -383,16 +518,79 @@ func (h *Hub) UpdateSeed(clientID string, next ModelSeed, create bool) (SeedUpda
 		if h.locks[next.ID] != clientID {
 			return SeedUpdate{}, ErrLockRequired
 		}
+		placement := placementIndex(h.placements, canvasID, next.ID)
+		if placement < 0 {
+			return SeedUpdate{}, ErrPlacementNotFound
+		}
+		if h.placements[placement].AccessMode != "owner" {
+			return SeedUpdate{}, ErrReadonlyPlacement
+		}
 		result.Changes = seedChanges(h.seeds[seedIndex], next)
 		h.seeds[seedIndex] = next
 	} else if create {
+		if canvasIndex(h.canvases, canvasID) < 0 {
+			return SeedUpdate{}, ErrCanvasNotFound
+		}
 		result.Created = true
 		h.seeds = append(h.seeds, next)
+		h.placements = append(h.placements, CanvasModelPlacement{CanvasID: canvasID, SeedID: next.ID, X: next.X, Y: next.Y, AccessMode: "owner"})
 	} else {
 		return SeedUpdate{}, ErrSeedNotFound
 	}
 	h.broadcastLocked()
 	return result, nil
+}
+
+func (h *Hub) UpdateCatalogSeed(clientID string, next ModelSeed, create bool) (SeedUpdate, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	user, ok := h.users[clientID]
+	if !ok {
+		return SeedUpdate{}, ErrUnknownClient
+	}
+	if next.ID == "" || strings.TrimSpace(next.Title) == "" || !fieldDomainsExist(next.Fields, h.domains) {
+		return SeedUpdate{}, ErrSeedNotFound
+	}
+	next.UsageScope = normalizedUsageScope(next.UsageScope)
+	index := seedIndexByID(h.seeds, next.ID)
+	result := SeedUpdate{User: user, Seed: next}
+	if index >= 0 {
+		if create {
+			return SeedUpdate{}, ErrSeedExists
+		}
+		if h.locks[next.ID] != clientID {
+			return SeedUpdate{}, ErrLockRequired
+		}
+		if next.UsageScope == "dfd_only" && hasAnyPlacement(h.placements, next.ID) {
+			return SeedUpdate{}, ErrPlacementInvalid
+		}
+		result.Changes = seedChanges(h.seeds[index], next)
+		h.seeds[index] = next
+	} else {
+		if !create {
+			return SeedUpdate{}, ErrSeedNotFound
+		}
+		result.Created = true
+		h.seeds = append(h.seeds, next)
+	}
+	h.broadcastLocked()
+	return result, nil
+}
+
+func normalizedUsageScope(value string) string {
+	if value == "dfd_only" {
+		return value
+	}
+	return "shared"
+}
+
+func hasAnyPlacement(placements []CanvasModelPlacement, seedID string) bool {
+	for _, placement := range placements {
+		if placement.SeedID == seedID {
+			return true
+		}
+	}
+	return false
 }
 
 // ApplyRefinement validates and swaps the complete modeling graph while holding
@@ -418,6 +616,12 @@ func (h *Hub) ApplyRefinement(clientID string, seeds []ModelSeed, relationships 
 		}
 		if !reflect.DeepEqual(current, seeds[index]) && h.locks[current.ID] != clientID {
 			return RefinementUpdate{}, ErrLockRequired
+		}
+		if !reflect.DeepEqual(current, seeds[index]) {
+			placement := placementIndex(h.placements, user.CanvasID, current.ID)
+			if placement < 0 || h.placements[placement].AccessMode != "owner" {
+				return RefinementUpdate{}, ErrReadonlyPlacement
+			}
 		}
 	}
 	domainIDs := make(map[string]bool, len(domains))
@@ -473,6 +677,15 @@ func (h *Hub) ApplyRefinement(clientID string, seeds []ModelSeed, relationships 
 		}
 	}
 	result := RefinementUpdate{User: user, CreatedSeeds: len(seeds) - len(h.seeds), Summary: append([]string(nil), summary...)}
+	for _, seed := range seeds {
+		if seedIndexByID(h.seeds, seed.ID) < 0 {
+			canvasID := user.CanvasID
+			if canvasIndex(h.canvases, canvasID) < 0 {
+				canvasID = DefaultCanvasID
+			}
+			h.placements = append(h.placements, CanvasModelPlacement{CanvasID: canvasID, SeedID: seed.ID, X: seed.X, Y: seed.Y, AccessMode: "owner"})
+		}
+	}
 	h.seeds = append([]ModelSeed(nil), seeds...)
 	h.relationships = append([]Relationship(nil), relationships...)
 	h.relationshipReferences = append([]RelationshipReference(nil), references...)
@@ -564,6 +777,8 @@ func (h *Hub) snapshotLocked() State {
 		}
 	}
 	return State{
+		Canvases:               append([]Canvas(nil), h.canvases...),
+		Placements:             append([]CanvasModelPlacement(nil), h.placements...),
 		Seeds:                  append([]ModelSeed(nil), h.seeds...),
 		Relationships:          append([]Relationship(nil), h.relationships...),
 		RelationshipReferences: append([]RelationshipReference(nil), h.relationshipReferences...),
@@ -571,9 +786,37 @@ func (h *Hub) snapshotLocked() State {
 		DomainCategories:       append([]DomainCategory(nil), h.domainCategories...),
 		NamingPolicy:           h.namingPolicy,
 		VocabularyEntries:      append([]VocabularyEntry(nil), h.vocabularyEntries...),
+		DFD:                    cloneDFDState(h.dfd),
 		Users:                  users,
 		Locks:                  locks,
 	}
+}
+
+func canvasIndex(canvases []Canvas, id string) int {
+	for index, canvas := range canvases {
+		if canvas.ID == id {
+			return index
+		}
+	}
+	return -1
+}
+
+func placementIndex(placements []CanvasModelPlacement, canvasID, seedID string) int {
+	for index, placement := range placements {
+		if placement.CanvasID == canvasID && placement.SeedID == seedID {
+			return index
+		}
+	}
+	return -1
+}
+
+func ownerCanvasID(placements []CanvasModelPlacement, seedID string) string {
+	for _, placement := range placements {
+		if placement.SeedID == seedID && placement.AccessMode == "owner" {
+			return placement.CanvasID
+		}
+	}
+	return ""
 }
 
 func normalizeDomains(domains []DataDomain) []DataDomain {
@@ -883,6 +1126,9 @@ func seedChanges(previous, next ModelSeed) []string {
 	}
 	if previous.Dependency != next.Dependency {
 		changes = append(changes, "dependency")
+	}
+	if normalizedUsageScope(previous.UsageScope) != normalizedUsageScope(next.UsageScope) {
+		changes = append(changes, "usageScope")
 	}
 	if previous.HasPrivacy != next.HasPrivacy {
 		changes = append(changes, "privacy")

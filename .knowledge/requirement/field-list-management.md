@@ -9,7 +9,9 @@ Users manage a model seed's fields without leaving the canvas.
 ```yaml
 requirements:
   entry_point:
-    location: model_card_top_right
+    locations:
+      - erd_model_card_top_right
+      - selected_dfd_model
     control: compact_menu_icon
     action: open ui:field-list-dialog
   create:
@@ -80,6 +82,8 @@ requirements:
     - foreign_key_assignment
     - relationship_creation_from_field_editor
 acceptance:
+  - ERD and DFD show the same hamburger-like field action for a model.
+  - Editing fields from either canvas updates one shared data:model-catalog definition.
   - Repeated typing and Enter appends multiple fields without reopening the dialog.
   - Japanese IME confirmation never creates an unintended field.
   - Clicking a field exposes editing for its name and flags.

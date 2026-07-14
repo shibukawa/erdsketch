@@ -39,6 +39,11 @@ func New(hub *collaboration.Hub, seeds SeedLister, logger *log.Logger) http.Hand
 	mux.HandleFunc("/api/collaboration/vocabulary", handler.updateVocabulary)
 	mux.HandleFunc("/api/collaboration/refinement", handler.applyRefinement)
 	mux.HandleFunc("/api/collaboration/lock", handler.changeLock)
+	mux.HandleFunc("/api/collaboration/canvas", handler.updateCanvas)
+	mux.HandleFunc("/api/collaboration/placement", handler.updatePlacement)
+	mux.HandleFunc("/api/collaboration/ownership", handler.transferOwnership)
+	mux.HandleFunc("/api/collaboration/dfd", handler.updateDFD)
+	mux.HandleFunc("/api/collaboration/catalog-seed", handler.updateCatalogSeed)
 	return mux
 }
 

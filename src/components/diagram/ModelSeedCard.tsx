@@ -1,8 +1,8 @@
 import { Columns3, Database, KeyRound, Link2, Lock, Menu, Star } from "lucide-react";
-import { useCallback, useState, type ChangeEvent, type PointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from "react";
 import type { Collaborator } from "../../collaboration";
 import { cardHeight, cardWidth, roleMeta } from "../../features/modeling/constants";
-import type { CardDisplayMode, DataDomain, DomainCategory, ModelField, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
+import type { CanvasAccessMode, CardDisplayMode, DataDomain, DomainCategory, ModelField, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
 import { expandDomainField, flattenLabels, getFieldEffectiveName, getModelStageLabel, relationshipDisplaySeedIDs, updateNameSet } from "../../features/modeling/utils";
 import { FieldListDialog } from "./FieldListDialog";
 import { RoughShape } from "./RoughShape";
@@ -18,6 +18,9 @@ type ModelSeedCardProps = {
   vocabularyCache: VocabularyMatchCache;
   owner?: Collaborator;
   me: Collaborator;
+  accessMode: CanvasAccessMode;
+  titleFocusRequested: boolean;
+  onTitleFocusHandled: (seedId: string) => void;
   onPointerDown: (event: PointerEvent<HTMLElement>, seed: ModelSeed) => void;
   onUpdate: (seedId: string, patch: Partial<ModelSeed>) => void;
   onUnlock: (seedId: string) => void;
@@ -34,11 +37,12 @@ type ModelSeedCardProps = {
   onApplyRefinement: (result: RefinementResult) => Promise<boolean>;
 };
 
-export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayMode, nameDisplayMode, vocabularyCache, owner, me, onPointerDown, onUpdate, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, domains, domainCategories, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, seeds, onApplyRefinement }: ModelSeedCardProps) {
+export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayMode, nameDisplayMode, vocabularyCache, owner, me, accessMode, titleFocusRequested, onTitleFocusHandled, onPointerDown, onUpdate, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, domains, domainCategories, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, seeds, onApplyRefinement }: ModelSeedCardProps) {
   const meta = roleMeta[seed.role];
-  const lockedByMe = owner?.id === me.id;
+  const lockedByMe = accessMode === "owner" && owner?.id === me.id;
   const lockedByOther = !!owner && !lockedByMe;
   const [fieldListOpen, setFieldListOpen] = useState(false);
+  const titleInputRef = useRef<HTMLTextAreaElement | null>(null);
   const fields = seed.fields ?? [];
   const inheritedParentIds = relationships.filter((relationship) => relationship.kind === "inherit" && relationship.sourceId === seed.id).map((relationship) => relationship.targetId);
   const inheritedFields = seeds.filter((candidate) => inheritedParentIds.includes(candidate.id)).flatMap((candidate) => candidate.fields.map((field) => ({ ...field, id: `inherited:${candidate.id}:${field.id}`, name: `${getFieldEffectiveName(field, domains)} ↗`, useDomainName: false })));
@@ -52,6 +56,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
       ? `(${primaryKeyFields.map(fieldDisplayName).join(", ")})`
       : primaryKeyFields[0] ? fieldDisplayName(primaryKeyFields[0]) : undefined;
   const displayedTitle = getCachedDisplayName(vocabularyCache, `table:${seed.id}`, seed.title, seed.names, nameDisplayMode);
+  const editableBusinessTitle = seed.names === undefined ? seed.title : seed.names.business;
   const modelStageLabel = getModelStageLabel(seed.maturedLevel);
   const projectedRelationshipReferences = relationships.flatMap((relationship) => {
     if (!relationshipDisplaySeedIDs(relationship).includes(seed.id)) return [];
@@ -62,6 +67,13 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
   const summaryRowCount = (primaryKeySummary ? 1 : 0) + favoriteFields.length + partitionKeyFields.length + visibleRelationshipReferences.length;
   const summaryBodyHeight = Math.max(64, summaryRowCount * 20 + 12);
   const renderedCardHeight = displayMode === "key-fields" ? cardHeight + summaryBodyHeight - 64 : cardHeight;
+
+  useEffect(() => {
+    if (!titleFocusRequested || !lockedByMe || nameDisplayMode !== "business") return;
+    titleInputRef.current?.focus();
+    titleInputRef.current?.select();
+    onTitleFocusHandled(seed.id);
+  }, [lockedByMe, nameDisplayMode, onTitleFocusHandled, seed.id, titleFocusRequested]);
 
   const handlePointerDown = useCallback(
     (event: PointerEvent<HTMLElement>) => {
@@ -86,7 +98,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
   );
 
   const handleTitleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
       onUpdate(seed.id, { names: updateNameSet(seed.title, seed.names, "business", event.target.value), vocabularyBinding: undefined });
     },
     [onUpdate, seed.id, seed.names, seed.title]
@@ -152,6 +164,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
       />
 
       <div className="relative">
+        {accessMode === "readonly" && <span className="absolute -left-1 -top-9 z-10 rounded-full border border-slate-300 bg-white px-2 py-1 text-[11px] font-bold text-slate-600 shadow-sm">readonly</span>}
         {owner && (
           <button
             data-no-drag="true"
@@ -172,15 +185,17 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{modelStageLabel}</p>
-            {nameDisplayMode === "business" ? <input
+            {nameDisplayMode === "business" ? <textarea
+              ref={titleInputRef}
               data-no-drag="true"
               readOnly={!lockedByMe}
-              className="w-full rounded-md bg-transparent text-xl font-bold leading-tight outline-none focus:bg-white/80 focus:px-1"
-              value={displayedTitle}
+              rows={2}
+              className="h-12 w-full resize-none overflow-hidden rounded-md bg-transparent text-xl font-bold leading-tight outline-none focus:bg-white/80 focus:px-1"
+              value={editableBusinessTitle}
               onChange={handleTitleChange}
               onPointerDown={handleEditablePointerDown}
-              aria-label={`${displayedTitle} title`}
-            /> : <div className="w-full truncate rounded-md text-xl font-bold leading-tight"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`table:${seed.id}`} legacyName={seed.title} names={seed.names} mode={nameDisplayMode} /></div>}
+              aria-label={`${editableBusinessTitle || "Untitled model"} title`}
+            /> : <div className="line-clamp-2 h-12 w-full break-words rounded-md text-xl font-bold leading-tight"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`table:${seed.id}`} legacyName={seed.title} names={seed.names} mode={nameDisplayMode} /></div>}
           </div>
           <button
             data-no-drag="true"

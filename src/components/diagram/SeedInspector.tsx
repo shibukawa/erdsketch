@@ -2,13 +2,14 @@ import { Lock } from "lucide-react";
 import { useCallback, type ChangeEvent, type MouseEvent } from "react";
 import type { Collaborator } from "../../collaboration";
 import { dependencyOptions, maturedLevelSteps, roleMeta, roleOptions } from "../../features/modeling/constants";
-import type { Dependency, EntityRole, ModelSeed } from "../../features/modeling/types";
+import type { CanvasModelPlacement, Dependency, EntityRole, ModelSeed } from "../../features/modeling/types";
 import { clampMaturedLevel, getModelStageLabel } from "../../features/modeling/utils";
 
 type SeedInspectorProps = {
   seed: ModelSeed;
   owner?: Collaborator;
   canEdit: boolean;
+  placement?: CanvasModelPlacement;
   onUpdate: (seedId: string, patch: Partial<ModelSeed>) => void;
 };
 
@@ -19,7 +20,7 @@ const maturedStepLabels = new Map([
   [0.5, "matured"]
 ]);
 
-export function SeedInspector({ seed, owner, canEdit, onUpdate }: SeedInspectorProps) {
+export function SeedInspector({ seed, owner, canEdit, placement, onUpdate }: SeedInspectorProps) {
   const handleMaturedLevelChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       onUpdate(seed.id, { maturedLevel: clampMaturedLevel(Number(event.target.value)) });
@@ -66,7 +67,7 @@ export function SeedInspector({ seed, owner, canEdit, onUpdate }: SeedInspectorP
         }`}
       >
         <Lock size={13} />
-        {canEdit ? "Locked by you — editing enabled" : owner ? `Locked by ${owner.name}` : "Click the card to lock and edit"}
+        {placement?.accessMode === "readonly" ? "Read-only on this canvas" : canEdit ? "Locked by you — editing enabled" : owner ? `Locked by ${owner.name}` : "Click the card to lock and edit"}
       </div>
 
       <fieldset disabled={!canEdit} className="disabled-controls">

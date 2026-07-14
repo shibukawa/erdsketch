@@ -18,6 +18,7 @@ fields:
   - role
   - dependency
   - privacy
+  - usage_scope
   - linked_entities
   - linked_attributes
   - linked_relationships
@@ -78,6 +79,13 @@ dependency:
 privacy:
   type: boolean
   meaning: contains_personal_information
+usage_scope:
+  type: enum
+  values:
+    - shared
+    - dfd_only
+  default: shared
+  rule: rule:dfd-model-scope
 relationship_hint:
   status: removed_from_seed_tags
   representation: model_to_model_line
@@ -89,6 +97,7 @@ constraints:
   - Privacy is an on/off flag only.
   - Relationship semantics are expressed by lines between model seeds, not seed tags.
   - Linked state is shown visually through lines or model references, not a "Linked" text label.
+  - Every DFD placement of this model uses the same roughness and data:model-state as its ERD placement.
 related:
   - ui:erd-sketch-canvas
   - data:model-state

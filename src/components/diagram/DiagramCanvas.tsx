@@ -4,7 +4,7 @@ import type {
   RefObject
 } from "react";
 import type { Collaborator } from "../../collaboration";
-import type { CardDisplayMode, DataDomain, DomainCategory, DragState, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference, Viewport } from "../../features/modeling/types";
+import type { CanvasModelPlacement, CardDisplayMode, DataDomain, DomainCategory, DragState, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference, Viewport } from "../../features/modeling/types";
 import { getCardBoundaryPoint, getRelationshipDropTarget, relationshipVisibleOnCanvas } from "../../features/modeling/utils";
 import { ModelSeedCard } from "./ModelSeedCard";
 import { RemoteCursor } from "./RemoteCursor";
@@ -19,6 +19,10 @@ type DiagramCanvasProps = {
   viewport: Viewport;
   seeds: ModelSeed[];
   allSeeds: ModelSeed[];
+  projectSeeds: ModelSeed[];
+  placements: CanvasModelPlacement[];
+  activeCanvasId: string;
+  titleFocusSeedId: string | null;
   relationships: Relationship[];
   relationshipReferences: RelationshipReference[];
   domains: DataDomain[];
@@ -37,6 +41,7 @@ type DiagramCanvasProps = {
   onPointerUp: PointerEventHandler<HTMLDivElement>;
   onSeedPointerDown: (event: PointerEvent<HTMLElement>, seed: ModelSeed) => void;
   onUpdateSeed: (seedId: string, patch: Partial<ModelSeed>) => void;
+  onTitleFocusHandled: (seedId: string) => void;
   onUnlockSeed: (seedId: string) => void;
   onRelationshipPointerDown: (event: PointerEvent<HTMLButtonElement>, seed: ModelSeed) => void;
   onEditRelationship: (relationshipId: string) => void;
@@ -53,6 +58,10 @@ export function DiagramCanvas({
   viewport,
   seeds,
   allSeeds,
+  projectSeeds,
+  placements,
+  activeCanvasId,
+  titleFocusSeedId,
   relationships,
   relationshipReferences,
   domains,
@@ -71,6 +80,7 @@ export function DiagramCanvas({
   onPointerUp,
   onSeedPointerDown,
   onUpdateSeed,
+  onTitleFocusHandled,
   onUnlockSeed,
   onRelationshipPointerDown,
   onEditRelationship,
@@ -129,6 +139,9 @@ export function DiagramCanvas({
             vocabularyCache={vocabularyCache}
             owner={locks[seed.id]}
             me={me}
+            accessMode={placements.find((placement) => placement.canvasId === activeCanvasId && placement.seedId === seed.id)?.accessMode ?? "readonly"}
+            titleFocusRequested={titleFocusSeedId === seed.id}
+            onTitleFocusHandled={onTitleFocusHandled}
             onPointerDown={onSeedPointerDown}
             onUpdate={onUpdateSeed}
             onUnlock={onUnlockSeed}
@@ -141,7 +154,7 @@ export function DiagramCanvas({
             onDeleteRelationship={onDeleteRelationship}
             onCreateDomain={onCreateDomain}
             onOpenDomainDictionary={onOpenDomainDictionary}
-            seeds={allSeeds}
+            seeds={projectSeeds}
             onApplyRefinement={onApplyRefinement}
           />
         ))}

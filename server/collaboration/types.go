@@ -1,6 +1,9 @@
 package collaboration
 
-import "errors"
+import (
+	"encoding/json"
+	"errors"
+)
 
 var (
 	ErrUnknownClient        = errors.New("unknown client")
@@ -21,7 +24,32 @@ var (
 	ErrVocabularyNotFound   = errors.New("vocabulary entry not found")
 	ErrVocabularyExists     = errors.New("vocabulary term is already defined")
 	ErrVocabularyInvalid    = errors.New("invalid vocabulary entry")
+	ErrCanvasNotFound       = errors.New("canvas not found")
+	ErrCanvasExists         = errors.New("canvas already exists")
+	ErrCanvasInvalid        = errors.New("invalid canvas")
+	ErrPlacementNotFound    = errors.New("model placement not found")
+	ErrPlacementExists      = errors.New("model placement already exists")
+	ErrPlacementInvalid     = errors.New("invalid model placement")
+	ErrReadonlyPlacement    = errors.New("model placement is readonly")
+	ErrOwnershipChanged     = errors.New("model ownership changed")
+	ErrDFDInvalid           = errors.New("invalid DFD state")
 )
+
+const DefaultCanvasID = "main"
+const DefaultDFDCanvasID = "dfd-main"
+
+type Canvas struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type CanvasModelPlacement struct {
+	CanvasID   string  `json:"canvasId"`
+	SeedID     string  `json:"seedId"`
+	X          float64 `json:"x"`
+	Y          float64 `json:"y"`
+	AccessMode string  `json:"accessMode"`
+}
 
 type ModelSeed struct {
 	ID                string             `json:"id"`
@@ -34,9 +62,87 @@ type ModelSeed struct {
 	Y                 float64            `json:"y"`
 	Role              string             `json:"role"`
 	Dependency        string             `json:"dependency"`
+	UsageScope        string             `json:"usageScope,omitempty"`
 	HasPrivacy        bool               `json:"hasPrivacy"`
 	MaturedLevel      float64            `json:"maturedLevel"`
 	Rotation          float64            `json:"rotation"`
+}
+
+type DFDCanvas struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type DFDNode struct {
+	ID                string               `json:"id"`
+	DefinitionID      string               `json:"definitionId"`
+	CanvasID          string               `json:"canvasId"`
+	Kind              string               `json:"kind"`
+	Name              string               `json:"name"`
+	Description       string               `json:"description,omitempty"`
+	X                 float64              `json:"x"`
+	Y                 float64              `json:"y"`
+	ProcessKind       string               `json:"processKind,omitempty"`
+	PhysicalProcesses []DFDPhysicalProcess `json:"physicalProcesses,omitempty"`
+	ModelID           string               `json:"modelId,omitempty"`
+	IntermediateKind  string               `json:"intermediateKind,omitempty"`
+	Format            string               `json:"format,omitempty"`
+}
+
+type DFDPhysicalProcess struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+func (p *DFDPhysicalProcess) UnmarshalJSON(data []byte) error {
+	var legacy string
+	if err := json.Unmarshal(data, &legacy); err == nil {
+		p.Name = legacy
+		return nil
+	}
+	type plain DFDPhysicalProcess
+	return json.Unmarshal(data, (*plain)(p))
+}
+
+type DFDCRUDAssignment struct {
+	ProcessUnitID string   `json:"processUnitId"`
+	ModelID       string   `json:"modelId"`
+	Operations    []string `json:"operations"`
+}
+
+type DFDFlow struct {
+	ID              string              `json:"id"`
+	CanvasID        string              `json:"canvasId"`
+	SourceID        string              `json:"sourceId"`
+	DestinationID   string              `json:"destinationId"`
+	Label           string              `json:"label,omitempty"`
+	Protocol        string              `json:"protocol,omitempty"`
+	Bidirectional   bool                `json:"bidirectional,omitempty"`
+	CRUDAssignments []DFDCRUDAssignment `json:"crudAssignments,omitempty"`
+	// Legacy fields are accepted and removed by normalization.
+	SourceCRUD      string   `json:"sourceCrud,omitempty"`
+	DestinationCRUD []string `json:"destinationCrud,omitempty"`
+}
+
+type DFDCRUDMatrix struct {
+	Orientation  string   `json:"orientation"`
+	ProcessOrder []string `json:"processOrder"`
+	ModelOrder   []string `json:"modelOrder"`
+}
+
+type DFDGroup struct {
+	ID        string   `json:"id"`
+	CanvasID  string   `json:"canvasId"`
+	Kind      string   `json:"kind"`
+	MemberIDs []string `json:"memberIds"`
+}
+
+type DFDState struct {
+	Canvases   []DFDCanvas   `json:"canvases"`
+	Nodes      []DFDNode     `json:"nodes"`
+	Flows      []DFDFlow     `json:"flows"`
+	Groups     []DFDGroup    `json:"groups"`
+	CRUDMatrix DFDCRUDMatrix `json:"crudMatrix"`
 }
 
 type ModelField struct {
@@ -150,15 +256,18 @@ type RelationshipReference struct {
 }
 
 type Collaborator struct {
-	ID     string  `json:"id"`
-	Name   string  `json:"name"`
-	Color  string  `json:"color"`
-	X      float64 `json:"x"`
-	Y      float64 `json:"y"`
-	Online bool    `json:"online"`
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Color    string  `json:"color"`
+	X        float64 `json:"x"`
+	Y        float64 `json:"y"`
+	Online   bool    `json:"online"`
+	CanvasID string  `json:"canvasId"`
 }
 
 type State struct {
+	Canvases               []Canvas                `json:"canvases"`
+	Placements             []CanvasModelPlacement  `json:"placements"`
 	Seeds                  []ModelSeed             `json:"seeds"`
 	Relationships          []Relationship          `json:"relationships"`
 	RelationshipReferences []RelationshipReference `json:"relationshipReferences"`
@@ -166,8 +275,28 @@ type State struct {
 	DomainCategories       []DomainCategory        `json:"domainCategories"`
 	NamingPolicy           NamingPolicy            `json:"namingPolicy"`
 	VocabularyEntries      []VocabularyEntry       `json:"vocabularyEntries"`
+	DFD                    DFDState                `json:"dfd"`
 	Users                  []Collaborator          `json:"users"`
 	Locks                  map[string]Collaborator `json:"locks"`
+}
+
+type CanvasUpdate struct {
+	User    Collaborator
+	Canvas  Canvas
+	Created bool
+}
+
+type PlacementUpdate struct {
+	User      Collaborator
+	Placement CanvasModelPlacement
+	Created   bool
+}
+
+type OwnershipTransfer struct {
+	User            Collaborator
+	SeedID          string
+	PreviousOwnerID string
+	TargetOwnerID   string
 }
 
 type JoinResult struct {

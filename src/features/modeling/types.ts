@@ -1,5 +1,20 @@
 export type EntityRole = "master" | "transaction" | "summary" | "history" | "work";
 
+export type ErdCanvas = {
+  id: string;
+  name: string;
+};
+
+export type CanvasAccessMode = "owner" | "readonly";
+
+export type CanvasModelPlacement = {
+  canvasId: string;
+  seedId: string;
+  x: number;
+  y: number;
+  accessMode: CanvasAccessMode;
+};
+
 export type Dependency = "independent" | "dependent";
 
 export type NameDisplayMode = "business" | "system" | "physical";
@@ -205,9 +220,79 @@ export type ModelSeed = {
   y: number;
   role: EntityRole;
   dependency: Dependency;
+  usageScope?: "shared" | "dfd_only";
   hasPrivacy: boolean;
   maturedLevel: number;
   rotation: number;
+};
+
+export type DfdCanvas = {
+  id: string;
+  name: string;
+};
+
+export type DfdNodeKind = "process" | "model" | "external" | "intermediate";
+export type DfdProcessKind = "batch" | "ui";
+export type DfdIntermediateKind = "file" | "queue";
+export type DfdPhysicalProcess = { id: string; name: string };
+export type CrudOperation = "C" | "R" | "U" | "D";
+export type DfdCrudAssignment = {
+  processUnitId: string;
+  modelId: string;
+  operations: CrudOperation[];
+};
+export type CrudMatrixOrientation = "processes_rows" | "models_rows";
+export type DfdCrudMatrix = {
+  orientation: CrudMatrixOrientation;
+  processOrder: string[];
+  modelOrder: string[];
+};
+
+export type DfdNode = {
+  id: string;
+  definitionId: string;
+  canvasId: string;
+  kind: DfdNodeKind;
+  name: string;
+  description?: string;
+  x: number;
+  y: number;
+  processKind?: DfdProcessKind;
+  physicalProcesses?: DfdPhysicalProcess[];
+  modelId?: string;
+  intermediateKind?: DfdIntermediateKind;
+  format?: string;
+};
+
+export type DfdFlow = {
+  id: string;
+  canvasId: string;
+  sourceId: string;
+  destinationId: string;
+  label?: string;
+  protocol?: string;
+  bidirectional?: boolean;
+  crudAssignments?: DfdCrudAssignment[];
+  /** Legacy fields accepted during migration. */
+  sourceCrud?: "R";
+  destinationCrud?: Array<"C" | "U" | "D">;
+};
+
+export type DfdGroupKind = "process" | "data_entity";
+
+export type DfdGroup = {
+  id: string;
+  canvasId: string;
+  kind: DfdGroupKind;
+  memberIds: string[];
+};
+
+export type DfdState = {
+  canvases: DfdCanvas[];
+  nodes: DfdNode[];
+  flows: DfdFlow[];
+  groups: DfdGroup[];
+  crudMatrix?: DfdCrudMatrix;
 };
 
 export type Viewport = {

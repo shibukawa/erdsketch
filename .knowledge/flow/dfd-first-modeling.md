@@ -11,9 +11,13 @@ flow:
   trigger: Start a new modeling session.
   steps:
     - id: identify-business-process
-      action: describe business process
+      action: select batch or UI in ui:modeling-quick-create, enter a name, and press Enter
     - id: identify-business-data
-      action: identify data crossing process boundaries
+      action: create or search data:model-catalog and place it on ui:dfd-sketch-canvas
+    - id: identify-external-entities
+      action: select external in ui:modeling-quick-create, enter a name, and press Enter
+    - id: connect-processes
+      action: drag ui:diagram-link-handle and connect processes through file or queue data:dfd-intermediate-data
     - id: identify-transaction-boundaries
       action: expose transaction boundaries and responsibilities
     - id: identify-system-boundaries
@@ -32,7 +36,9 @@ flow:
     - Inventory Allocation
     - Shipment
     - Billing
-  invariant: Existing SQL and ERD are inputs, not the starting point.
+  invariants:
+    - Existing SQL and schemas are inputs, not the starting point.
+    - Starting from DFD or ERD is equally supported by requirement:dfd-modeling-experience.
 related:
   - data:data-flow
   - concept:model-growth

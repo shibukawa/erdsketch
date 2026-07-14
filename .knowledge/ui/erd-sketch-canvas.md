@@ -16,6 +16,7 @@ ui:
     title: ERD Sketch
     primary_item: data:model-seed
     interactions:
+      - quick_create_model_seed
       - double_click_to_add_model_seed
       - drag_and_drop_to_move
       - click_title_to_edit
@@ -36,6 +37,10 @@ ui:
       - grow_seed_as_entity
       - grow_seed_as_value_object
       - grow_seed_as_data_domain
+      - open_canvas_selector
+      - place_existing_project_model
+    quick_create: ui:modeling-quick-create
+    link_handle: ui:diagram-link-handle
     visual_language:
       card_renderer: roughjs
       card_shape: roughjs_rectangle
@@ -102,6 +107,8 @@ ui:
     persistence:
       owner: data:project
       cardinality_per_project: many
+      model_definitions: data:model-catalog
+      model_placements: data:canvas-model-placement
       format: plain_text
       expected_files:
         - model/seeds/*.seed.yaml
@@ -109,6 +116,8 @@ constraints:
   - Canvas is the product's primary surface.
   - A project may own multiple ERD canvases.
   - Each ERD canvas uses the project domain dictionary and vocabulary.
+  - Each ERD canvas uses the project model catalog.
+  - Cross-canvas model editing follows rule:canvas-model-ownership.
   - Users decide placement and grouping.
   - The app should not mechanically grid seeds.
   - Roughness expresses maturity and sketch state.

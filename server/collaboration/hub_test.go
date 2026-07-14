@@ -208,6 +208,88 @@ func TestSeedUpdateSynchronizesMaturedLevel(t *testing.T) {
 	}
 }
 
+func TestInitialSeedsBecomeOwnerPlacementsOnMainCanvas(t *testing.T) {
+	hub := NewHub()
+	joined := hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order", X: 120, Y: 80}, {ID: "customer", X: 420, Y: 90}}, nil, nil)
+	if len(joined.State.Canvases) != 1 || joined.State.Canvases[0].ID != DefaultCanvasID {
+		t.Fatalf("default canvases: %+v", joined.State.Canvases)
+	}
+	if len(joined.State.Placements) != 2 {
+		t.Fatalf("placements: %+v", joined.State.Placements)
+	}
+	for _, placement := range joined.State.Placements {
+		if placement.CanvasID != DefaultCanvasID || placement.AccessMode != "owner" {
+			t.Fatalf("initial placement: %+v", placement)
+		}
+	}
+}
+
+func TestReadonlyPlacementAllowsLocalMoveButRejectsModelEdit(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order", Title: "Order", X: 10, Y: 20}}, nil, nil)
+	if _, err := hub.UpdateCanvas("lion", Canvas{ID: "billing", Name: "Billing"}, true); err != nil {
+		t.Fatalf("create canvas: %v", err)
+	}
+	placement, err := hub.UpdatePlacement("lion", CanvasModelPlacement{CanvasID: "billing", SeedID: "order", X: 90, Y: 100}, true)
+	if err != nil || placement.Placement.AccessMode != "readonly" {
+		t.Fatalf("create readonly placement: result=%+v err=%v", placement, err)
+	}
+	updated, err := hub.UpdatePlacement("lion", CanvasModelPlacement{CanvasID: "billing", SeedID: "order", X: 140, Y: 160, AccessMode: "owner"}, false)
+	if err != nil || updated.Placement.X != 140 || updated.Placement.AccessMode != "readonly" {
+		t.Fatalf("move readonly placement: result=%+v err=%v", updated, err)
+	}
+	billing := "billing"
+	if _, err := hub.UpdateUser("lion", nil, nil, nil, &billing); err != nil {
+		t.Fatalf("switch canvas: %v", err)
+	}
+	if _, err := hub.ChangeLock("lion", "order", "lock"); err != nil {
+		t.Fatalf("lock model: %v", err)
+	}
+	if _, err := hub.UpdateSeedInCanvas("lion", "billing", ModelSeed{ID: "order", Title: "Changed"}, false); !errors.Is(err, ErrReadonlyPlacement) {
+		t.Fatalf("readonly edit: got %v, want %v", err, ErrReadonlyPlacement)
+	}
+}
+
+func TestOwnershipTransferIsAtomicAndDetectsStaleOwner(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order", Title: "Order", X: 10, Y: 20}}, nil, nil)
+	if _, err := hub.UpdateCanvas("lion", Canvas{ID: "billing", Name: "Billing"}, true); err != nil {
+		t.Fatalf("create canvas: %v", err)
+	}
+	if _, err := hub.ChangeLock("lion", "order", "lock"); err != nil {
+		t.Fatalf("lock before transfer: %v", err)
+	}
+	result, err := hub.TransferOwnership("lion", "order", DefaultCanvasID, "billing")
+	if err != nil || result.PreviousOwnerID != DefaultCanvasID || result.TargetOwnerID != "billing" {
+		t.Fatalf("transfer: result=%+v err=%v", result, err)
+	}
+	state := hub.snapshotLocked()
+	if _, locked := state.Locks["order"]; locked {
+		t.Fatalf("ownership transfer must release the model lock: %+v", state.Locks)
+	}
+	ownerCount := 0
+	for _, placement := range state.Placements {
+		if placement.SeedID != "order" {
+			continue
+		}
+		if placement.AccessMode == "owner" {
+			ownerCount++
+			if placement.CanvasID != "billing" {
+				t.Fatalf("unexpected owner placement: %+v", placement)
+			}
+		}
+		if placement.CanvasID == DefaultCanvasID && placement.AccessMode != "readonly" {
+			t.Fatalf("previous owner must be readonly: %+v", placement)
+		}
+	}
+	if ownerCount != 1 {
+		t.Fatalf("owner count: got %d placements=%+v", ownerCount, state.Placements)
+	}
+	if _, err := hub.TransferOwnership("lion", "order", DefaultCanvasID, "billing"); !errors.Is(err, ErrOwnershipChanged) {
+		t.Fatalf("stale transfer: got %v, want %v", err, ErrOwnershipChanged)
+	}
+}
+
 func TestLockRejectsAnotherCollaborator(t *testing.T) {
 	hub := NewHub()
 	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
@@ -547,5 +629,170 @@ func TestDomainCategoriesStartWithUserDefinedAndCanBeRenamed(t *testing.T) {
 	state := hub.snapshotLocked()
 	if state.Domains[0].CategoryID != "billing" || state.DomainCategories[2].Name != "Reference data" {
 		t.Fatalf("category state: %+v", state)
+	}
+}
+
+func TestDFDStateSynchronizesValidGraphAndRejectsForbiddenConnections(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order", Title: "Order"}}, nil, nil)
+	valid := DFDState{
+		Canvases: []DFDCanvas{{ID: "flow", Name: "Order flow"}},
+		Nodes: []DFDNode{
+			{ID: "process", DefinitionID: "process", CanvasID: "flow", Kind: "process", Name: "Receive order", ProcessKind: "ui", X: 20, Y: 40},
+			{ID: "payload", DefinitionID: "payload", CanvasID: "flow", Kind: "intermediate", Name: "Order JSON", IntermediateKind: "api-payload", Format: "JSON", X: 260, Y: 40},
+			{ID: "worker", DefinitionID: "worker", CanvasID: "flow", Kind: "process", Name: "Create order", ProcessKind: "batch", X: 500, Y: 40},
+			{ID: "store", DefinitionID: "order", CanvasID: "flow", Kind: "model", ModelID: "order", X: 740, Y: 40},
+		},
+		Flows: []DFDFlow{
+			{ID: "request", CanvasID: "flow", SourceID: "process", DestinationID: "payload", Label: "push", Protocol: "HTTPS"},
+			{ID: "consume", CanvasID: "flow", SourceID: "payload", DestinationID: "worker"},
+			{ID: "write", CanvasID: "flow", SourceID: "worker", DestinationID: "store"},
+		},
+	}
+	if err := hub.UpdateDFD("lion", valid); err != nil {
+		t.Fatalf("valid DFD: %v", err)
+	}
+	state := hub.snapshotLocked()
+	if len(state.DFD.Nodes) != 4 || state.DFD.Flows[0].Protocol != "HTTPS" {
+		t.Fatalf("DFD snapshot: %+v", state.DFD)
+	}
+	if state.DFD.Nodes[1].IntermediateKind != "file" {
+		t.Fatalf("legacy API payload was not normalized to file: %+v", state.DFD.Nodes[1])
+	}
+	if len(state.DFD.Flows[2].CRUDAssignments) != 1 || state.DFD.Flows[2].CRUDAssignments[0].ProcessUnitID != "worker" || state.DFD.Flows[2].CRUDAssignments[0].ModelID != "order" || len(state.DFD.Flows[2].CRUDAssignments[0].Operations) != 1 || state.DFD.Flows[2].CRUDAssignments[0].Operations[0] != "C" {
+		t.Fatalf("model CRUD defaults: %+v", state.DFD.Flows[2])
+	}
+	invalid := valid
+	invalid.Flows = []DFDFlow{{ID: "direct", CanvasID: "flow", SourceID: "process", DestinationID: "worker"}}
+	if err := hub.UpdateDFD("lion", invalid); !errors.Is(err, ErrDFDInvalid) {
+		t.Fatalf("direct process flow: got %v, want %v", err, ErrDFDInvalid)
+	}
+	reverse := valid
+	reverse.Flows = []DFDFlow{{ID: "reverse", CanvasID: "flow", SourceID: "store", DestinationID: "worker"}}
+	if err := hub.UpdateDFD("lion", reverse); err != nil {
+		t.Fatalf("right-to-left one-way flow: %v", err)
+	}
+	if got := hub.snapshotLocked().DFD.Flows[0].CRUDAssignments; len(got) != 1 || len(got[0].Operations) != 1 || got[0].Operations[0] != "R" {
+		t.Fatalf("right-to-left CRUD default: %+v", got)
+	}
+	reverse.Flows[0].Bidirectional = true
+	if err := hub.UpdateDFD("lion", reverse); err != nil {
+		t.Fatalf("bidirectional reverse geometry: %v", err)
+	}
+	if got := hub.snapshotLocked().DFD.Flows[0].CRUDAssignments; len(got) != 1 || len(got[0].Operations) != 2 || got[0].Operations[0] != "C" || got[0].Operations[1] != "R" {
+		t.Fatalf("bidirectional CRUD defaults: %+v", got)
+	}
+}
+
+func TestDFDAllowsRepeatedExternalPlacementButNotRepeatedModel(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order", Title: "Order"}}, nil, nil)
+	base := DFDState{
+		Canvases: []DFDCanvas{{ID: "flow", Name: "Flow"}},
+		Nodes: []DFDNode{
+			{ID: "customer-left", DefinitionID: "customer", CanvasID: "flow", Kind: "external", Name: "Customer"},
+			{ID: "customer-right", DefinitionID: "customer", CanvasID: "flow", Kind: "external", Name: "Customer"},
+			{ID: "order-a", DefinitionID: "order", CanvasID: "flow", Kind: "model", ModelID: "order"},
+		},
+	}
+	if err := hub.UpdateDFD("lion", base); err != nil {
+		t.Fatalf("repeated external placement: %v", err)
+	}
+	base.Nodes = append(base.Nodes, DFDNode{ID: "order-b", DefinitionID: "order", CanvasID: "flow", Kind: "model", ModelID: "order"})
+	if err := hub.UpdateDFD("lion", base); !errors.Is(err, ErrDFDInvalid) {
+		t.Fatalf("repeated model placement: got %v, want %v", err, ErrDFDInvalid)
+	}
+}
+
+func TestDFDRejectsRepeatedProcessDefinitionAcrossProcessViews(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
+	state := DFDState{
+		Canvases: []DFDCanvas{{ID: "flow", Name: "Flow"}},
+		Nodes: []DFDNode{
+			{ID: "physical", DefinitionID: "checkout", CanvasID: "flow", Kind: "process", Name: "Checkout", ProcessKind: "ui"},
+			{ID: "logical", DefinitionID: "checkout", CanvasID: "flow", Kind: "logical-process", Name: "Checkout", PhysicalProcesses: []DFDPhysicalProcess{{Name: "Checkout UI"}}},
+		},
+	}
+	if err := hub.UpdateDFD("lion", state); !errors.Is(err, ErrDFDInvalid) {
+		t.Fatalf("repeated process definition: got %v, want %v", err, ErrDFDInvalid)
+	}
+}
+
+func TestDFDNormalizesLogicalProcessAndStream(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
+	state := DFDState{Canvases: []DFDCanvas{{ID: "flow", Name: "Flow"}}, Nodes: []DFDNode{
+		{ID: "logical", DefinitionID: "checkout", CanvasID: "flow", Kind: "logical-process", Name: "Checkout", PhysicalProcesses: []DFDPhysicalProcess{{Name: "Checkout UI"}}},
+		{ID: "queue", DefinitionID: "events", CanvasID: "flow", Kind: "intermediate", Name: "Events", IntermediateKind: "stream", X: 260},
+	}}
+	if err := hub.UpdateDFD("lion", state); err != nil {
+		t.Fatalf("normalize legacy DFD: %v", err)
+	}
+	got := hub.snapshotLocked().DFD
+	if got.Nodes[0].Kind != "process" || got.Nodes[0].ProcessKind != "batch" || got.Nodes[1].IntermediateKind != "queue" {
+		t.Fatalf("normalized nodes: %+v", got.Nodes)
+	}
+}
+
+func TestDFDExpandsDetailedCRUDByPhysicalProcessAndGroupedModel(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "order", Title: "Order"}, {ID: "invoice", Title: "Invoice"}}, nil, nil)
+	state := DFDState{
+		Canvases: []DFDCanvas{{ID: "flow", Name: "Flow"}},
+		Nodes: []DFDNode{
+			{ID: "checkout", DefinitionID: "checkout", CanvasID: "flow", Kind: "process", Name: "Checkout", ProcessKind: "ui", PhysicalProcesses: []DFDPhysicalProcess{{ID: "screen", Name: "Screen"}, {ID: "submit", Name: "Submit"}}},
+			{ID: "billing", DefinitionID: "billing", CanvasID: "flow", Kind: "process", Name: "Billing", ProcessKind: "batch"},
+			{ID: "order-node", DefinitionID: "order", CanvasID: "flow", Kind: "model", ModelID: "order", X: 500},
+			{ID: "invoice-node", DefinitionID: "invoice", CanvasID: "flow", Kind: "model", ModelID: "invoice", X: 500, Y: 140},
+		},
+		Groups: []DFDGroup{
+			{ID: "processes", CanvasID: "flow", Kind: "process", MemberIDs: []string{"checkout", "billing"}},
+			{ID: "models", CanvasID: "flow", Kind: "data_entity", MemberIDs: []string{"order-node", "invoice-node"}},
+		},
+		Flows: []DFDFlow{{
+			ID: "write", CanvasID: "flow", SourceID: "processes", DestinationID: "models",
+			CRUDAssignments: []DFDCRUDAssignment{{ProcessUnitID: "screen", ModelID: "order", Operations: []string{"U", "D"}}},
+		}},
+		CRUDMatrix: DFDCRUDMatrix{Orientation: "models_rows", ProcessOrder: []string{"billing", "stale", "screen"}, ModelOrder: []string{"invoice"}},
+	}
+	if err := hub.UpdateDFD("lion", state); err != nil {
+		t.Fatalf("grouped CRUD state: %v", err)
+	}
+	got := hub.snapshotLocked().DFD
+	if len(got.Flows[0].CRUDAssignments) != 6 {
+		t.Fatalf("CRUD Cartesian product: %+v", got.Flows[0].CRUDAssignments)
+	}
+	first := got.Flows[0].CRUDAssignments[0]
+	if first.ProcessUnitID != "screen" || first.ModelID != "order" || len(first.Operations) != 2 || first.Operations[0] != "U" || first.Operations[1] != "D" {
+		t.Fatalf("custom CRUD assignment: %+v", first)
+	}
+	if got.CRUDMatrix.Orientation != "models_rows" || len(got.CRUDMatrix.ProcessOrder) != 3 || containsString(got.CRUDMatrix.ProcessOrder, "stale") || len(got.CRUDMatrix.ModelOrder) != 2 {
+		t.Fatalf("normalized CRUD Matrix: %+v", got.CRUDMatrix)
+	}
+
+	state = got
+	state.Nodes[0].PhysicalProcesses[0].Name = "Renamed screen"
+	if err := hub.UpdateDFD("lion", state); err != nil {
+		t.Fatalf("rename physical process: %v", err)
+	}
+	renamed := hub.snapshotLocked().DFD.Flows[0].CRUDAssignments[0]
+	if renamed.ProcessUnitID != "screen" || len(renamed.Operations) != 2 || renamed.Operations[0] != "U" || renamed.Operations[1] != "D" {
+		t.Fatalf("CRUD assignment did not survive rename: %+v", renamed)
+	}
+}
+
+func TestCatalogOnlyDFDModelCannotBePlacedOnERD(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)
+	seed := ModelSeed{ID: "payload", Title: "Payload", Role: "work", Dependency: "independent", UsageScope: "dfd_only"}
+	if _, err := hub.UpdateCatalogSeed("lion", seed, true); err != nil {
+		t.Fatalf("create DFD-only model: %v", err)
+	}
+	if got := hub.snapshotLocked(); len(got.Seeds) != 1 || len(got.Placements) != 0 || got.Seeds[0].UsageScope != "dfd_only" {
+		t.Fatalf("catalog seed state: %+v", got)
+	}
+	if _, err := hub.UpdatePlacement("lion", CanvasModelPlacement{CanvasID: DefaultCanvasID, SeedID: seed.ID}, true); !errors.Is(err, ErrPlacementInvalid) {
+		t.Fatalf("place DFD-only model: got %v, want %v", err, ErrPlacementInvalid)
 	}
 }
