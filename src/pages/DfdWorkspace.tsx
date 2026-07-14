@@ -1,7 +1,7 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import type { Collaborator } from "../collaboration";
 import type { CardDisplayMode, DataDomain, DfdFlow, DfdGroup, DfdNode, DfdState, DomainCategory, ErdCanvas, ModelField, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference, Viewport } from "../features/modeling/types";
-import { DFD_NODE_SIZE, dfdWarnings, endpointBounds, endpointClass, groupAfterOverlap, normalizeDfdCrud, validEndpointPair, withModelCrud, type DfdWarning } from "../features/dfd/dfd";
+import { DFD_NODE_SIZE, dfdWarnings, endpointBounds, endpointClass, findDfdNodePlacement, groupAfterOverlap, normalizeDfdCrud, validEndpointPair, withModelCrud, type DfdWarning } from "../features/dfd/dfd";
 import { DfdCanvas } from "../components/dfd/DfdCanvas";
 import { DfdModelPickerDialog } from "../components/dfd/DfdModelPickerDialog";
 import { DfdNodeDialog, type DfdNodeDraft } from "../components/dfd/DfdNodeDialog";
@@ -112,10 +112,13 @@ export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, use
     if (!rect) return { x: 120, y: 100 };
     return { x: (clientX - rect.left - viewport.x) / viewport.scale, y: (clientY - rect.top - viewport.y) / viewport.scale };
   }, [viewport]);
-  const nextPosition = useCallback(() => ({
-    x: 100 + (activeNodes.length % 4) * 280,
-    y: 90 + Math.floor(activeNodes.length / 4) * 190
-  }), [activeNodes.length]);
+  const nextPosition = useCallback((kind: DfdNode["kind"]) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    const center = rect
+      ? { x: (rect.width / 2 - viewport.x) / viewport.scale, y: (rect.height / 2 - viewport.y) / viewport.scale }
+      : { x: 600, y: 400 };
+    return findDfdNodePlacement(center, kind, dfdRef.current.nodes, dfdRef.current.groups, activeCanvasId);
+  }, [activeCanvasId, viewport]);
 
   const beginConnection = useCallback((sourceId: string, destinationId: string) => {
     if (destinationId === sourceId) return;
@@ -164,7 +167,7 @@ export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, use
     }
     const kind = nodeDialog.mode;
     let nodes = current.nodes;
-    let position = nextPosition();
+    let position = nextPosition(kind);
     if (nodeDialog.forced) {
       const source = endpointBounds(nodeDialog.forced.sourceId, current.nodes, current.groups)!;
       const destination = endpointBounds(nodeDialog.forced.destinationId, current.nodes, current.groups)!;
@@ -198,7 +201,7 @@ export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, use
   const placeModel = useCallback((modelId: string) => {
     const model = models.find((item) => item.id === modelId);
     if (!model) return;
-    const position = nextPosition();
+    const position = nextPosition("model");
     const node: DfdNode = { id: crypto.randomUUID(), definitionId: model.id, canvasId: activeCanvasId, kind: "model", name: model.title, modelId: model.id, ...position };
     persistDfd({ ...dfdRef.current, nodes: [...dfdRef.current.nodes, node] });
     setSelectedEndpointId(node.id);
@@ -208,7 +211,7 @@ export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, use
     const model: ModelSeed = { id: crypto.randomUUID(), title: input.title, description: "", fields: [], x: 0, y: 0, role: input.role, dependency: input.dependency, usageScope: input.usageScope, hasPrivacy: false, maturedLevel: 6, rotation: 0 };
     if (!(await onSaveCatalogModel(model, true))) return false;
     startTransition(() => onSetLocalModels([...models, model]));
-    const position = nextPosition();
+    const position = nextPosition("model");
     const node: DfdNode = { id: crypto.randomUUID(), definitionId: model.id, canvasId: activeCanvasId, kind: "model", name: model.title, modelId: model.id, ...position };
     persistDfd({ ...dfdRef.current, nodes: [...dfdRef.current.nodes, node] });
     setSelectedEndpointId(node.id);
@@ -220,7 +223,8 @@ export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, use
     if (kind === "model") {
       return createModel({ title: name, role: "work", dependency: "independent", usageScope: "shared" });
     }
-    const position = nextPosition();
+    const nodeKind: DfdNode["kind"] = kind === "batch" || kind === "ui" ? "process" : kind === "file" || kind === "queue" ? "intermediate" : "external";
+    const position = nextPosition(nodeKind);
     const node: DfdNode = kind === "batch" || kind === "ui"
       ? { id: crypto.randomUUID(), definitionId: crypto.randomUUID(), canvasId: activeCanvasId, kind: "process", processKind: kind, name, ...position }
       : kind === "file" || kind === "queue"

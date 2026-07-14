@@ -374,6 +374,8 @@
 {"context": "body", "path": ".knowledge/requirement/dfd-modeling-experience.md", "source": "requirement:dfd-modeling-experience", "target": "data:dfd-overlap-group", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/dfd-modeling-experience.md", "source": "requirement:dfd-modeling-experience", "target": "ui:dfd-daily-tips", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/requirement/dfd-modeling-experience.md", "source": "requirement:dfd-modeling-experience", "target": "requirement:dfd-validation", "target_category": "objective", "target_type": "requirement"}
+{"context": "body", "path": ".knowledge/requirement/dfd-validation.md", "source": "requirement:dfd-validation", "target": "data:dfd-process", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/requirement/dfd-validation.md", "source": "requirement:dfd-validation", "target": "data:dfd-intermediate-file", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/dfd-validation.md", "source": "requirement:dfd-validation", "target": "data:data-flow", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/domain-dictionary-management.md", "source": "requirement:domain-dictionary-management", "target": "data:project", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/domain-dictionary-management.md", "source": "requirement:domain-dictionary-management", "target": "ui:domain-dictionary-dialog", "target_category": "interface", "target_type": "ui"}

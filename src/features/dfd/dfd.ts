@@ -10,6 +10,44 @@ export const DFD_NODE_SIZE: Record<DfdNode["kind"], { width: number; height: num
   intermediate: { width: 154, height: 108 }
 };
 
+export const DFD_CANVAS_SIZE = { width: 4200, height: 2600 };
+
+function overlapRatio(first: DfdBounds, second: DfdBounds) {
+  const width = Math.max(0, Math.min(first.x + first.width, second.x + second.width) - Math.max(first.x, second.x));
+  const height = Math.max(0, Math.min(first.y + first.height, second.y + second.height) - Math.max(first.y, second.y));
+  const smallerArea = Math.min(first.width * first.height, second.width * second.height);
+  return smallerArea > 0 ? width * height / smallerArea : 0;
+}
+
+export function findDfdNodePlacement(center: { x: number; y: number }, kind: DfdNode["kind"], nodes: DfdNode[], groups: DfdGroup[], canvasId: string) {
+  const size = DFD_NODE_SIZE[kind];
+  const occupied = [
+    ...nodes.filter((node) => node.canvasId === canvasId).map(nodeBounds),
+    ...groups.filter((group) => group.canvasId === canvasId).map((group) => groupBounds(group, nodes))
+  ];
+  const offsets = Array.from({ length: 21 * 21 }, (_, index) => {
+    const x = index % 21 - 10;
+    const y = Math.floor(index / 21) - 10;
+    return { x: x * 40, y: y * 40 };
+  }).sort((first, second) => Math.hypot(first.x, first.y) - Math.hypot(second.x, second.y) || second.x + second.y - first.x - first.y);
+  const seen = new Set<string>();
+  for (const offset of offsets) {
+    const position = {
+      x: Math.min(DFD_CANVAS_SIZE.width - size.width - 24, Math.max(24, center.x - size.width / 2 + offset.x)),
+      y: Math.min(DFD_CANVAS_SIZE.height - size.height - 24, Math.max(24, center.y - size.height / 2 + offset.y))
+    };
+    const key = `${position.x}:${position.y}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const candidate = { ...position, ...size };
+    if (occupied.every((bounds) => overlapRatio(candidate, bounds) <= 0.15)) return position;
+  }
+  return {
+    x: Math.min(DFD_CANVAS_SIZE.width - size.width - 24, Math.max(24, center.x - size.width / 2)),
+    y: Math.min(DFD_CANVAS_SIZE.height - size.height - 24, Math.max(24, center.y - size.height / 2))
+  };
+}
+
 export function dfdNodeClass(node: DfdNode): DfdGroupKind | "external" {
   if (node.kind === "process") return "process";
   if (node.kind === "external") return "external";
@@ -197,6 +235,11 @@ function expandedEndpointIds(id: string, groups: DfdGroup[]) {
   return groups.find((group) => group.id === id)?.memberIds ?? [id];
 }
 
+export function canTerminateDfdFlow(node: DfdNode) {
+  return (node.kind === "process" && node.processKind === "ui")
+    || (node.kind === "intermediate" && node.intermediateKind === "file");
+}
+
 export function dfdWarnings(state: DfdState, canvasId: string, seeds: ModelSeed[]): DfdWarning[] {
   const nodes = state.nodes.filter((node) => node.canvasId === canvasId);
   const flows = state.flows.filter((flow) => flow.canvasId === canvasId);
@@ -216,7 +259,7 @@ export function dfdWarnings(state: DfdState, canvasId: string, seeds: ModelSeed[
     const connections = (incoming.get(node.id) ?? 0) + (outgoing.get(node.id) ?? 0);
     if (connections === 0) warnings.push({ id: `orphan:${node.id}`, nodeId: node.id, message: `${node.name || "Unnamed node"} is not connected.` });
     if (dfdNodeClass(node) === "process" && (incoming.get(node.id) ?? 0) === 0) warnings.push({ id: `input:${node.id}`, nodeId: node.id, message: `${node.name} has no input flow.` });
-    if (dfdNodeClass(node) === "process" && (outgoing.get(node.id) ?? 0) === 0) warnings.push({ id: `output:${node.id}`, nodeId: node.id, message: `${node.name} has no output flow.` });
+    if (dfdNodeClass(node) === "process" && !canTerminateDfdFlow(node) && (outgoing.get(node.id) ?? 0) === 0) warnings.push({ id: `output:${node.id}`, nodeId: node.id, message: `${node.name} has no output flow.` });
   }
   for (const flow of flows) {
     const sourceIDs = expandedEndpointIds(flow.sourceId, groups);
