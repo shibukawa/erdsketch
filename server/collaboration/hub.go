@@ -20,6 +20,7 @@ type Hub struct {
 	namingPolicy           NamingPolicy
 	vocabularyEntries      []VocabularyEntry
 	dfd                    DFDState
+	annotations            []CanvasAnnotation
 	users                  map[string]Collaborator
 	locks                  map[string]string
 	streams                map[string]chan State
@@ -160,8 +161,12 @@ func (h *Hub) join(user Collaborator, assignAvailableName bool, seeds []ModelSee
 		}
 	}
 	user.Online = true
+	if user.CanvasType == "" {
+		user.CanvasType = "erd"
+	}
 	if canvasIndex(h.canvases, user.CanvasID) < 0 {
 		user.CanvasID = DefaultCanvasID
+		user.CanvasType = "erd"
 	}
 	h.users[user.ID] = user
 	if len(h.seeds) == 0 && len(seeds) > 0 {
@@ -465,6 +470,10 @@ func (h *Hub) Subscribe(clientID string) *Subscription {
 }
 
 func (h *Hub) UpdateUser(clientID string, name *string, x, y *float64, canvasIDs ...*string) (UserUpdate, error) {
+	return h.UpdatePresence(clientID, name, x, y, firstStringPointer(canvasIDs), nil, nil, nil)
+}
+
+func (h *Hub) UpdatePresence(clientID string, name *string, x, y *float64, canvasID, canvasType, selectionID, editingAnnotationID *string) (UserUpdate, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -483,11 +492,28 @@ func (h *Hub) UpdateUser(clientID string, name *string, x, y *float64, canvasIDs
 	if y != nil {
 		user.Y = *y
 	}
-	if len(canvasIDs) > 0 && canvasIDs[0] != nil {
-		if canvasIndex(h.canvases, *canvasIDs[0]) < 0 {
+	if canvasID != nil {
+		nextCanvasType := user.CanvasType
+		if canvasType != nil {
+			nextCanvasType = *canvasType
+		}
+		if nextCanvasType == "" {
+			nextCanvasType = "erd"
+		}
+		if !h.canvasExistsLocked(nextCanvasType, *canvasID) {
 			return UserUpdate{}, ErrCanvasNotFound
 		}
-		user.CanvasID = *canvasIDs[0]
+		user.CanvasID = *canvasID
+		user.CanvasType = nextCanvasType
+	}
+	if selectionID != nil {
+		user.SelectionID = *selectionID
+	}
+	if editingAnnotationID != nil {
+		if *editingAnnotationID != "" && annotationEditedByOther(h.users, clientID, *editingAnnotationID) {
+			return UserUpdate{}, ErrAnnotationEditConflict
+		}
+		user.EditingAnnotationID = *editingAnnotationID
 	}
 	h.users[clientID] = user
 	result.User = user
@@ -806,7 +832,15 @@ func (h *Hub) snapshotLocked() State {
 		DFD:                    cloneDFDState(h.dfd),
 		Users:                  users,
 		Locks:                  locks,
+		Annotations:            cloneAnnotations(h.annotations),
 	}
+}
+
+func firstStringPointer(values []*string) *string {
+	if len(values) == 0 {
+		return nil
+	}
+	return values[0]
 }
 
 func canvasIndex(canvases []Canvas, id string) int {

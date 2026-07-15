@@ -7,6 +7,7 @@
 {"category": "concept", "id": "concept:pattern-discovery", "path": ".knowledge/concept/pattern-discovery.md", "role": "supporting", "title": "Pattern Discovery", "type": "concept"}
 {"category": "concept", "id": "concept:pattern-heuristic", "path": ".knowledge/concept/pattern-heuristic.md", "role": "supporting", "title": "Pattern Heuristic", "type": "concept"}
 {"category": "structure", "id": "data:attribute", "path": ".knowledge/data/attribute.md", "role": "supporting", "title": "Attribute", "type": "data"}
+{"category": "structure", "id": "data:canvas-annotation", "path": ".knowledge/data/canvas-annotation.md", "role": "supporting", "title": "Canvas Annotation", "type": "data"}
 {"category": "structure", "id": "data:canvas-model-placement", "path": ".knowledge/data/canvas-model-placement.md", "role": "supporting", "title": "Canvas Model Placement", "type": "data"}
 {"category": "structure", "id": "data:code-set", "path": ".knowledge/data/code-set.md", "role": "supporting", "title": "Code Set", "type": "data"}
 {"category": "structure", "id": "data:column-default", "path": ".knowledge/data/column-default.md", "role": "supporting", "title": "Column Default", "type": "data"}
@@ -82,6 +83,7 @@
 {"category": "objective", "id": "requirement:ai-vocabulary-assistance", "path": ".knowledge/requirement/ai-vocabulary-assistance.md", "role": "primary", "title": "AI Vocabulary Assistance", "type": "requirement"}
 {"category": "objective", "id": "requirement:capacity-estimation", "path": ".knowledge/requirement/capacity-estimation.md", "role": "primary", "title": "Capacity Estimation", "type": "requirement"}
 {"category": "objective", "id": "requirement:code-set-management", "path": ".knowledge/requirement/code-set-management.md", "role": "primary", "title": "Code Set Management", "type": "requirement"}
+{"category": "objective", "id": "requirement:collaborative-canvas-annotation", "path": ".knowledge/requirement/collaborative-canvas-annotation.md", "role": "primary", "title": "Collaborative Canvas Annotation", "type": "requirement"}
 {"category": "objective", "id": "requirement:crud-matrix-reporting", "path": ".knowledge/requirement/crud-matrix-reporting.md", "role": "primary", "title": "CRUD Matrix Reporting", "type": "requirement"}
 {"category": "objective", "id": "requirement:design-decision-history", "path": ".knowledge/requirement/design-decision-history.md", "role": "primary", "title": "Design Decision History", "type": "requirement"}
 {"category": "objective", "id": "requirement:dfd-modeling-experience", "path": ".knowledge/requirement/dfd-modeling-experience.md", "role": "primary", "title": "Compact DFD Modeling Experience", "type": "requirement"}
@@ -109,6 +111,8 @@
 {"category": "objective", "id": "requirement:vocabulary-management", "path": ".knowledge/requirement/vocabulary-management.md", "role": "primary", "title": "Vocabulary Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:vocabulary-segmentation-registration", "path": ".knowledge/requirement/vocabulary-segmentation-registration.md", "role": "primary", "title": "Vocabulary Segmentation Registration", "type": "requirement"}
 {"category": "objective", "id": "requirement:vocabulary-usage-inspection", "path": ".knowledge/requirement/vocabulary-usage-inspection.md", "role": "primary", "title": "Vocabulary Usage Inspection", "type": "requirement"}
+{"category": "constraint", "id": "rule:canvas-annotation-collaboration", "path": ".knowledge/rule/canvas-annotation-collaboration.md", "role": "supporting", "title": "Canvas Annotation Collaboration", "type": "rule"}
+{"category": "constraint", "id": "rule:canvas-annotation-semantics", "path": ".knowledge/rule/canvas-annotation-semantics.md", "role": "supporting", "title": "Canvas Annotation Semantics", "type": "rule"}
 {"category": "constraint", "id": "rule:canvas-model-ownership", "path": ".knowledge/rule/canvas-model-ownership.md", "role": "supporting", "title": "Canvas Model Ownership", "type": "rule"}
 {"category": "constraint", "id": "rule:dependent-drag-follow", "path": ".knowledge/rule/dependent-drag-follow.md", "role": "supporting", "title": "Dependent Drag Follow", "type": "rule"}
 {"category": "constraint", "id": "rule:dfd-connection-policy", "path": ".knowledge/rule/dfd-connection-policy.md", "role": "supporting", "title": "DFD Connection Policy", "type": "rule"}
@@ -136,6 +140,7 @@
 {"category": "external", "id": "system:storage-target", "path": ".knowledge/system/storage-target.md", "role": "supporting", "title": "Storage Target", "type": "system"}
 {"category": "vocabulary", "id": "term:relationship-vocabulary", "path": ".knowledge/term/relationship-vocabulary.md", "role": "supporting", "title": "Relationship Vocabulary", "type": "term"}
 {"category": "vocabulary", "id": "term:vocabulary", "path": ".knowledge/term/vocabulary.md", "role": "supporting", "title": "Vocabulary", "type": "term"}
+{"category": "interface", "id": "ui:canvas-annotation-toolbar", "path": ".knowledge/ui/canvas-annotation-toolbar.md", "role": "primary", "title": "Canvas Annotation Toolbar", "type": "ui"}
 {"category": "interface", "id": "ui:canvas-ownership-transfer-dialog", "path": ".knowledge/ui/canvas-ownership-transfer-dialog.md", "role": "primary", "title": "Canvas Ownership Transfer Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:crud-matrix-view", "path": ".knowledge/ui/crud-matrix-view.md", "role": "primary", "title": "Project CRUD Matrix", "type": "ui"}
 {"category": "interface", "id": "ui:dfd-daily-tips", "path": ".knowledge/ui/dfd-daily-tips.md", "role": "primary", "title": "DFD Daily Tips", "type": "ui"}

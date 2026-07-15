@@ -234,6 +234,7 @@
 {"context": "body", "path": ".knowledge/data/project.md", "source": "data:project", "target": "ui:project-settings-view", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/data/project.md", "source": "data:project", "target": "ui:erd-sketch-canvas", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/data/project.md", "source": "data:project", "target": "data:dfd-canvas", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/data/project.md", "source": "data:project", "target": "data:canvas-annotation", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/data/query-profile.md", "source": "data:query-profile", "target": "requirement:performance-design", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/data/reconciliation-pattern.md", "source": "data:reconciliation-pattern", "target": "data:relationship", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/data/reconciliation-pattern.md", "source": "data:reconciliation-pattern", "target": "data:query-profile", "target_category": "structure", "target_type": "data"}
@@ -401,6 +402,12 @@
 {"context": "body", "path": ".knowledge/requirement/capacity-estimation.md", "source": "requirement:capacity-estimation", "target": "ui:volume-view", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/requirement/capacity-estimation.md", "source": "requirement:capacity-estimation", "target": "requirement:performance-design", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/requirement/code-set-management.md", "source": "requirement:code-set-management", "target": "ui:domain-dictionary-dialog", "target_category": "interface", "target_type": "ui"}
+{"context": "body", "path": ".knowledge/requirement/collaborative-canvas-annotation.md", "source": "requirement:collaborative-canvas-annotation", "target": "ui:erd-sketch-canvas", "target_category": "interface", "target_type": "ui"}
+{"context": "body", "path": ".knowledge/requirement/collaborative-canvas-annotation.md", "source": "requirement:collaborative-canvas-annotation", "target": "ui:dfd-sketch-canvas", "target_category": "interface", "target_type": "ui"}
+{"context": "body", "path": ".knowledge/requirement/collaborative-canvas-annotation.md", "source": "requirement:collaborative-canvas-annotation", "target": "ui:canvas-annotation-toolbar", "target_category": "interface", "target_type": "ui"}
+{"context": "body", "path": ".knowledge/requirement/collaborative-canvas-annotation.md", "source": "requirement:collaborative-canvas-annotation", "target": "data:canvas-annotation", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/requirement/collaborative-canvas-annotation.md", "source": "requirement:collaborative-canvas-annotation", "target": "rule:canvas-annotation-collaboration", "target_category": "constraint", "target_type": "rule"}
+{"context": "body", "path": ".knowledge/requirement/collaborative-canvas-annotation.md", "source": "requirement:collaborative-canvas-annotation", "target": "rule:canvas-annotation-semantics", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/requirement/crud-matrix-reporting.md", "source": "requirement:crud-matrix-reporting", "target": "data:crud-assignment", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/crud-matrix-reporting.md", "source": "requirement:crud-matrix-reporting", "target": "ui:crud-matrix-view", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/requirement/design-decision-history.md", "source": "requirement:design-decision-history", "target": "data:model-transformation", "target_category": "structure", "target_type": "data"}
@@ -622,6 +629,8 @@
 {"context": "body", "path": ".knowledge/requirement/vocabulary-usage-inspection.md", "source": "requirement:vocabulary-usage-inspection", "target": "data:vocabulary-usage", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/vocabulary-usage-inspection.md", "source": "requirement:vocabulary-usage-inspection", "target": "ui:vocabulary-registration-dialog", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/requirement/vocabulary-usage-inspection.md", "source": "requirement:vocabulary-usage-inspection", "target": "requirement:vocabulary-alias-correction", "target_category": "objective", "target_type": "requirement"}
+{"context": "body", "path": ".knowledge/rule/canvas-annotation-semantics.md", "source": "rule:canvas-annotation-semantics", "target": "data:relationship", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/rule/canvas-annotation-semantics.md", "source": "rule:canvas-annotation-semantics", "target": "data:data-flow", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/rule/canvas-model-ownership.md", "source": "rule:canvas-model-ownership", "target": "flow:transfer-canvas-model-ownership", "target_category": "behavior", "target_type": "flow"}
 {"context": "body", "path": ".knowledge/rule/canvas-model-ownership.md", "source": "rule:canvas-model-ownership", "target": "data:canvas-model-placement", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/rule/dependent-drag-follow.md", "source": "rule:dependent-drag-follow", "target": "rule:relationship-move-lock", "target_category": "constraint", "target_type": "rule"}
@@ -728,13 +737,16 @@
 {"context": "body", "path": ".knowledge/ui/dfd-sketch-canvas.md", "source": "ui:dfd-sketch-canvas", "target": "rule:dfd-flow-routing", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/ui/dfd-sketch-canvas.md", "source": "ui:dfd-sketch-canvas", "target": "rule:dfd-rough-rendering", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/ui/dfd-sketch-canvas.md", "source": "ui:dfd-sketch-canvas", "target": "ui:diagram-link-handle", "target_category": "interface", "target_type": "ui"}
+{"context": "body", "path": ".knowledge/ui/dfd-sketch-canvas.md", "source": "ui:dfd-sketch-canvas", "target": "ui:canvas-annotation-toolbar", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/ui/dfd-sketch-canvas.md", "source": "ui:dfd-sketch-canvas", "target": "data:project", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/ui/dfd-sketch-canvas.md", "source": "ui:dfd-sketch-canvas", "target": "data:dfd-canvas", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/ui/dfd-sketch-canvas.md", "source": "ui:dfd-sketch-canvas", "target": "data:dfd-node-placement", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/ui/dfd-sketch-canvas.md", "source": "ui:dfd-sketch-canvas", "target": "data:canvas-annotation", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/ui/dfd-sketch-canvas.md", "source": "ui:dfd-sketch-canvas", "target": "data:dfd-process", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/ui/dfd-sketch-canvas.md", "source": "ui:dfd-sketch-canvas", "target": "data:dfd-intermediate-data", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/ui/dfd-sketch-canvas.md", "source": "ui:dfd-sketch-canvas", "target": "data:dfd-overlap-group", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/ui/dfd-sketch-canvas.md", "source": "ui:dfd-sketch-canvas", "target": "rule:dfd-group-flow-expansion", "target_category": "constraint", "target_type": "rule"}
+{"context": "body", "path": ".knowledge/ui/dfd-sketch-canvas.md", "source": "ui:dfd-sketch-canvas", "target": "requirement:collaborative-canvas-annotation", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/ui/diagram-link-handle.md", "source": "ui:diagram-link-handle", "target": "ui:erd-sketch-canvas", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/ui/diagram-link-handle.md", "source": "ui:diagram-link-handle", "target": "ui:dfd-sketch-canvas", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/ui/diagram-link-handle.md", "source": "ui:diagram-link-handle", "target": "rule:dfd-connection-policy", "target_category": "constraint", "target_type": "rule"}
@@ -750,6 +762,7 @@
 {"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "data:model-seed", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "ui:modeling-quick-create", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "ui:diagram-link-handle", "target_category": "interface", "target_type": "ui"}
+{"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "ui:canvas-annotation-toolbar", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "rule:relationship-roughness", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "ui:relationship-view", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "ui:field-list-dialog", "target_category": "interface", "target_type": "ui"}
@@ -758,7 +771,9 @@
 {"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "data:project", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "data:model-catalog", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "data:canvas-model-placement", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "data:canvas-annotation", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "rule:canvas-model-ownership", "target_category": "constraint", "target_type": "rule"}
+{"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "requirement:collaborative-canvas-annotation", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "concept:model-growth", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "requirement:design-decision-history", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/ui/erd-sketch-canvas.md", "source": "ui:erd-sketch-canvas", "target": "requirement:field-list-management", "target_category": "objective", "target_type": "requirement"}
@@ -854,3 +869,4 @@
 {"context": "body", "path": ".knowledge/vision/modeling-workbench.md", "source": "vision:modeling-workbench", "target": "concept:design-pattern-catalog", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/vision/modeling-workbench.md", "source": "vision:modeling-workbench", "target": "concept:assistive-ai-experience", "target_category": "concept", "target_type": "concept"}
 {"context": "body", "path": ".knowledge/vision/modeling-workbench.md", "source": "vision:modeling-workbench", "target": "requirement:design-decision-history", "target_category": "objective", "target_type": "requirement"}
+{"context": "body", "path": ".knowledge/vision/modeling-workbench.md", "source": "vision:modeling-workbench", "target": "requirement:collaborative-canvas-annotation", "target_category": "objective", "target_type": "requirement"}

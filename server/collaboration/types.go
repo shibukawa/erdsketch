@@ -6,34 +6,38 @@ import (
 )
 
 var (
-	ErrUnknownClient        = errors.New("unknown client")
-	ErrSeedExists           = errors.New("seed already exists")
-	ErrLockRequired         = errors.New("seed is not locked by this client")
-	ErrSeedNotFound         = errors.New("seed not found")
-	ErrSeedInvalid          = errors.New("invalid seed")
-	ErrLockConflict         = errors.New("seed is locked by another client")
-	ErrRelationshipNotFound = errors.New("relationship not found")
-	ErrRelationshipInvalid  = errors.New("invalid relationship")
-	ErrDomainNotFound       = errors.New("domain not found")
-	ErrDomainExists         = errors.New("domain already exists")
-	ErrDomainInvalid        = errors.New("invalid domain")
-	ErrDomainInUse          = errors.New("domain is assigned to a field")
-	ErrCategoryNotFound     = errors.New("domain category not found")
-	ErrCategoryExists       = errors.New("domain category already exists")
-	ErrCategoryInvalid      = errors.New("invalid domain category")
-	ErrNamingPolicyInvalid  = errors.New("invalid naming policy")
-	ErrVocabularyNotFound   = errors.New("vocabulary entry not found")
-	ErrVocabularyExists     = errors.New("vocabulary term is already defined")
-	ErrVocabularyInvalid    = errors.New("invalid vocabulary entry")
-	ErrCanvasNotFound       = errors.New("canvas not found")
-	ErrCanvasExists         = errors.New("canvas already exists")
-	ErrCanvasInvalid        = errors.New("invalid canvas")
-	ErrPlacementNotFound    = errors.New("model placement not found")
-	ErrPlacementExists      = errors.New("model placement already exists")
-	ErrPlacementInvalid     = errors.New("invalid model placement")
-	ErrReadonlyPlacement    = errors.New("model placement is readonly")
-	ErrOwnershipChanged     = errors.New("model ownership changed")
-	ErrDFDInvalid           = errors.New("invalid DFD state")
+	ErrUnknownClient          = errors.New("unknown client")
+	ErrSeedExists             = errors.New("seed already exists")
+	ErrLockRequired           = errors.New("seed is not locked by this client")
+	ErrSeedNotFound           = errors.New("seed not found")
+	ErrSeedInvalid            = errors.New("invalid seed")
+	ErrLockConflict           = errors.New("seed is locked by another client")
+	ErrRelationshipNotFound   = errors.New("relationship not found")
+	ErrRelationshipInvalid    = errors.New("invalid relationship")
+	ErrDomainNotFound         = errors.New("domain not found")
+	ErrDomainExists           = errors.New("domain already exists")
+	ErrDomainInvalid          = errors.New("invalid domain")
+	ErrDomainInUse            = errors.New("domain is assigned to a field")
+	ErrCategoryNotFound       = errors.New("domain category not found")
+	ErrCategoryExists         = errors.New("domain category already exists")
+	ErrCategoryInvalid        = errors.New("invalid domain category")
+	ErrNamingPolicyInvalid    = errors.New("invalid naming policy")
+	ErrVocabularyNotFound     = errors.New("vocabulary entry not found")
+	ErrVocabularyExists       = errors.New("vocabulary term is already defined")
+	ErrVocabularyInvalid      = errors.New("invalid vocabulary entry")
+	ErrCanvasNotFound         = errors.New("canvas not found")
+	ErrCanvasExists           = errors.New("canvas already exists")
+	ErrCanvasInvalid          = errors.New("invalid canvas")
+	ErrPlacementNotFound      = errors.New("model placement not found")
+	ErrPlacementExists        = errors.New("model placement already exists")
+	ErrPlacementInvalid       = errors.New("invalid model placement")
+	ErrReadonlyPlacement      = errors.New("model placement is readonly")
+	ErrOwnershipChanged       = errors.New("model ownership changed")
+	ErrDFDInvalid             = errors.New("invalid DFD state")
+	ErrAnnotationNotFound     = errors.New("canvas annotation not found")
+	ErrAnnotationExists       = errors.New("canvas annotation already exists")
+	ErrAnnotationInvalid      = errors.New("invalid canvas annotation")
+	ErrAnnotationEditConflict = errors.New("canvas annotation is being edited by another client")
 )
 
 const DefaultCanvasID = "main"
@@ -326,13 +330,50 @@ type RelationshipReference struct {
 }
 
 type Collaborator struct {
-	ID       string  `json:"id"`
-	Name     string  `json:"name"`
-	Color    string  `json:"color"`
+	ID                  string  `json:"id"`
+	Name                string  `json:"name"`
+	Color               string  `json:"color"`
+	X                   float64 `json:"x"`
+	Y                   float64 `json:"y"`
+	Online              bool    `json:"online"`
+	CanvasID            string  `json:"canvasId"`
+	CanvasType          string  `json:"canvasType,omitempty"`
+	SelectionID         string  `json:"selectionId,omitempty"`
+	EditingAnnotationID string  `json:"editingAnnotationId,omitempty"`
+}
+
+type CanvasPoint struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
+type AnnotationAnchor struct {
 	X        float64 `json:"x"`
 	Y        float64 `json:"y"`
-	Online   bool    `json:"online"`
-	CanvasID string  `json:"canvasId"`
+	ItemID   string  `json:"itemId,omitempty"`
+	ItemKind string  `json:"itemKind,omitempty"`
+}
+
+type CanvasAnnotation struct {
+	ID          string            `json:"id"`
+	CanvasType  string            `json:"canvasType"`
+	CanvasID    string            `json:"canvasId"`
+	Kind        string            `json:"kind"`
+	X           float64           `json:"x,omitempty"`
+	Y           float64           `json:"y,omitempty"`
+	Width       float64           `json:"width,omitempty"`
+	Height      float64           `json:"height,omitempty"`
+	Points      []CanvasPoint     `json:"points,omitempty"`
+	Start       *AnnotationAnchor `json:"start,omitempty"`
+	End         *AnnotationAnchor `json:"end,omitempty"`
+	Text        string            `json:"text,omitempty"`
+	Color       string            `json:"color"`
+	Fill        string            `json:"fill,omitempty"`
+	StrokeWidth float64           `json:"strokeWidth"`
+	Layer       string            `json:"layer"`
+	ZIndex      int               `json:"zIndex,omitempty"`
+	CreatedBy   string            `json:"createdBy"`
+	UpdatedBy   string            `json:"updatedBy"`
 }
 
 type State struct {
@@ -348,6 +389,14 @@ type State struct {
 	DFD                    DFDState                `json:"dfd"`
 	Users                  []Collaborator          `json:"users"`
 	Locks                  map[string]Collaborator `json:"locks"`
+	Annotations            []CanvasAnnotation      `json:"annotations"`
+}
+
+type AnnotationUpdate struct {
+	User       Collaborator
+	Annotation CanvasAnnotation
+	Created    bool
+	Deleted    bool
 }
 
 type CanvasUpdate struct {

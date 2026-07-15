@@ -17,6 +17,7 @@ owns:
   collections:
     - erd_canvases: ui:erd-sketch-canvas
     - dfd_canvases: data:dfd-canvas
+    - canvas_annotations: data:canvas-annotation
 constraints:
   - Every project has exactly one domain dictionary.
   - Every project has exactly one vocabulary.
@@ -25,4 +26,5 @@ constraints:
   - All ERD canvases reuse the project model catalog, domain dictionary, and vocabulary.
   - All DFD canvases reuse the project model catalog, domain dictionary, and vocabulary.
   - Dictionary changes are visible across every canvas in the project.
+  - Each canvas annotation belongs to exactly one ERD or DFD canvas.
 ```

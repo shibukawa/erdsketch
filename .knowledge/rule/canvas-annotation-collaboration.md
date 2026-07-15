@@ -1,0 +1,44 @@
+---
+id: rule:canvas-annotation-collaboration
+type: rule
+title: Canvas Annotation Collaboration
+---
+
+Concurrent annotation work remains live, attributable, and reversible without one user undoing another user's intent.
+
+```yaml
+presence:
+  scope: active_canvas
+  shows:
+    - cursor
+    - display_name
+    - selection_outline
+    - text_edit_owner
+sync:
+  operations:
+    - create
+    - update_content
+    - update_geometry
+    - update_style
+    - update_layer
+    - delete
+  local_feedback: optimistic
+  remote_visibility: without_reload
+conflict:
+  sticky_text:
+    policy: single_active_editor
+    contention: show_editor_and_keep_readonly
+  geometry_and_style:
+    policy: latest_accepted_operation
+  delete:
+    policy: wins_and_ends_active_edit
+history:
+  unit: one_user_gesture_or_text_commit
+  undo_scope: initiating_user
+  remote_operations: never_removed_by_local_undo
+  redo_scope: initiating_user
+constraints:
+  - A remote update does not cancel the local active tool.
+  - Presence state is transient and is not stored as annotation content.
+  - Reconnection refreshes current annotations before accepting new local mutations.
+```

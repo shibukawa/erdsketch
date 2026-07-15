@@ -141,6 +141,25 @@ func TestDFDAndCatalogSeedEndpoints(t *testing.T) {
 	}
 }
 
+func TestCanvasAnnotationEndpointCreatesUpdatesAndDeletes(t *testing.T) {
+	hub := collaboration.NewHub()
+	hub.Join(collaboration.Collaborator{ID: "lion", Name: "Lion", CanvasID: collaboration.DefaultCanvasID}, nil, nil, nil)
+	handler := New(hub, seedListerStub{}, log.New(io.Discard, "", 0))
+	body := `{"clientId":"lion","create":true,"annotation":{"id":"note-1","canvasType":"erd","canvasId":"main","kind":"sticky_note","x":20,"y":30,"width":220,"height":140,"text":"Discuss","color":"#92400e","fill":"#fef3c7","strokeWidth":2,"layer":"foreground"}}`
+	if response := post(handler, "/api/collaboration/annotation", body); response.Code != http.StatusNoContent {
+		t.Fatalf("create annotation: status=%d body=%q", response.Code, response.Body.String())
+	}
+	update := strings.Replace(body, `"create":true`, `"create":false`, 1)
+	update = strings.Replace(update, `"Discuss"`, `"Resolved"`, 1)
+	if response := post(handler, "/api/collaboration/annotation", update); response.Code != http.StatusNoContent {
+		t.Fatalf("update annotation: status=%d body=%q", response.Code, response.Body.String())
+	}
+	deleted := `{"clientId":"lion","delete":true,"annotation":{"id":"note-1"}}`
+	if response := post(handler, "/api/collaboration/annotation", deleted); response.Code != http.StatusNoContent {
+		t.Fatalf("delete annotation: status=%d body=%q", response.Code, response.Body.String())
+	}
+}
+
 func newTestHandler(seeds SeedLister) http.Handler {
 	return New(collaboration.NewHub(), seeds, log.New(io.Discard, "", 0))
 }

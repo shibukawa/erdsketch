@@ -28,4 +28,5 @@ related:
   - concept:design-pattern-catalog
   - concept:assistive-ai-experience
   - requirement:design-decision-history
+  - requirement:collaborative-canvas-annotation
 ```

@@ -21,6 +21,70 @@ func TestJoinAssignsDifferentAvailableAnimalNames(t *testing.T) {
 	}
 }
 
+func TestCanvasAnnotationsSynchronizeAndKeepModelSemanticsSeparate(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion", CanvasID: DefaultCanvasID}, nil, nil, nil)
+	note := CanvasAnnotation{ID: "note-1", CanvasType: "erd", CanvasID: DefaultCanvasID, Kind: "sticky_note", X: 20, Y: 30, Width: 220, Height: 140, Text: "Check boundary", Color: "#92400e", Fill: "#fef3c7", StrokeWidth: 2, Layer: "foreground"}
+	created, err := hub.UpdateAnnotation("lion", note, true, false)
+	if err != nil || !created.Created {
+		t.Fatalf("create annotation: result=%+v err=%v", created, err)
+	}
+	state := hub.snapshotLocked()
+	if len(state.Annotations) != 1 || state.Annotations[0].Text != "Check boundary" || len(state.Relationships) != 0 {
+		t.Fatalf("annotation snapshot: %+v", state)
+	}
+	note.Text = "Confirmed boundary"
+	if _, err := hub.UpdateAnnotation("lion", note, false, false); err != nil {
+		t.Fatalf("update annotation: %v", err)
+	}
+	if _, err := hub.UpdateAnnotation("lion", note, false, true); err != nil {
+		t.Fatalf("delete annotation: %v", err)
+	}
+	if got := len(hub.snapshotLocked().Annotations); got != 0 {
+		t.Fatalf("annotations after delete: %d", got)
+	}
+}
+
+func TestStickyAnnotationRejectsConcurrentTextEditor(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion", CanvasID: DefaultCanvasID}, nil, nil, nil)
+	hub.Join(Collaborator{ID: "otter", Name: "Otter", CanvasID: DefaultCanvasID}, nil, nil, nil)
+	note := CanvasAnnotation{ID: "note-1", CanvasType: "erd", CanvasID: DefaultCanvasID, Kind: "sticky_note", Width: 220, Height: 140, Text: "Draft", Color: "#92400e", Fill: "#fef3c7", StrokeWidth: 2, Layer: "foreground"}
+	if _, err := hub.UpdateAnnotation("lion", note, true, false); err != nil {
+		t.Fatalf("create annotation: %v", err)
+	}
+	editingID := note.ID
+	if _, err := hub.UpdatePresence("lion", nil, nil, nil, nil, nil, nil, &editingID); err != nil {
+		t.Fatalf("set editor: %v", err)
+	}
+	if _, err := hub.UpdatePresence("otter", nil, nil, nil, nil, nil, nil, &editingID); !errors.Is(err, ErrAnnotationEditConflict) {
+		t.Fatalf("second editor presence: got %v, want %v", err, ErrAnnotationEditConflict)
+	}
+	note.Text = "Otter edit"
+	if _, err := hub.UpdateAnnotation("otter", note, false, false); !errors.Is(err, ErrAnnotationEditConflict) {
+		t.Fatalf("concurrent text edit: got %v, want %v", err, ErrAnnotationEditConflict)
+	}
+	note.X = 80
+	note.Text = "Draft"
+	if _, err := hub.UpdateAnnotation("otter", note, false, false); err != nil {
+		t.Fatalf("geometry update during text edit: %v", err)
+	}
+}
+
+func TestCanvasAnnotationValidationIncludesDFDCanvas(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion", CanvasID: DefaultCanvasID}, nil, nil, nil)
+	boundary := CanvasAnnotation{ID: "boundary", CanvasType: "dfd", CanvasID: DefaultDFDCanvasID, Kind: "background_boundary", Points: []CanvasPoint{{X: 1, Y: 1}, {X: 100, Y: 1}, {X: 100, Y: 100}}, Color: "#2563eb", Fill: "#dbeafe", StrokeWidth: 3, Layer: "background"}
+	if _, err := hub.UpdateAnnotation("lion", boundary, true, false); err != nil {
+		t.Fatalf("DFD boundary: %v", err)
+	}
+	boundary.ID = "missing"
+	boundary.CanvasID = "missing"
+	if _, err := hub.UpdateAnnotation("lion", boundary, true, false); !errors.Is(err, ErrAnnotationInvalid) {
+		t.Fatalf("missing canvas: got %v, want %v", err, ErrAnnotationInvalid)
+	}
+}
+
 func TestNamingPolicyDefaultsToSingularAndSynchronizes(t *testing.T) {
 	hub := NewHub()
 	joined := hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)

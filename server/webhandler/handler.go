@@ -44,6 +44,7 @@ func New(hub *collaboration.Hub, seeds SeedLister, logger *log.Logger) http.Hand
 	mux.HandleFunc("/api/collaboration/ownership", handler.transferOwnership)
 	mux.HandleFunc("/api/collaboration/dfd", handler.updateDFD)
 	mux.HandleFunc("/api/collaboration/catalog-seed", handler.updateCatalogSeed)
+	mux.HandleFunc("/api/collaboration/annotation", handler.updateAnnotation)
 	return mux
 }
 

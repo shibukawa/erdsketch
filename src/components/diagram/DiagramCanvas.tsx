@@ -12,6 +12,10 @@ import { RelationshipLink } from "./RelationshipLink";
 import { RoughLink } from "./RoughLink";
 import { CanvasTips } from "./CanvasTips";
 import type { VocabularyMatchCache } from "../../features/modeling/vocabulary";
+import type { AnnotationAnchor, CanvasPoint } from "../../features/annotations/types";
+import type { CanvasAnnotationController } from "../../features/annotations/useCanvasAnnotations";
+import { CanvasAnnotationLayer } from "../annotations/CanvasAnnotationLayer";
+import { AnnotationToolbar } from "../annotations/AnnotationToolbar";
 
 type DiagramCanvasProps = {
   canvasRef: RefObject<HTMLDivElement | null>;
@@ -50,6 +54,9 @@ type DiagramCanvasProps = {
   onCreateDomain: (name: string) => void;
   onOpenDomainDictionary: (seedId: string, fieldId?: string) => void;
   onApplyRefinement: (result: RefinementResult) => Promise<boolean>;
+  annotationController: CanvasAnnotationController;
+  annotationUsers: Collaborator[];
+  resolveAnnotationAnchor: (anchor: AnnotationAnchor) => CanvasPoint;
 };
 
 export function DiagramCanvas({
@@ -88,7 +95,10 @@ export function DiagramCanvas({
   onDeleteRelationship,
   onCreateDomain,
   onOpenDomainDictionary
-  ,onApplyRefinement
+  ,onApplyRefinement,
+  annotationController,
+  annotationUsers,
+  resolveAnnotationAnchor
 }: DiagramCanvasProps) {
   const relationshipDropTargetId = dragState?.type === "relationship"
     ? getRelationshipDropTarget(dragState.sourceId, dragState, allSeeds)?.id
@@ -113,6 +123,7 @@ export function DiagramCanvas({
         className="absolute left-0 top-0 h-[2400px] w-[3200px] origin-top-left"
         style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})` }}
       >
+        <CanvasAnnotationLayer layer="background" controller={annotationController} users={annotationUsers} me={me} resolveAnchor={resolveAnnotationAnchor} />
         <div className="pointer-events-none absolute inset-0">
           {relationships.filter((relationship) => relationshipVisibleOnCanvas(relationship, relationshipReferences)).map((relationship) => <RelationshipLink key={relationship.id} relationship={relationship} seeds={allSeeds} onEdit={onEditRelationship} />)}
           {dragState?.type === "relationship" && (() => {
@@ -162,7 +173,9 @@ export function DiagramCanvas({
         {remoteUsers.map((user) => (
           <RemoteCursor key={user.id} user={user} />
         ))}
+        <CanvasAnnotationLayer layer="foreground" controller={annotationController} users={annotationUsers} me={me} resolveAnchor={resolveAnnotationAnchor} />
       </div>
+      <AnnotationToolbar controller={annotationController} />
       <CanvasTips />
     </div>
   );

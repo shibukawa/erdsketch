@@ -39,8 +39,10 @@ ui:
       - grow_seed_as_data_domain
       - open_canvas_selector
       - place_existing_project_model
+      - create_and_edit_shared_annotations
     quick_create: ui:modeling-quick-create
     link_handle: ui:diagram-link-handle
+    annotation_toolbar: ui:canvas-annotation-toolbar
     visual_language:
       card_renderer: roughjs
       card_shape: roughjs_rectangle
@@ -109,6 +111,7 @@ ui:
       cardinality_per_project: many
       model_definitions: data:model-catalog
       model_placements: data:canvas-model-placement
+      annotations: data:canvas-annotation
       format: plain_text
       expected_files:
         - model/seeds/*.seed.yaml
@@ -135,6 +138,7 @@ constraints:
   - Dragging a dependent model moves all transitively reachable independent models, including offscreen models; reverse dependency direction does not follow.
   - A group drag starts only after every model in its movement set is locked.
   - A group drag is one atomic undo unit.
+  - Shared visual annotations follow requirement:collaborative-canvas-annotation.
 related:
   - data:model-seed
   - concept:model-growth
@@ -149,4 +153,5 @@ related:
   - rule:dependent-drag-follow
   - rule:relationship-move-lock
   - rule:relationship-roughness
+  - requirement:collaborative-canvas-annotation
 ```

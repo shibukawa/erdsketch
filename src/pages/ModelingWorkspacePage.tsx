@@ -28,6 +28,8 @@ import { defaultVolumeEstimate } from "../features/modeling/capacity";
 import { clampScale, flattenLabels, getFieldEffectiveName, getRelatedDragSeedIDs, getRelationshipDropTarget, getRelationshipReference, updateNameSet } from "../features/modeling/utils";
 import { DfdWorkspace } from "./DfdWorkspace";
 import { CrudMatrixDialog } from "../components/dfd/CrudMatrixDialog";
+import { useCanvasAnnotations } from "../features/annotations/useCanvasAnnotations";
+import type { AnnotationAnchor, CanvasPoint } from "../features/annotations/types";
 
 export function ModelingWorkspacePage() {
   const {
@@ -42,11 +44,13 @@ export function ModelingWorkspacePage() {
     namingPolicy,
     vocabularyEntries,
     dfd,
+    annotations,
     users,
     locks,
     connected,
     rename,
     changeCanvas,
+    updateAnnotationPresence,
     moveCursor,
     lock,
     unlock,
@@ -64,6 +68,7 @@ export function ModelingWorkspacePage() {
     saveDomainCategory,
     saveNamingPolicy,
     saveVocabularyEntry,
+    saveAnnotation,
     setLocalSeeds,
     setLocalCanvases,
     setLocalDfd,
@@ -71,7 +76,8 @@ export function ModelingWorkspacePage() {
     setLocalRelationships,
     setLocalDomains,
     setLocalDomainCategories,
-    setLocalVocabularyEntries
+    setLocalVocabularyEntries,
+    setLocalAnnotations
   } = useCollaboration(initialSeeds, initialRelationships, initialRelationshipReferences, initialDomains, initialDomainCategories);
   const [query, setQuery] = useState("");
   const [workspaceMode, setWorkspaceMode] = useState<"erd" | "dfd">("erd");
@@ -378,6 +384,33 @@ export function ModelingWorkspacePage() {
     [screenToWorld]
   );
 
+  const findErdAnnotationAnchor = useCallback((point: CanvasPoint): AnnotationAnchor | undefined => {
+    const seed = [...canvasSeeds].reverse().find((item) => point.x >= item.x && point.x <= item.x + cardWidth && point.y >= item.y && point.y <= item.y + cardHeight);
+    return seed ? { x: point.x - seed.x, y: point.y - seed.y, itemId: seed.id, itemKind: "model" } : undefined;
+  }, [canvasSeeds]);
+
+  const resolveErdAnnotationAnchor = useCallback((anchor: AnnotationAnchor): CanvasPoint => {
+    if (anchor.itemKind !== "model" || !anchor.itemId) return anchor;
+    const seed = canvasSeeds.find((item) => item.id === anchor.itemId);
+    return seed ? { x: seed.x + anchor.x, y: seed.y + anchor.y } : anchor;
+  }, [canvasSeeds]);
+
+  const annotationController = useCanvasAnnotations({
+    canvasType: "erd",
+    canvasId: activeCanvasId,
+    annotations,
+    me,
+    screenToWorld,
+    findAnchor: findErdAnnotationAnchor,
+    saveAnnotation,
+    setLocalAnnotations,
+    updatePresence: updateAnnotationPresence
+  });
+  const clearErdAnnotationSelection = annotationController.clearSelection;
+  useEffect(() => {
+    if (workspaceMode === "dfd") clearErdAnnotationSelection();
+  }, [clearErdAnnotationSelection, workspaceMode]);
+
   const addSeedAt = useCallback(
     async (clientX?: number, clientY?: number, requestedTitle?: string) => {
       const index = seeds.length + 1;
@@ -471,7 +504,9 @@ export function ModelingWorkspacePage() {
 
   const handleCanvasPointerDown = useCallback(
     (event: PointerEvent<HTMLDivElement>) => {
+      if (annotationController.handleCanvasPointerDown(event)) return;
       if ((event.target as HTMLElement).closest("article, button, input, textarea, [data-no-pan='true']")) return;
+      annotationController.clearSelection();
       event.currentTarget.setPointerCapture(event.pointerId);
       setDragState({
         type: "pan",
@@ -481,12 +516,13 @@ export function ModelingWorkspacePage() {
         origin: viewport
       });
     },
-    [viewport]
+    [annotationController, viewport]
   );
 
   const handleSeedPointerDown = useCallback(
     async (event: PointerEvent<HTMLElement>, seed: ModelSeed) => {
       event.stopPropagation();
+      annotationController.clearSelection();
       const placement = activePlacements.find((item) => item.seedId === seed.id);
       const owner = locks[seed.id];
       setSelectedId(seed.id);
@@ -544,7 +580,7 @@ export function ModelingWorkspacePage() {
         ? { ...current, groupLocked: relatedSeedIDs.length === 1, ready: true }
         : current);
     },
-    [activePlacements, canvasRelationships, canvasSeeds, lock, locks, me.id, relationshipReferences, screenToWorld, unlockOwnedExcept]
+    [activePlacements, annotationController, canvasRelationships, canvasSeeds, lock, locks, me.id, relationshipReferences, screenToWorld, unlockOwnedExcept]
   );
 
   const handleRelationshipPointerDown = useCallback(
@@ -563,6 +599,7 @@ export function ModelingWorkspacePage() {
     async (event: PointerEvent<HTMLDivElement>) => {
       const cursor = cursorToWorld(event.clientX, event.clientY);
       moveCursor(cursor.x, cursor.y);
+      if (annotationController.handleCanvasPointerMove(event)) return;
       if (!dragState || dragState.pointerId !== event.pointerId) return;
 
       if (dragState.type === "pan") {
@@ -602,7 +639,7 @@ export function ModelingWorkspacePage() {
       setLocalPlacements(movedPlacements);
       for (const movedPlacement of movedPlacements.filter((placement) => placement.canvasId === activeCanvasId && dragState.seedIds.includes(placement.seedId))) void savePlacement(movedPlacement);
     },
-    [activeCanvasId, cursorToWorld, dragState, lockAll, moveCursor, placements, savePlacement, screenToWorld, setLocalPlacements]
+    [activeCanvasId, annotationController, cursorToWorld, dragState, lockAll, moveCursor, placements, savePlacement, screenToWorld, setLocalPlacements]
   );
 
   const handlePointerLeave = useCallback(
@@ -615,6 +652,7 @@ export function ModelingWorkspacePage() {
 
   const stopDragging = useCallback(
     async (event: PointerEvent<HTMLDivElement>) => {
+      if (annotationController.handleCanvasPointerUp(event)) return;
       if (!dragState || dragState.pointerId !== event.pointerId) return;
       if (dragState.type === "relationship") {
         const point = screenToWorld(event.clientX, event.clientY);
@@ -635,7 +673,7 @@ export function ModelingWorkspacePage() {
       }
       setDragState(null);
     },
-    [canvasSeeds, dragState, lockAll, screenToWorld, unlockAll]
+    [annotationController, canvasSeeds, dragState, lockAll, screenToWorld, unlockAll]
   );
 
   const handleEditRelationship = useCallback(
@@ -651,6 +689,7 @@ export function ModelingWorkspacePage() {
   useEffect(() => {
     const handleUndo = (event: KeyboardEvent) => {
       if (!event.metaKey && !event.ctrlKey) return;
+      if (annotationController.selectedId) return;
       if (event.key.toLowerCase() !== "z" || (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)) return;
       const origins = historyRef.current.pop();
       if (!origins) return;
@@ -666,7 +705,7 @@ export function ModelingWorkspacePage() {
     };
     window.addEventListener("keydown", handleUndo);
     return () => window.removeEventListener("keydown", handleUndo);
-  }, [activeCanvasId, lockAll, placements, savePlacement, setLocalPlacements, unlockAll]);
+  }, [activeCanvasId, annotationController.selectedId, lockAll, placements, savePlacement, setLocalPlacements, unlockAll]);
 
   const handleCanvasDoubleClick = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
@@ -915,7 +954,7 @@ export function ModelingWorkspacePage() {
   }, [ownershipTransferSeedId, placements, seeds, setLocalPlacements, transferOwnership]);
 
   if (workspaceMode === "dfd") {
-    return <><DfdWorkspace dfd={dfd} erdCanvases={canvases} activeCanvasId={activeDfdCanvasId} models={seeds} me={me} users={users} connected={connected} onSetLocalDfd={setLocalDfd} onSaveDfd={saveDfd} onSaveCatalogModel={saveCatalogSeed} onSetLocalModels={setLocalSeeds} relationships={relationships} relationshipReferences={relationshipReferences} domains={domains} domainCategories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} onLockModel={lock} onUnlockModel={unlock} onUpdateRelationshipReference={(relationshipId, patch) => void updateRelationshipReference(relationshipId, patch)} onDeleteRelationship={(relationshipId) => { const relationship = relationships.find((item) => item.id === relationshipId); if (relationship) void deleteRelationship(relationship); }} onCreateDomain={(name) => void createDomain(name)} onOpenDomainDictionary={openDomainDictionary} onApplyRefinement={applyRefinement} onActiveCanvasChange={setActiveDfdCanvasId} onSelectErdCanvas={selectErdCanvas} onCreateProjectCanvas={createProjectCanvas} onRenameProjectCanvas={renameProjectCanvas} onOpenCrudMatrix={openCrudMatrix} />{crudMatrixOpen && <CrudMatrixDialog dfd={dfd} models={seeds} onChange={updateProjectDfd} onClose={closeCrudMatrix} />}{startDialogOpen && <WorkspaceStartDialog onStart={startWorkspace} />}</>;
+    return <><DfdWorkspace dfd={dfd} erdCanvases={canvases} activeCanvasId={activeDfdCanvasId} models={seeds} me={me} users={users} connected={connected} onSetLocalDfd={setLocalDfd} onSaveDfd={saveDfd} onSaveCatalogModel={saveCatalogSeed} onSetLocalModels={setLocalSeeds} relationships={relationships} relationshipReferences={relationshipReferences} domains={domains} domainCategories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} onLockModel={lock} onUnlockModel={unlock} onUpdateRelationshipReference={(relationshipId, patch) => void updateRelationshipReference(relationshipId, patch)} onDeleteRelationship={(relationshipId) => { const relationship = relationships.find((item) => item.id === relationshipId); if (relationship) void deleteRelationship(relationship); }} onCreateDomain={(name) => void createDomain(name)} onOpenDomainDictionary={openDomainDictionary} onApplyRefinement={applyRefinement} onActiveCanvasChange={setActiveDfdCanvasId} onSelectErdCanvas={selectErdCanvas} onCreateProjectCanvas={createProjectCanvas} onRenameProjectCanvas={renameProjectCanvas} onOpenCrudMatrix={openCrudMatrix} annotations={annotations} onSetLocalAnnotations={setLocalAnnotations} onSaveAnnotation={saveAnnotation} onUpdateAnnotationPresence={updateAnnotationPresence} onMoveCursor={moveCursor} onChangeCanvasPresence={changeCanvas} />{crudMatrixOpen && <CrudMatrixDialog dfd={dfd} models={seeds} onChange={updateProjectDfd} onClose={closeCrudMatrix} />}{startDialogOpen && <WorkspaceStartDialog onStart={startWorkspace} />}</>;
   }
 
   return (
@@ -992,6 +1031,9 @@ export function ModelingWorkspacePage() {
             onCreateDomain={(name) => void createDomain(name)}
             onOpenDomainDictionary={openDomainDictionary}
             onApplyRefinement={applyRefinement}
+            annotationController={annotationController}
+            annotationUsers={users.filter((user) => (user.canvasType ?? "erd") === "erd" && user.canvasId === activeCanvasId)}
+            resolveAnnotationAnchor={resolveErdAnnotationAnchor}
           />
         </section>
       </div>

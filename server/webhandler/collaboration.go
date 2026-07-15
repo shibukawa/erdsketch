@@ -193,23 +193,48 @@ func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request struct {
-		ClientID string   `json:"clientId"`
-		Name     *string  `json:"name"`
-		X        *float64 `json:"x"`
-		Y        *float64 `json:"y"`
-		CanvasID *string  `json:"canvasId"`
+		ClientID            string   `json:"clientId"`
+		Name                *string  `json:"name"`
+		X                   *float64 `json:"x"`
+		Y                   *float64 `json:"y"`
+		CanvasID            *string  `json:"canvasId"`
+		CanvasType          *string  `json:"canvasType"`
+		SelectionID         *string  `json:"selectionId"`
+		EditingAnnotationID *string  `json:"editingAnnotationId"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.ClientID == "" {
 		http.Error(w, "invalid user update", http.StatusBadRequest)
 		return
 	}
-	result, err := h.hub.UpdateUser(request.ClientID, request.Name, request.X, request.Y, request.CanvasID)
+	result, err := h.hub.UpdatePresence(request.ClientID, request.Name, request.X, request.Y, request.CanvasID, request.CanvasType, request.SelectionID, request.EditingAnnotationID)
 	if err != nil {
 		writeCollaborationError(w, err)
 		return
 	}
 	if result.Renamed {
 		h.logger.Printf("[collab] rename user=%q previous=%q client=%s", result.User.Name, result.PreviousName, request.ClientID)
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) updateAnnotation(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var request struct {
+		ClientID   string                         `json:"clientId"`
+		Annotation collaboration.CanvasAnnotation `json:"annotation"`
+		Create     bool                           `json:"create"`
+		Delete     bool                           `json:"delete"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.ClientID == "" || request.Annotation.ID == "" {
+		http.Error(w, "invalid annotation update", http.StatusBadRequest)
+		return
+	}
+	if _, err := h.hub.UpdateAnnotation(request.ClientID, request.Annotation, request.Create, request.Delete); err != nil {
+		writeCollaborationError(w, err)
+		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -419,11 +444,11 @@ func writeEvent(w http.ResponseWriter, state collaboration.State) bool {
 func writeCollaborationError(w http.ResponseWriter, err error) {
 	status := http.StatusInternalServerError
 	switch {
-	case errors.Is(err, collaboration.ErrUnknownClient), errors.Is(err, collaboration.ErrSeedNotFound), errors.Is(err, collaboration.ErrRelationshipNotFound), errors.Is(err, collaboration.ErrDomainNotFound), errors.Is(err, collaboration.ErrCategoryNotFound), errors.Is(err, collaboration.ErrVocabularyNotFound), errors.Is(err, collaboration.ErrCanvasNotFound), errors.Is(err, collaboration.ErrPlacementNotFound):
+	case errors.Is(err, collaboration.ErrUnknownClient), errors.Is(err, collaboration.ErrSeedNotFound), errors.Is(err, collaboration.ErrRelationshipNotFound), errors.Is(err, collaboration.ErrDomainNotFound), errors.Is(err, collaboration.ErrCategoryNotFound), errors.Is(err, collaboration.ErrVocabularyNotFound), errors.Is(err, collaboration.ErrCanvasNotFound), errors.Is(err, collaboration.ErrPlacementNotFound), errors.Is(err, collaboration.ErrAnnotationNotFound):
 		status = http.StatusNotFound
-	case errors.Is(err, collaboration.ErrSeedExists), errors.Is(err, collaboration.ErrLockRequired), errors.Is(err, collaboration.ErrLockConflict), errors.Is(err, collaboration.ErrDomainExists), errors.Is(err, collaboration.ErrDomainInUse), errors.Is(err, collaboration.ErrCategoryExists), errors.Is(err, collaboration.ErrVocabularyExists), errors.Is(err, collaboration.ErrCanvasExists), errors.Is(err, collaboration.ErrPlacementExists), errors.Is(err, collaboration.ErrReadonlyPlacement), errors.Is(err, collaboration.ErrOwnershipChanged):
+	case errors.Is(err, collaboration.ErrSeedExists), errors.Is(err, collaboration.ErrLockRequired), errors.Is(err, collaboration.ErrLockConflict), errors.Is(err, collaboration.ErrDomainExists), errors.Is(err, collaboration.ErrDomainInUse), errors.Is(err, collaboration.ErrCategoryExists), errors.Is(err, collaboration.ErrVocabularyExists), errors.Is(err, collaboration.ErrCanvasExists), errors.Is(err, collaboration.ErrPlacementExists), errors.Is(err, collaboration.ErrReadonlyPlacement), errors.Is(err, collaboration.ErrOwnershipChanged), errors.Is(err, collaboration.ErrAnnotationExists), errors.Is(err, collaboration.ErrAnnotationEditConflict):
 		status = http.StatusConflict
-	case errors.Is(err, collaboration.ErrSeedInvalid), errors.Is(err, collaboration.ErrRelationshipInvalid), errors.Is(err, collaboration.ErrDomainInvalid), errors.Is(err, collaboration.ErrCategoryInvalid), errors.Is(err, collaboration.ErrNamingPolicyInvalid), errors.Is(err, collaboration.ErrVocabularyInvalid), errors.Is(err, collaboration.ErrCanvasInvalid), errors.Is(err, collaboration.ErrPlacementInvalid), errors.Is(err, collaboration.ErrDFDInvalid):
+	case errors.Is(err, collaboration.ErrSeedInvalid), errors.Is(err, collaboration.ErrRelationshipInvalid), errors.Is(err, collaboration.ErrDomainInvalid), errors.Is(err, collaboration.ErrCategoryInvalid), errors.Is(err, collaboration.ErrNamingPolicyInvalid), errors.Is(err, collaboration.ErrVocabularyInvalid), errors.Is(err, collaboration.ErrCanvasInvalid), errors.Is(err, collaboration.ErrPlacementInvalid), errors.Is(err, collaboration.ErrDFDInvalid), errors.Is(err, collaboration.ErrAnnotationInvalid):
 		status = http.StatusBadRequest
 	}
 	http.Error(w, err.Error(), status)

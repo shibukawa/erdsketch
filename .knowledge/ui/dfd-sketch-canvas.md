@@ -27,6 +27,7 @@ ui:
       - open_canvas_selector
       - pan_canvas
       - zoom_canvas
+      - create_and_edit_shared_annotations
     quick_create: ui:modeling-quick-create
     palette:
       selection: radio
@@ -86,11 +87,13 @@ ui:
     connector: rule:dfd-flow-routing
     visual_language: rule:dfd-rough-rendering
     link_handle: ui:diagram-link-handle
+    annotation_toolbar: ui:canvas-annotation-toolbar
     persistence:
       owner: data:project
       cardinality_per_project: many
       canvas: data:dfd-canvas
       placements: data:dfd-node-placement
+      annotations: data:canvas-annotation
 constraints:
   - Keep creation and placement interactions compact.
   - Node creation does not open one dialog per node.
@@ -111,4 +114,5 @@ constraints:
   - Models are shared through data:model-catalog.
   - Model placement uses ui:dfd-model-picker-dialog.
   - A DFD model placement exposes the same field editor and data as its ERD placement.
+  - Shared visual annotations follow requirement:collaborative-canvas-annotation.
 ```

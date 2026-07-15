@@ -1,6 +1,7 @@
 import { startTransition, useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { CanvasModelPlacement, DataDomain, DfdState, DomainCategory, ErdCanvas, NamingPolicy, RefinementResult, Relationship, RelationshipReference, VocabularyEntry } from "./features/modeling/types";
 import { normalizeFlowCrud } from "./features/dfd/dfd";
+import type { CanvasAnnotation, CanvasType, SaveAnnotation } from "./features/annotations/types";
 
 export type Collaborator = {
   id: string;
@@ -10,6 +11,9 @@ export type Collaborator = {
   y: number;
   online: boolean;
   canvasId: string;
+  canvasType?: CanvasType;
+  selectionId?: string;
+  editingAnnotationId?: string;
 };
 
 type CollaborationState<T> = {
@@ -25,6 +29,7 @@ type CollaborationState<T> = {
   dfd: DfdState;
   users: Collaborator[];
   locks: Record<string, Collaborator>;
+  annotations: CanvasAnnotation[];
 };
 
 const defaultDfdState = (): DfdState => ({
@@ -62,7 +67,7 @@ function getIdentity() {
     sessionStorage.setItem("erdsketch-client-id", clientId);
   }
   const name = localStorage.getItem("erdsketch-user-name") ?? "";
-  return { user: { id: clientId, name, color: randomItem(colors), x: 0, y: 0, online: true, canvasId: "main" }, assignAvailableName: !name };
+  return { user: { id: clientId, name, color: randomItem(colors), x: 0, y: 0, online: true, canvasId: "main", canvasType: "erd" as const }, assignAvailableName: !name };
 }
 
 async function post(path: string, body: unknown) {
@@ -93,7 +98,8 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     vocabularyEntries: [],
     dfd: defaultDfdState(),
     users: [],
-    locks: {}
+    locks: {},
+    annotations: []
   });
   const [connected, setConnected] = useState(false);
   const joinedRef = useRef(false);
@@ -108,6 +114,8 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   const pendingDfdRef = useRef<DfdState | null>(null);
   const outboundDfdRef = useRef<DfdState | null>(null);
   const savingDfdRef = useRef(false);
+  const pendingAnnotationsRef = useRef(new Map<string, CanvasAnnotation>());
+  const deletedAnnotationsRef = useRef(new Set<string>());
 
   const applyServerState = useCallback((incoming: CollaborationState<T>) => {
     startTransition(() => {
@@ -148,6 +156,21 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
           if (JSON.stringify(pendingDfdRef.current) === JSON.stringify(serverDfd)) pendingDfdRef.current = null;
           else dfd = pendingDfdRef.current;
         }
+        const serverAnnotations = incoming.annotations ?? [];
+        const annotations = serverAnnotations.flatMap((serverAnnotation) => {
+          if (deletedAnnotationsRef.current.has(serverAnnotation.id)) return [];
+          const pending = pendingAnnotationsRef.current.get(serverAnnotation.id);
+          if (!pending) return [serverAnnotation];
+          if (JSON.stringify(pending) === JSON.stringify(serverAnnotation)) {
+            pendingAnnotationsRef.current.delete(serverAnnotation.id);
+            return [serverAnnotation];
+          }
+          return [pending];
+        });
+        const serverAnnotationIDs = new Set(serverAnnotations.map((annotation) => annotation.id));
+        for (const pending of pendingAnnotationsRef.current.values()) {
+          if (!serverAnnotationIDs.has(pending.id) && !deletedAnnotationsRef.current.has(pending.id)) annotations.push(pending);
+        }
         return {
           ...incoming,
           canvases: incomingCanvases,
@@ -160,7 +183,8 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
           },
           vocabularyEntries: incoming.vocabularyEntries ?? [],
           dfd,
-          seeds
+          seeds,
+          annotations
         };
       });
     });
@@ -174,9 +198,11 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     handleIncomingState(JSON.parse(event.data) as CollaborationState<T>);
   });
   const handleConnectionOpen = useEffectEvent(() => {
+    joinedRef.current = true;
     setConnected(true);
   });
   const handleConnectionError = useEffectEvent(() => {
+    joinedRef.current = false;
     setConnected(false);
   });
 
@@ -243,9 +269,15 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     [me.id]
   );
 
-  const changeCanvas = useCallback(async (canvasId: string) => {
-    setMe((current) => ({ ...current, canvasId }));
-    const response = await post("/api/collaboration/user", { clientId: me.id, canvasId });
+  const changeCanvas = useCallback(async (canvasId: string, canvasType: CanvasType = "erd") => {
+    setMe((current) => ({ ...current, canvasId, canvasType }));
+    const response = await post("/api/collaboration/user", { clientId: me.id, canvasId, canvasType });
+    return response.ok;
+  }, [me.id]);
+
+  const updateAnnotationPresence = useCallback(async (selectionId = "", editingAnnotationId = "") => {
+    setMe((current) => ({ ...current, selectionId, editingAnnotationId }));
+    const response = await post("/api/collaboration/user", { clientId: me.id, selectionId, editingAnnotationId });
     return response.ok;
   }, [me.id]);
 
@@ -509,6 +541,36 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     return response.ok;
   }, [me.id]);
 
+  const saveAnnotation: SaveAnnotation = useCallback(async (annotation, options = {}) => {
+    if (!(await waitForJoin())) return false;
+    const response = await post("/api/collaboration/annotation", {
+      clientId: me.id,
+      annotation,
+      create: options.create ?? false,
+      delete: options.delete ?? false
+    });
+    return response.ok;
+  }, [me.id, waitForJoin]);
+
+  const setLocalAnnotations = useCallback((next: CanvasAnnotation[] | ((current: CanvasAnnotation[]) => CanvasAnnotation[])) => {
+    setState((current) => {
+      const annotations = typeof next === "function" ? next(current.annotations) : next;
+      const nextIDs = new Set(annotations.map((annotation) => annotation.id));
+      for (const annotation of annotations) {
+        const previous = current.annotations.find((item) => item.id === annotation.id);
+        if (!previous || JSON.stringify(previous) !== JSON.stringify(annotation)) pendingAnnotationsRef.current.set(annotation.id, annotation);
+        deletedAnnotationsRef.current.delete(annotation.id);
+      }
+      for (const annotation of current.annotations) {
+        if (!nextIDs.has(annotation.id)) {
+          pendingAnnotationsRef.current.delete(annotation.id);
+          deletedAnnotationsRef.current.add(annotation.id);
+        }
+      }
+      return { ...current, annotations };
+    });
+  }, []);
+
   return {
     me,
     seeds: state.seeds,
@@ -523,9 +585,11 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     namingPolicy: state.namingPolicy,
     vocabularyEntries: state.vocabularyEntries,
     dfd: state.dfd,
+    annotations: state.annotations,
     connected,
     rename,
     changeCanvas,
+    updateAnnotationPresence,
     moveCursor,
     lock,
     unlock,
@@ -543,6 +607,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     saveDomainCategory,
     saveNamingPolicy,
     saveVocabularyEntry,
+    saveAnnotation,
     setLocalSeeds,
     setLocalCanvases,
     setLocalDfd,
@@ -550,6 +615,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     setLocalRelationships,
     setLocalDomains,
     setLocalDomainCategories,
-    setLocalVocabularyEntries
+    setLocalVocabularyEntries,
+    setLocalAnnotations
   };
 }
