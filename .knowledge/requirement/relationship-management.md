@@ -19,6 +19,7 @@ requirements:
       - reading_direction
       - source_multiplicity
       - target_multiplicity
+      - on_delete
     presets:
       - one_to_many
       - many_to_one
@@ -54,6 +55,9 @@ requirements:
       relationship_name_becomes: foreign_key_reference_name
     many_to_many:
       relationship_name_becomes: join_table_name
+    foreign_key:
+      referenced_key: target_primary_key_only
+      on_delete: data:referential-action
   rendering:
     line: existing_soft_curve
     roughness: rule:relationship-roughness
@@ -107,6 +111,9 @@ acceptance:
   - The linked reference shows a chain icon and relationship name; primary-key and foreign-key flags are independent and may both be enabled.
   - Deleting the relationship or linked reference asks for confirmation and explains that the relationship disappears.
   - Relationship meaning remains available even when it has no SQL representation.
+  - Foreign-key relationships may choose NO ACTION, RESTRICT, CASCADE, or SET NULL deletion behavior.
+  - SET NULL is rejected when projected local foreign-key columns are not nullable.
+  - Foreign keys to non-primary composite candidate keys and ON UPDATE actions remain deferred.
   - Inherit export creates a child table containing all effective parent attributes and the child's own attributes.
   - Label relationships display only their name, have no multiplicity or reading direction, and never alter SQL output.
   - A relationship projection may be hidden on one model without deleting the relationship or changing SQL output.
@@ -128,4 +135,6 @@ related:
   - requirement:relationship-validation
   - rule:relationship-roughness
   - rule:inherit-attribute-projection
+  - data:referential-action
+  - requirement:sql-table-definition
 ```

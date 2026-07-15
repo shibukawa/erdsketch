@@ -30,6 +30,18 @@ Place reusable layout components under `src/components/layout/` and diagram-spec
 
 Prefer one primary React component per file. Give files and components descriptive PascalCase names. Avoid meaningless fragments and tiny extractions that do not create a clear responsibility boundary.
 
+## Keep Dialog Backdrops Consistent
+
+Apply the shared dialog treatment to every modal implementation, including native `<dialog>`, daisyUI `.modal`, and custom fixed overlays. Do not introduce component-specific backdrop colors or omit the backdrop.
+
+- Use `rgb(15 23 42 / 0.42)` for the backdrop and `blur(2px)` for `backdrop-filter`.
+- Keep the shared selectors in `src/styles.css`: `dialog::backdrop` for native dialogs, `.modal.modal-open` for daisyUI modals, and `.dialog-overlay` for custom fixed overlays.
+- Add `.dialog-overlay` to new custom modal roots instead of duplicating backdrop utilities in JSX.
+- Use the Field dialog surface as the visual baseline: a white surface with `shadow-2xl`; keep daisyUI `.modal-box` on the equivalent shared shadow.
+- When replacing or opening another top-level modal, close the current modal first unless the new modal is an intentional nested workflow.
+
+Verify at least one modal from each implementation style touched by the change. Confirm the computed backdrop color, `blur(2px)`, surface shadow, and that no previous modal remains behind a replacement modal.
+
 ## Stabilize Callbacks
 
 Wrap frontend callbacks declared inside React components in `useCallback`. This includes DOM event handlers, callbacks passed to children, timers, subscriptions, and callbacks returned from hooks.
@@ -95,6 +107,7 @@ Before finishing, verify that:
 
 - No edited page remains a monolith when layout or diagram responsibilities can be named and extracted.
 - Header, footer, sidebar, and diagram elements have clear file boundaries where present.
+- Dialogs use the shared backdrop, blur, and surface shadow without component-specific variants.
 - Component-local callbacks use `useCallback` with correct dependencies.
 - Expensive or asynchronous non-urgent state updates use transitions, while urgent local interactions do not.
 - Effects depend only on true synchronization triggers, with latest-value reads isolated through `useEffectEvent` where appropriate.

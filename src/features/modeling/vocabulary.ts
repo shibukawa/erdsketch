@@ -53,7 +53,7 @@ export function collectVocabularySources(seeds: ModelSeed[], domains: DataDomain
       const tableSource = seed.names?.business || seed.title;
       return [
         { key: `table:${seed.id}`, target: "table" as const, ownerId: seed.id, ownerLabel: tableSource, sourceText: tableSource, binding: seed.vocabularyBinding },
-        ...seed.fields.map((field) => {
+        ...(seed.fields ?? []).map((field) => {
           const sourceText = field.names?.business || field.name;
           return { key: `field:${seed.id}:${field.id}`, target: "field" as const, ownerId: seed.id, fieldId: field.id, ownerLabel: sourceText, sourceText, binding: field.vocabularyBinding };
         })

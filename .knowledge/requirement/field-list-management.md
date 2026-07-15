@@ -29,6 +29,20 @@ requirements:
       - name
       - primary_key
       - important
+      - required
+      - unique
+      - default
+      - value_generation
+      - estimated_average_size_bytes
+  reorder:
+    interaction: drag_rows
+    persistence: user_authored_row_order
+    primary_key_effect: rule:primary-key-column-order
+  physical_design_actions:
+    indexes: open_ui:index-definition-dialog
+    partitioning: open_ui:partition-definition-dialog
+    inline_composite_index_editing: false
+    capacity: open_ui:volume-view
   domain_assignment:
     source: ui:domain-dictionary-panel
     interaction: drag_domain_to_attribute_row
@@ -81,12 +95,18 @@ requirements:
   excluded:
     - foreign_key_assignment
     - relationship_creation_from_field_editor
+    - composite_index_grouping_inside_attribute_rows
 acceptance:
   - ERD and DFD show the same hamburger-like field action for a model.
   - Editing fields from either canvas updates one shared data:model-catalog definition.
   - Repeated typing and Enter appends multiple fields without reopening the dialog.
   - Japanese IME confirmation never creates an unintended field.
   - Clicking a field exposes editing for its name and flags.
+  - Required, unique, default, and auto-increment settings are editable for attributes.
+  - Varchar, text, and blob attributes expose estimated average size in bytes.
+  - Missing text or blob average size produces a capacity warning without blocking field editing.
+  - Dragging primary-key rows determines composite primary-key column order.
+  - Index and partition actions open dedicated dialogs.
   - Setting primary key automatically sets important.
   - A field may be important without being a primary key.
   - A primary-key field remains effectively important.
@@ -116,4 +136,10 @@ related:
   - ui:domain-dictionary-panel
   - data:data-domain
   - rule:domain-expansion
+  - requirement:sql-table-definition
+  - ui:index-definition-dialog
+  - ui:partition-definition-dialog
+  - rule:primary-key-column-order
+  - data:field-size-estimate
+  - requirement:capacity-estimation
 ```

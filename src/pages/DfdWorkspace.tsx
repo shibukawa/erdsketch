@@ -12,6 +12,7 @@ import { FieldListDialog } from "../components/diagram/FieldListDialog";
 import { ProjectCanvasSelectorDialog, type ProjectCanvasKind } from "../components/layout/ProjectCanvasSelectorDialog";
 import type { VocabularyMatchCache } from "../features/modeling/vocabulary";
 import { relationshipDisplaySeedIDs } from "../features/modeling/utils";
+import { defaultVolumeEstimate } from "../features/modeling/capacity";
 
 type DfdWorkspaceProps = {
   dfd: DfdState;
@@ -208,7 +209,7 @@ export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, use
     setModelPickerOpen(false);
   }, [activeCanvasId, models, nextPosition, persistDfd]);
   const createModel = useCallback(async (input: { title: string; role: ModelSeed["role"]; dependency: ModelSeed["dependency"]; usageScope: "shared" | "dfd_only" }) => {
-    const model: ModelSeed = { id: crypto.randomUUID(), title: input.title, description: "", fields: [], x: 0, y: 0, role: input.role, dependency: input.dependency, usageScope: input.usageScope, hasPrivacy: false, maturedLevel: 6, rotation: 0 };
+    const model: ModelSeed = { id: crypto.randomUUID(), title: input.title, description: "", fields: [], x: 0, y: 0, role: input.role, dependency: input.dependency, usageScope: input.usageScope, hasPrivacy: false, maturedLevel: 6, rotation: 0, volumeEstimate: defaultVolumeEstimate(input.role) };
     if (!(await onSaveCatalogModel(model, true))) return false;
     startTransition(() => onSetLocalModels([...models, model]));
     const position = nextPosition("model");
@@ -285,6 +286,12 @@ export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, use
   const changeModelFields = useCallback((fields: ModelField[]) => {
     if (!fieldEditorModel) return;
     const next = { ...fieldEditorModel, fields };
+    onSetLocalModels(models.map((model) => model.id === next.id ? next : model));
+    void onSaveCatalogModel(next);
+  }, [fieldEditorModel, models, onSaveCatalogModel, onSetLocalModels]);
+  const changeModelDefinition = useCallback((patch: Partial<ModelSeed>) => {
+    if (!fieldEditorModel) return;
+    const next = { ...fieldEditorModel, ...patch };
     onSetLocalModels(models.map((model) => model.id === next.id ? next : model));
     void onSaveCatalogModel(next);
   }, [fieldEditorModel, models, onSaveCatalogModel, onSetLocalModels]);
@@ -420,6 +427,6 @@ export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, use
     {nodeDialog && <DfdNodeDialog mode={nodeDialog.mode} initial={nodeDialog.initial} title={nodeDialog.title} existingExternalDefinitions={externalDefinitions} onSave={saveNodeDialog} onClose={() => setNodeDialog(undefined)} />}
     {modelPickerOpen && <DfdModelPickerDialog models={models} placedModelIds={placedModelIds} onPlace={placeModel} onCreate={createModel} onClose={() => setModelPickerOpen(false)} />}
     {canvasSelectorOpen && <ProjectCanvasSelectorDialog erdCanvases={erdCanvases} dfdCanvases={dfd.canvases} active={{ kind: "dfd", id: activeCanvasId }} onSelect={selectProjectCanvas} onCreate={onCreateProjectCanvas} onRename={onRenameProjectCanvas} onClose={() => setCanvasSelectorOpen(false)} />}
-    {fieldEditorModel && <FieldListDialog modelId={fieldEditorModel.id} modelTitle={fieldEditorModel.title} modelNames={fieldEditorModel.names} initialNameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} modelMaturedLevel={fieldEditorModel.maturedLevel} fields={fieldEditorModel.fields} domains={domains} domainCategories={domainCategories} relationshipReferences={projectedReferences} seeds={models} allRelationships={relationships} allRelationshipReferences={relationshipReferences} canEdit onChange={changeModelFields} onClose={closeModelFields} onUpdateReference={onUpdateRelationshipReference} onDeleteReference={onDeleteRelationship} onCreateDomain={onCreateDomain} onOpenDomainDictionary={(fieldId) => onOpenDomainDictionary(fieldEditorModel.id, fieldId)} onApplyRefinement={onApplyRefinement} />}
+    {fieldEditorModel && <FieldListDialog modelId={fieldEditorModel.id} modelTitle={fieldEditorModel.title} modelNames={fieldEditorModel.names} initialNameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} modelMaturedLevel={fieldEditorModel.maturedLevel} fields={fieldEditorModel.fields} domains={domains} domainCategories={domainCategories} relationshipReferences={projectedReferences} seeds={models} allRelationships={relationships} allRelationshipReferences={relationshipReferences} canEdit onChange={changeModelFields} onModelChange={changeModelDefinition} onClose={closeModelFields} onUpdateReference={onUpdateRelationshipReference} onDeleteReference={onDeleteRelationship} onCreateDomain={onCreateDomain} onOpenDomainDictionary={(fieldId) => onOpenDomainDictionary(fieldEditorModel.id, fieldId)} onApplyRefinement={onApplyRefinement} />}
   </main>;
 }

@@ -25,7 +25,9 @@ fields:
   - source_notes
   - business_name
   - system_name
-  - indexes
+  - sql_table_projections
+  - volume_estimate
+  - lifecycle
 state:
   type: reference
   target: data:model-state
@@ -105,4 +107,7 @@ related:
   - data:entity
   - data:value-object
   - data:data-domain
+  - data:sql-table-projection
+  - data:volume-estimate
+  - data:data-lifecycle
 ```

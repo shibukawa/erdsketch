@@ -423,7 +423,7 @@ func writeCollaborationError(w http.ResponseWriter, err error) {
 		status = http.StatusNotFound
 	case errors.Is(err, collaboration.ErrSeedExists), errors.Is(err, collaboration.ErrLockRequired), errors.Is(err, collaboration.ErrLockConflict), errors.Is(err, collaboration.ErrDomainExists), errors.Is(err, collaboration.ErrDomainInUse), errors.Is(err, collaboration.ErrCategoryExists), errors.Is(err, collaboration.ErrVocabularyExists), errors.Is(err, collaboration.ErrCanvasExists), errors.Is(err, collaboration.ErrPlacementExists), errors.Is(err, collaboration.ErrReadonlyPlacement), errors.Is(err, collaboration.ErrOwnershipChanged):
 		status = http.StatusConflict
-	case errors.Is(err, collaboration.ErrRelationshipInvalid), errors.Is(err, collaboration.ErrDomainInvalid), errors.Is(err, collaboration.ErrCategoryInvalid), errors.Is(err, collaboration.ErrNamingPolicyInvalid), errors.Is(err, collaboration.ErrVocabularyInvalid), errors.Is(err, collaboration.ErrCanvasInvalid), errors.Is(err, collaboration.ErrPlacementInvalid), errors.Is(err, collaboration.ErrDFDInvalid):
+	case errors.Is(err, collaboration.ErrSeedInvalid), errors.Is(err, collaboration.ErrRelationshipInvalid), errors.Is(err, collaboration.ErrDomainInvalid), errors.Is(err, collaboration.ErrCategoryInvalid), errors.Is(err, collaboration.ErrNamingPolicyInvalid), errors.Is(err, collaboration.ErrVocabularyInvalid), errors.Is(err, collaboration.ErrCanvasInvalid), errors.Is(err, collaboration.ErrPlacementInvalid), errors.Is(err, collaboration.ErrDFDInvalid):
 		status = http.StatusBadRequest
 	}
 	http.Error(w, err.Error(), status)

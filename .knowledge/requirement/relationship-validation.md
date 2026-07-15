@@ -30,6 +30,9 @@ semantic_validation_candidates:
   - many_to_many_join_name_conflict
   - generated_identifier_invalid_for_export_target
   - cyclic_foreign_key_not_supported_by_export_target
+  - foreign_key_target_is_non_primary_composite_candidate_key
+  - set_null_action_targets_non_nullable_local_column
+  - cascade_action_conflicts_with_deletion_policy_or_lifecycle
 classification_to_decide_later:
   - blocking_error
   - warning

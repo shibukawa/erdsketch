@@ -4,6 +4,7 @@ import type { Collaborator } from "../../collaboration";
 import { dependencyOptions, maturedLevelSteps, roleMeta, roleOptions } from "../../features/modeling/constants";
 import type { CanvasModelPlacement, Dependency, EntityRole, ModelSeed } from "../../features/modeling/types";
 import { clampMaturedLevel, getModelStageLabel } from "../../features/modeling/utils";
+import { defaultVolumeEstimate, normalizeTransactionRetention } from "../../features/modeling/capacity";
 
 type SeedInspectorProps = {
   seed: ModelSeed;
@@ -37,9 +38,11 @@ export function SeedInspector({ seed, owner, canEdit, placement, onUpdate }: See
 
   const handleRoleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
-      onUpdate(seed.id, { role: event.currentTarget.dataset.role as EntityRole });
+      const role = event.currentTarget.dataset.role as EntityRole;
+      const volumeEstimate = seed.volumeEstimate ?? defaultVolumeEstimate(role);
+      onUpdate(seed.id, { role, volumeEstimate: { ...volumeEstimate, retentionPeriod: normalizeTransactionRetention(role, volumeEstimate.retentionPeriod) } });
     },
-    [onUpdate, seed.id]
+    [onUpdate, seed.id, seed.volumeEstimate]
   );
 
   const handleDependencyClick = useCallback(

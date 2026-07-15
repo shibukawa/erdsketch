@@ -1,4 +1,4 @@
-import { Star, X } from "lucide-react";
+import { ListTree, Star, TableProperties, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -13,6 +13,7 @@ import {
   type WheelEvent
 } from "react";
 import { createPortal } from "react-dom";
+import { reorderFields } from "../../features/modeling/fieldOrder";
 import type { DataDomain, DomainCategory, ModelField, ModelSeed, NameDisplayMode, NameSet, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
 import { getDisplayName, sortFieldListItems, updateNameSet } from "../../features/modeling/utils";
 import { FieldListRow } from "./FieldListRow";
@@ -22,6 +23,10 @@ import { RefinementPanel } from "./RefinementPanel";
 import { NameModeControl } from "./NameModeControl";
 import type { VocabularyMatchCache } from "../../features/modeling/vocabulary";
 import { VocabularyDisplayName } from "./VocabularyDisplayName";
+import { VocabularyNavigationProvider, useVocabularyNavigation } from "./VocabularyNavigationContext";
+import { FieldDefinitionPanel } from "./FieldDefinitionPanel";
+import { IndexDefinitionDialog } from "./IndexDefinitionDialog";
+import { PartitionDefinitionDialog } from "./PartitionDefinitionDialog";
 
 type FieldListDialogProps = {
   modelId: string;
@@ -39,6 +44,7 @@ type FieldListDialogProps = {
   allRelationshipReferences: RelationshipReference[];
   canEdit: boolean;
   onChange: (fields: ModelField[]) => void;
+  onModelChange: (patch: Partial<ModelSeed>) => void;
   onClose: () => void;
   onUpdateReference: (relationshipId: string, patch: Partial<RelationshipReference>) => void;
   onDeleteReference: (relationshipId: string) => void;
@@ -51,20 +57,11 @@ function replaceField(fields: ModelField[], fieldId: string, patch: Partial<Mode
   return fields.map((field) => (field.id === fieldId ? { ...field, ...patch } : field));
 }
 
-function reorderFields(fields: ModelField[], sourceId: string, targetId: string) {
-  if (sourceId === targetId) return fields;
-  const source = fields.find((field) => field.id === sourceId);
-  if (!source) return fields;
-  const remaining = fields.filter((field) => field.id !== sourceId);
-  const targetIndex = remaining.findIndex((field) => field.id === targetId);
-  if (targetIndex < 0) return fields;
-  return [...remaining.slice(0, targetIndex), source, ...remaining.slice(targetIndex)];
-}
-
-export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDisplayMode, vocabularyCache, modelMaturedLevel, fields, domains, domainCategories, relationshipReferences, seeds, allRelationships, allRelationshipReferences, canEdit, onChange, onClose, onUpdateReference, onDeleteReference, onCreateDomain, onOpenDomainDictionary, onApplyRefinement }: FieldListDialogProps) {
+export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDisplayMode, vocabularyCache, modelMaturedLevel, fields, domains, domainCategories, relationshipReferences, seeds, allRelationships, allRelationshipReferences, canEdit, onChange, onModelChange, onClose, onUpdateReference, onDeleteReference, onCreateDomain, onOpenDomainDictionary, onApplyRefinement }: FieldListDialogProps) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const quickEntryRef = useRef<HTMLInputElement | null>(null);
   const fieldsRef = useRef(fields);
+  const openVocabulary = useVocabularyNavigation();
   const [quickEntry, setQuickEntry] = useState("");
   const [autoFavorite, setAutoFavorite] = useState(modelMaturedLevel === 6);
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
@@ -74,7 +71,8 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
   const [quickEntryDomainDropTarget, setQuickEntryDomainDropTarget] = useState(false);
   const [selectedRefinementFieldIds, setSelectedRefinementFieldIds] = useState<string[]>([]);
   const [selectedRefinementRelationshipIds, setSelectedRefinementRelationshipIds] = useState<string[]>([]);
-  const [sideTab, setSideTab] = useState<"domains" | "refinement">("domains");
+  const [sideTab, setSideTab] = useState<"definition" | "domains" | "refinement">("domains");
+  const [advancedDialog, setAdvancedDialog] = useState<"indexes" | "partition" | null>(null);
   const [nameDisplayMode, setNameDisplayMode] = useState(initialNameDisplayMode);
 
   useEffect(() => {
@@ -181,7 +179,11 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
 
   const handleSelectField = useCallback((fieldId: string) => {
     setEditingFieldId(fieldId);
+    setSideTab("definition");
   }, []);
+  const handleFieldDefinitionChange = useCallback((fieldId: string, patch: Partial<ModelField>) => {
+    commitFields(replaceField(fieldsRef.current, fieldId, patch));
+  }, [commitFields]);
   const handleToggleRefinement = useCallback((fieldId: string) => {
     const selecting = !selectedRefinementFieldIds.includes(fieldId);
     setSelectedRefinementFieldIds((current) => selecting ? [...current, fieldId] : current.filter((id) => id !== fieldId));
@@ -193,6 +195,9 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
   const handleDomainsTab = useCallback(() => {
     setSideTab("domains");
   }, []);
+  const handleDefinitionTab = useCallback(() => {
+    setSideTab("definition");
+  }, []);
   const handleRefinementTab = useCallback(() => {
     setSideTab("refinement");
   }, []);
@@ -201,6 +206,10 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
     if (applied) onClose();
     return applied;
   }, [onApplyRefinement, onClose]);
+  const handleOpenVocabulary = useCallback((matchKey: string) => {
+    onClose();
+    openVocabulary?.(matchKey);
+  }, [onClose, openVocabulary]);
 
   const handleFieldNameChange = useCallback(
     (fieldId: string, name: string) => {
@@ -218,13 +227,23 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
         commitFields(
           replaceField(fieldsRef.current, fieldId, {
             primaryKey: !field.primaryKey,
-            important: field.primaryKey ? field.important : true
+            important: field.primaryKey ? field.important : true,
+            required: field.primaryKey ? field.required : true,
+            unique: field.primaryKey ? field.unique : false,
+            valueGeneration: field.primaryKey ? undefined : field.valueGeneration
           })
         );
       }
     },
     [commitFields]
   );
+
+  const handleOpenAdvanced = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+    setAdvancedDialog(event.currentTarget.dataset.dialog as "indexes" | "partition");
+  }, []);
+  const handleCloseAdvanced = useCallback(() => { setAdvancedDialog(null); }, []);
+  const handleSaveIndexes = useCallback((indexes: ModelSeed["indexes"]) => { onModelChange({ indexes }); setAdvancedDialog(null); }, [onModelChange]);
+  const handleSavePartitioning = useCallback((partitioning: ModelSeed["partitioning"]) => { onModelChange({ partitioning }); setAdvancedDialog(null); }, [onModelChange]);
 
   const handleToggleImportant = useCallback(
     (fieldId: string) => {
@@ -279,7 +298,9 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
       event.preventDefault();
       event.stopPropagation();
       const sourceId = draggingFieldId ?? event.dataTransfer.getData("text/plain");
-      if (sourceId) commitFields(reorderFields(fieldsRef.current, sourceId, targetId));
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const insertAfter = event.clientY >= bounds.top + bounds.height / 2;
+      if (sourceId) commitFields(reorderFields(fieldsRef.current, sourceId, targetId, insertAfter));
       clearDragState();
     },
     [clearDragState, commitFields, draggingFieldId]
@@ -314,9 +335,9 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
   }, [modelId, onUpdateReference, relationshipReferences]);
 
   return createPortal(
-    <dialog
+    <VocabularyNavigationProvider onOpen={handleOpenVocabulary}><dialog
       ref={dialogRef}
-      className="field-list-dialog m-auto h-[min(90vh,860px)] w-[min(98vw,1380px)] rounded-xl border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl"
+      className="field-list-dialog m-auto h-[min(90vh,860px)] w-[min(98vw,1460px)] rounded-xl border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl"
       aria-labelledby="field-list-title"
       onCancel={handleCancel}
       onClose={onClose}
@@ -381,6 +402,7 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
             </div>
             <p className="hidden shrink-0 text-xs text-slate-500 lg:block">Drag to reorder · Important affects display only</p>
           </div>
+          <div className="mt-3 flex flex-wrap gap-2"><button type="button" data-dialog="indexes" className="btn btn-outline btn-sm" onClick={handleOpenAdvanced}><ListTree size={15}/>Indexes</button><button type="button" data-dialog="partition" className="btn btn-outline btn-sm" onClick={handleOpenAdvanced}><TableProperties size={15}/>Range partition</button></div>
 
           {!canEdit && (
             <p className="mt-2 rounded-md bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">
@@ -392,7 +414,7 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
         <div className="flex min-h-0 flex-1">
         <div className="field-list-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-3">
           <div
-            className="sticky top-0 z-10 grid h-8 grid-cols-[30px_minmax(140px,1fr)_120px_78px_70px_56px_44px_40px] items-center border-b border-slate-200 bg-white/95 text-[10px] font-bold uppercase tracking-wider text-slate-400 backdrop-blur"
+            className="sticky top-0 z-10 grid h-8 grid-cols-[40px_minmax(140px,1fr)_120px_78px_70px_56px_44px_40px] items-center border-b border-slate-200 bg-white/95 text-[10px] font-bold uppercase tracking-wider text-slate-400 backdrop-blur"
             role="row"
           >
             <span aria-hidden="true" />
@@ -420,10 +442,12 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
             </ul>
           )}
         </div>
-        <aside className="flex w-[310px] shrink-0 flex-col"><div role="tablist" className="tabs tabs-box mx-3 mt-3"><button type="button" role="tab" className={`tab text-xs ${sideTab === "domains" ? "tab-active" : ""}`} onClick={handleDomainsTab}>Domains</button><button type="button" role="tab" className={`tab text-xs ${sideTab === "refinement" ? "tab-active" : ""}`} onClick={handleRefinementTab}>Refinement</button></div><div className="min-h-0 flex-1">{sideTab === "domains" ? <DomainDictionaryPanel domains={domains} categories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} canEdit={canEdit} onCreate={onCreateDomain} onOpen={() => onOpenDomainDictionary(editingFieldId ?? undefined)} /> : <RefinementPanel source={seeds.find((seed) => seed.id === modelId)!} seeds={seeds} relationships={allRelationships} relationshipReferences={allRelationshipReferences} domains={domains} selectedFieldIds={selectedRefinementFieldIds} selectedRelationshipIds={selectedRefinementRelationshipIds} canEdit={canEdit} onApply={handleApplyRefinement}/>}</div></aside>
+        <aside className="flex w-[370px] shrink-0 flex-col bg-slate-50"><div role="tablist" className="tabs tabs-lift tabs-sm mx-3 mt-3 flex-nowrap whitespace-nowrap bg-slate-100"><button type="button" role="tab" aria-selected={sideTab === "definition"} className={`tab min-w-0 flex-1 text-xs ${sideTab === "definition" ? "tab-active bg-white" : "bg-slate-100"}`} onClick={handleDefinitionTab}>Definition</button><button type="button" role="tab" aria-selected={sideTab === "domains"} className={`tab min-w-0 flex-1 text-xs ${sideTab === "domains" ? "tab-active bg-white" : "bg-slate-100"}`} onClick={handleDomainsTab}>Domains</button><button type="button" role="tab" aria-selected={sideTab === "refinement"} className={`tab min-w-0 flex-1 text-xs ${sideTab === "refinement" ? "tab-active bg-white" : "bg-slate-100"}`} onClick={handleRefinementTab}>Refinement</button></div><div className="min-h-0 flex-1">{sideTab === "definition" ? <FieldDefinitionPanel field={fields.find((field) => field.id === editingFieldId)} domains={domains} canEdit={canEdit} onChange={handleFieldDefinitionChange}/> : sideTab === "domains" ? <DomainDictionaryPanel domains={domains} categories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} canEdit={canEdit} onCreate={onCreateDomain} onOpen={() => onOpenDomainDictionary(editingFieldId ?? undefined)} /> : <RefinementPanel source={seeds.find((seed) => seed.id === modelId)!} seeds={seeds} relationships={allRelationships} relationshipReferences={allRelationshipReferences} domains={domains} selectedFieldIds={selectedRefinementFieldIds} selectedRelationshipIds={selectedRefinementRelationshipIds} canEdit={canEdit} onApply={handleApplyRefinement}/>}</div></aside>
         </div>
       </div>
-    </dialog>,
+      {advancedDialog === "indexes" && <IndexDefinitionDialog fields={fields} domains={domains} relationshipReferences={relationshipReferences} initial={seeds.find((seed) => seed.id === modelId)?.indexes ?? []} canEdit={canEdit} onSave={handleSaveIndexes} onClose={handleCloseAdvanced}/>}
+      {advancedDialog === "partition" && <PartitionDefinitionDialog fields={fields} domains={domains} initial={seeds.find((seed) => seed.id === modelId)?.partitioning} canEdit={canEdit} onSave={handleSavePartitioning} onClose={handleCloseAdvanced}/>}
+    </dialog></VocabularyNavigationProvider>,
     document.body
   );
 }

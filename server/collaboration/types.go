@@ -10,6 +10,7 @@ var (
 	ErrSeedExists           = errors.New("seed already exists")
 	ErrLockRequired         = errors.New("seed is not locked by this client")
 	ErrSeedNotFound         = errors.New("seed not found")
+	ErrSeedInvalid          = errors.New("invalid seed")
 	ErrLockConflict         = errors.New("seed is locked by another client")
 	ErrRelationshipNotFound = errors.New("relationship not found")
 	ErrRelationshipInvalid  = errors.New("invalid relationship")
@@ -66,6 +67,10 @@ type ModelSeed struct {
 	HasPrivacy        bool               `json:"hasPrivacy"`
 	MaturedLevel      float64            `json:"maturedLevel"`
 	Rotation          float64            `json:"rotation"`
+	Indexes           []IndexDefinition  `json:"indexes,omitempty"`
+	Partitioning      *PartitionScheme   `json:"partitioning,omitempty"`
+	VolumeEstimate    *VolumeEstimate    `json:"volumeEstimate,omitempty"`
+	AdditionalSQL     string             `json:"additionalSql,omitempty"`
 }
 
 type DFDCanvas struct {
@@ -154,6 +159,70 @@ type ModelField struct {
 	Important         bool               `json:"important"`
 	DomainID          string             `json:"domainId,omitempty"`
 	UseDomainName     bool               `json:"useDomainName,omitempty"`
+	Required          bool               `json:"required,omitempty"`
+	Unique            bool               `json:"unique,omitempty"`
+	DefaultValue      *ColumnDefault     `json:"defaultValue,omitempty"`
+	ValueGeneration   string             `json:"valueGeneration,omitempty"`
+	AverageSizeBytes  *float64           `json:"estimatedAverageSizeBytes,omitempty"`
+}
+
+type ColumnDefault struct {
+	Kind  string `json:"kind"`
+	Value string `json:"value,omitempty"`
+}
+
+type IndexKey struct {
+	Source      string `json:"source"`
+	SourceID    string `json:"sourceId"`
+	ComponentID string `json:"componentId,omitempty"`
+	Direction   string `json:"direction"`
+}
+
+type IndexDefinition struct {
+	ID     string     `json:"id"`
+	Name   string     `json:"name"`
+	Unique bool       `json:"unique"`
+	Keys   []IndexKey `json:"keys"`
+}
+
+type PartitionKey struct {
+	FieldID     string `json:"fieldId"`
+	ComponentID string `json:"componentId,omitempty"`
+}
+
+type PartitionBound struct {
+	Kind  string `json:"kind"`
+	Value string `json:"value,omitempty"`
+}
+
+type PartitionRange struct {
+	ID   string           `json:"id"`
+	Name string           `json:"name"`
+	From []PartitionBound `json:"from"`
+	To   []PartitionBound `json:"to"`
+}
+
+type PartitionScheme struct {
+	Strategy string           `json:"strategy"`
+	Keys     []PartitionKey   `json:"keys"`
+	Ranges   []PartitionRange `json:"ranges"`
+}
+
+type GrowthRate struct {
+	Amount float64 `json:"amount"`
+	Period string  `json:"period"`
+}
+
+type RetentionPeriod struct {
+	Value float64 `json:"value"`
+	Unit  string  `json:"unit"`
+}
+
+type VolumeEstimate struct {
+	InitialRecordCount float64          `json:"initialRecordCount"`
+	GrowthRate         GrowthRate       `json:"growthRate"`
+	RetentionPeriod    *RetentionPeriod `json:"retentionPeriod,omitempty"`
+	MaximumRecordCount *float64         `json:"maximumRecordCount,omitempty"`
 }
 
 type NameSet struct {
@@ -245,6 +314,7 @@ type Relationship struct {
 	TargetMultiplicity string `json:"targetMultiplicity"`
 	Direction          string `json:"direction"`
 	Kind               string `json:"kind"`
+	OnDelete           string `json:"onDelete,omitempty"`
 }
 
 type RelationshipReference struct {

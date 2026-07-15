@@ -64,6 +64,75 @@ export type ModelField = {
   important: boolean;
   domainId?: string;
   useDomainName?: boolean;
+  required?: boolean;
+  unique?: boolean;
+  defaultValue?: ColumnDefault;
+  valueGeneration?: ValueGeneration;
+  estimatedAverageSizeBytes?: number;
+};
+
+export type ColumnDefault =
+  | { kind: "literal"; value: string }
+  | { kind: "current_date" }
+  | { kind: "current_timestamp" };
+
+export type ValueGeneration = "auto_increment";
+
+export type IndexKey = {
+  source: "field" | "relationship";
+  sourceId: string;
+  componentId?: string;
+  direction: "ascending" | "descending";
+};
+
+export type IndexDefinition = {
+  id: string;
+  name: string;
+  unique: boolean;
+  keys: IndexKey[];
+};
+
+export type PartitionKey = {
+  fieldId: string;
+  componentId?: string;
+};
+
+export type PartitionBound =
+  | { kind: "literal"; value: string }
+  | { kind: "minvalue" }
+  | { kind: "maxvalue" };
+
+export type PartitionRange = {
+  id: string;
+  name: string;
+  from: PartitionBound[];
+  to: PartitionBound[];
+};
+
+export type RangePartitionScheme = {
+  strategy: "range";
+  keys: PartitionKey[];
+  ranges: PartitionRange[];
+};
+
+export type EstimatePeriod = "hour" | "day" | "month";
+export type DurationUnit = EstimatePeriod | "year";
+
+export type GrowthRate = {
+  amount: number;
+  period: EstimatePeriod;
+};
+
+export type RetentionPeriod = {
+  value: number;
+  unit: DurationUnit;
+};
+
+export type VolumeEstimate = {
+  initialRecordCount: number;
+  growthRate: GrowthRate;
+  retentionPeriod?: RetentionPeriod;
+  maximumRecordCount?: number;
 };
 
 export type RefinementPatternId =
@@ -197,6 +266,7 @@ export type Relationship = {
   targetMultiplicity: Multiplicity;
   direction: RelationshipDirection;
   kind: RelationshipKind;
+  onDelete?: "no_action" | "restrict" | "cascade" | "set_null";
 };
 
 export type RelationshipReference = {
@@ -224,6 +294,10 @@ export type ModelSeed = {
   hasPrivacy: boolean;
   maturedLevel: number;
   rotation: number;
+  indexes?: IndexDefinition[];
+  partitioning?: RangePartitionScheme;
+  volumeEstimate?: VolumeEstimate;
+  additionalSql?: string;
 };
 
 export type DfdCanvas = {

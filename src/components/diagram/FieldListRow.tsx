@@ -157,7 +157,8 @@ export function FieldListRow({
 
   return (
     <li
-      className={`field-list-row grid h-10 grid-cols-[30px_minmax(140px,1fr)_120px_78px_70px_44px_40px] items-center border-b border-slate-100 text-sm transition-colors ${
+      data-field-id={field.id}
+      className={`field-list-row grid h-10 grid-cols-[40px_minmax(140px,1fr)_120px_78px_70px_56px_44px_40px] items-center border-b border-slate-100 text-sm transition-colors ${
         partitionKey ? "bg-cyan-50 hover:bg-cyan-100" : selected ? "bg-blue-50" : "hover:bg-slate-50"
       } ${dragging ? "opacity-35" : ""} ${dropTarget ? "field-list-row-drop-target" : ""} ${domainDropTarget ? "bg-blue-100 ring-2 ring-inset ring-blue-400" : ""}`}
       role="row"
@@ -168,18 +169,11 @@ export function FieldListRow({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      <span
-        className={`flex h-full items-center justify-center text-slate-300 ${canEdit ? "cursor-grab hover:text-slate-600 active:cursor-grabbing" : "cursor-default"}`}
-        draggable={canEdit}
-        aria-label={`Drag to reorder ${field.name}`}
-        title="Drag to reorder"
-        onDragStart={handleDragStart}
-        onDragEnd={onDragEnd}
-      >
-        <label className={`flex h-full w-full items-center justify-center ${canEdit ? "cursor-pointer" : "cursor-not-allowed"}`} onClick={handleInputClick}>
+      <span className="flex h-full items-center justify-center gap-0.5 text-slate-300">
+        <label className={`flex h-full items-center justify-center ${canEdit ? "cursor-pointer" : "cursor-not-allowed"}`} onClick={handleInputClick}>
           <input type="checkbox" className="checkbox checkbox-xs" checked={refinementSelected} disabled={!canEdit} aria-label={`Select ${field.name} for refinement`} onChange={handleRefinementChange}/>
         </label>
-        <GripVertical size={12} className="pointer-events-none absolute ml-6" />
+        <span className={canEdit ? "cursor-grab hover:text-slate-600 active:cursor-grabbing" : "cursor-default"} draggable={canEdit} aria-label={`Drag to reorder ${field.name}`} title="Drag to reorder" onDragStart={handleDragStart} onDragEnd={onDragEnd}><GripVertical size={13} className="pointer-events-none" /></span>
       </span>
 
       <div className="min-w-0 pr-3">
@@ -219,6 +213,8 @@ export function FieldListRow({
       >
         PK {field.primaryKey ? "ON" : "OFF"}
       </button>
+
+      <span className="text-center text-[10px] font-bold text-slate-300">—</span>
 
       <span className="text-center text-[10px] font-bold text-slate-300">—</span>
 

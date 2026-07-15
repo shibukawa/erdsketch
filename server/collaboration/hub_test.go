@@ -157,6 +157,112 @@ func TestSeedUpdateSynchronizesFields(t *testing.T) {
 	}
 }
 
+func TestSeedUpdatePersistsPhysicalDesignAndCapacity(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "events", Title: "Events"}}, nil, nil, []DataDomain{{ID: "integer", Shape: "primitive", PrimitiveType: "integer"}})
+	if _, err := hub.ChangeLock("lion", "events", "lock"); err != nil {
+		t.Fatalf("lock: %v", err)
+	}
+	averageSize := 1024.0
+	maximumCount := 9_000_000.0
+	next := ModelSeed{
+		ID: "events", Title: "Events", Role: "transaction",
+		Fields:         []ModelField{{ID: "id", Name: "id", DomainID: "integer", PrimaryKey: true, Required: true, ValueGeneration: "auto_increment"}, {ID: "payload", Name: "payload", Required: true, AverageSizeBytes: &averageSize, DefaultValue: &ColumnDefault{Kind: "literal", Value: "{}"}}},
+		Indexes:        []IndexDefinition{{ID: "event-time", Name: "idx_events_time", Keys: []IndexKey{{Source: "field", SourceID: "payload", Direction: "descending"}}}},
+		Partitioning:   &PartitionScheme{Strategy: "range", Keys: []PartitionKey{{FieldID: "payload"}}, Ranges: []PartitionRange{{ID: "january", Name: "p_january", From: []PartitionBound{{Kind: "literal", Value: "2026-01-01"}}, To: []PartitionBound{{Kind: "literal", Value: "2026-02-01"}}}}},
+		VolumeEstimate: &VolumeEstimate{InitialRecordCount: 1000, GrowthRate: GrowthRate{Amount: 500, Period: "hour"}, RetentionPeriod: &RetentionPeriod{Value: 2, Unit: "month"}, MaximumRecordCount: &maximumCount},
+		AdditionalSQL:  "ALTER TABLE events SET (...);",
+	}
+	result, err := hub.UpdateSeed("lion", next, false)
+	if err != nil {
+		t.Fatalf("update physical design: %v", err)
+	}
+	for _, want := range []string{"fields", "role", "indexes", "partitioning", "volumeEstimate", "additionalSql"} {
+		found := false
+		for _, got := range result.Changes {
+			found = found || got == want
+		}
+		if !found {
+			t.Fatalf("changes %v do not include %q", result.Changes, want)
+		}
+	}
+	state := hub.Subscribe("lion")
+	defer state.Close()
+	got := state.Initial().Seeds[0]
+	if got.Fields[1].AverageSizeBytes == nil || *got.Fields[1].AverageSizeBytes != averageSize || got.Fields[1].DefaultValue.Value != "{}" || got.Indexes[0].Keys[0].Direction != "descending" || got.Partitioning.Ranges[0].Name != "p_january" || got.VolumeEstimate.RetentionPeriod.Unit != "month" || got.AdditionalSQL == "" {
+		t.Fatalf("physical design was not preserved: %+v", got)
+	}
+}
+
+func TestTransactionRetentionDefaultsPerModelAndCannotBeUnlimited(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "orders", Title: "Orders", Role: "transaction"}}, nil, nil)
+	state := hub.Subscribe("lion")
+	defer state.Close()
+	got := state.Initial().Seeds[0].VolumeEstimate
+	if got == nil || got.RetentionPeriod == nil || got.RetentionPeriod.Value != 3 || got.RetentionPeriod.Unit != "year" {
+		t.Fatalf("default transaction retention: %+v", got)
+	}
+	if _, err := hub.ChangeLock("lion", "orders", "lock"); err != nil {
+		t.Fatalf("lock: %v", err)
+	}
+	next := ModelSeed{ID: "orders", Title: "Orders", Role: "transaction", VolumeEstimate: &VolumeEstimate{GrowthRate: GrowthRate{Period: "day"}}}
+	if _, err := hub.UpdateSeed("lion", next, false); err != nil {
+		t.Fatalf("normalize missing retention: %v", err)
+	}
+	retention := hub.snapshotLocked().Seeds[0].VolumeEstimate.RetentionPeriod
+	if retention == nil || retention.Value != 3 || retention.Unit != "year" {
+		t.Fatalf("normalized transaction retention: %+v", retention)
+	}
+}
+
+func TestAutoIncrementRequiresIntegerPrimaryKey(t *testing.T) {
+	domains := []DataDomain{{ID: "integer", Shape: "primitive", PrimitiveType: "integer"}, {ID: "text", Shape: "primitive", PrimitiveType: "text"}}
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "orders", Title: "Orders"}}, nil, nil, domains)
+	if _, err := hub.ChangeLock("lion", "orders", "lock"); err != nil {
+		t.Fatalf("lock: %v", err)
+	}
+	for _, field := range []ModelField{
+		{ID: "id", Name: "id", DomainID: "text", PrimaryKey: true, ValueGeneration: "auto_increment"},
+		{ID: "id", Name: "id", DomainID: "integer", ValueGeneration: "auto_increment"},
+	} {
+		if _, err := hub.UpdateSeed("lion", ModelSeed{ID: "orders", Title: "Orders", Fields: []ModelField{field}}, false); !errors.Is(err, ErrSeedInvalid) {
+			t.Fatalf("invalid auto increment %+v: got %v, want %v", field, err, ErrSeedInvalid)
+		}
+	}
+	valid := ModelField{ID: "id", Name: "id", DomainID: "integer", PrimaryKey: true, Required: true, ValueGeneration: "auto_increment"}
+	if _, err := hub.UpdateSeed("lion", ModelSeed{ID: "orders", Title: "Orders", Fields: []ModelField{valid}}, false); err != nil {
+		t.Fatalf("valid auto increment: %v", err)
+	}
+	valid.ValueGeneration = "none"
+	if _, err := hub.UpdateSeed("lion", ModelSeed{ID: "orders", Title: "Orders", Fields: []ModelField{valid}}, false); err != nil {
+		t.Fatalf("clear auto increment: %v", err)
+	}
+	if got := hub.snapshotLocked().Seeds[0].Fields[0].ValueGeneration; got != "" {
+		t.Fatalf("cleared value generation: got %q", got)
+	}
+}
+
+func TestInvalidIndexAndPartitionDefinitionsAreRejected(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, []ModelSeed{{ID: "orders", Title: "Orders", Fields: []ModelField{{ID: "id", Name: "id"}}}}, nil, nil)
+	if _, err := hub.ChangeLock("lion", "orders", "lock"); err != nil {
+		t.Fatalf("lock: %v", err)
+	}
+	invalidIndex := ModelSeed{ID: "orders", Title: "Orders", Fields: []ModelField{{ID: "id", Name: "id"}}, Indexes: []IndexDefinition{{ID: "empty", Name: "idx_empty"}}}
+	if _, err := hub.UpdateSeed("lion", invalidIndex, false); !errors.Is(err, ErrSeedInvalid) {
+		t.Fatalf("empty index: got %v, want %v", err, ErrSeedInvalid)
+	}
+	invalidPartition := ModelSeed{
+		ID: "orders", Title: "Orders", Fields: []ModelField{{ID: "id", Name: "id"}},
+		Partitioning: &PartitionScheme{Strategy: "range", Keys: []PartitionKey{{FieldID: "id"}}, Ranges: []PartitionRange{{ID: "p1", Name: "p1", From: []PartitionBound{{Kind: "literal"}}, To: []PartitionBound{{Kind: "maxvalue"}}}}},
+	}
+	if _, err := hub.UpdateSeed("lion", invalidPartition, false); !errors.Is(err, ErrSeedInvalid) {
+		t.Fatalf("empty partition bound: got %v, want %v", err, ErrSeedInvalid)
+	}
+}
+
 func TestApplyRefinementIsAtomicAndRequiresChangedModelLock(t *testing.T) {
 	hub := NewHub()
 	initial := []ModelSeed{{ID: "order", Title: "Order", Fields: []ModelField{{ID: "number", Name: "number"}}}}
@@ -378,6 +484,36 @@ func TestRelationshipKindAndVisibilityPersist(t *testing.T) {
 	}
 	if got := state.RelationshipReferences[0].HiddenOnModelIDs; len(got) != 1 || got[0] != "history" {
 		t.Fatalf("hidden projections: %v", got)
+	}
+}
+
+func TestRelationshipReferentialActionValidationAndPersistence(t *testing.T) {
+	hub := NewHub()
+	seeds := []ModelSeed{{ID: "customer", Title: "Customer"}, {ID: "order", Title: "Order"}}
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, seeds, nil, nil)
+	if _, err := hub.ChangeLocks("lion", []string{"customer", "order"}, "lock"); err != nil {
+		t.Fatalf("lock endpoints: %v", err)
+	}
+	reference := RelationshipReference{ID: "orders-reference", RelationshipID: "orders", ForeignKey: true}
+	base := Relationship{ID: "orders", Name: "places", SourceID: "customer", TargetID: "order", SourceMultiplicity: "1", TargetMultiplicity: "0..*", Direction: "source-to-target", Kind: "foreign-key"}
+	invalid := base
+	invalid.OnDelete = "set_null"
+	if _, err := hub.UpdateRelationship("lion", invalid, reference, true, false); !errors.Is(err, ErrRelationshipInvalid) {
+		t.Fatalf("non-nullable SET NULL: got %v, want %v", err, ErrRelationshipInvalid)
+	}
+	base.OnDelete = "cascade"
+	if _, err := hub.UpdateRelationship("lion", base, reference, true, false); err != nil {
+		t.Fatalf("create cascade relationship: %v", err)
+	}
+	if got := hub.snapshotLocked().Relationships[0].OnDelete; got != "cascade" {
+		t.Fatalf("onDelete: got %q, want cascade", got)
+	}
+	base.Kind = "label"
+	if _, err := hub.UpdateRelationship("lion", base, reference, false, false); err != nil {
+		t.Fatalf("change relationship kind: %v", err)
+	}
+	if got := hub.snapshotLocked().Relationships[0].OnDelete; got != "" {
+		t.Fatalf("label onDelete: got %q, want empty", got)
 	}
 }
 

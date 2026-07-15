@@ -23,6 +23,7 @@ ui:
           - reading_direction
           - source_multiplicity
           - target_multiplicity
+          - on_delete
         name:
           count: one
         reading_direction:
@@ -44,6 +45,10 @@ ui:
             - "1"
             - "0..*"
             - "1..*"
+        on_delete:
+          item: data:referential-action
+          visible_when: relationship_exports_foreign_key
+          default: no_action
         canvas_line:
           geometry: soft_curve
           preserve_existing_style: true
@@ -70,4 +75,5 @@ related:
   - requirement:relationship-management
   - rule:dependent-drag-follow
   - rule:relationship-roughness
+  - data:referential-action
 ```

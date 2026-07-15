@@ -68,7 +68,19 @@ ui:
               - name
               - primary_key
               - important
+              - required
+              - unique
+              - default
+              - value_generation
+              - estimated_average_size_bytes
               - data:data-domain
+            estimated_average_size_bytes:
+              item: data:field-size-estimate
+              unit: bytes
+              visible_for_effective_types:
+                - varchar
+                - text
+                - blob
           relationship_reference:
             item_interaction: click_to_edit_reference_flags
             name_source: data:relationship.name
@@ -84,6 +96,12 @@ ui:
               hidden_row_behavior: keep_in_dialog_with_hidden_state
       - kind: side-panel
         target: ui:model-refinement-panel
+      - kind: action-group
+        id: physical-table-design
+        actions:
+          - open_ui:index-definition-dialog
+          - open_ui:partition-definition-dialog
+          - open_ui:volume-view
 accessibility:
   - Icon button has an accessible name and visible focus state.
   - Dialog traps focus and supports Escape to close.
@@ -100,6 +118,10 @@ constraints:
   - Favorite cannot be effectively disabled while primary key remains selected.
   - Preserve Japanese IME composition behavior.
   - Composite domain assignments render as one logical attribute row.
+  - Primary-key row drag order persists according to rule:primary-key-column-order.
+  - Composite index grouping is delegated to ui:index-definition-dialog.
+  - Partition ranges are delegated to ui:partition-definition-dialog.
+  - Estimated average size is conditional on effective variable-width type and has no DDL effect.
   - ui:domain-dictionary-panel provides only quick name capture and launch.
   - Detailed domain assignment is performed in ui:domain-dictionary-dialog.
   - Name display mode changes labels only and preserves all edits and references.
@@ -114,4 +136,10 @@ related:
   - ui:model-refinement-panel
   - data:data-domain
   - rule:domain-expansion
+  - requirement:sql-table-definition
+  - rule:primary-key-column-order
+  - ui:index-definition-dialog
+  - ui:partition-definition-dialog
+  - data:field-size-estimate
+  - ui:volume-view
 ```

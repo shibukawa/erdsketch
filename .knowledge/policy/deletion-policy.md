@@ -17,8 +17,8 @@ methods:
 fields:
   - deletion_condition
   - retention_period
-  - cascade
+  - data:referential-action
 checks:
-  - Compare cascade behavior with data:relationship.
+  - Compare data:referential-action with data:relationship.
   - Compare retention with data:data-lifecycle.
 ```

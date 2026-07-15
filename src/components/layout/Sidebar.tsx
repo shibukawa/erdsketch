@@ -20,7 +20,6 @@ type SidebarProps = {
   onUpdateSeed: (seedId: string, patch: Partial<ModelSeed>) => void;
   onOpenDomainDictionary: () => void;
   onOpenVocabulary: () => void;
-  onOpenModelCatalog: () => void;
 };
 
 export function Sidebar({
@@ -37,8 +36,7 @@ export function Sidebar({
   onAddSeed,
   onUpdateSeed,
   onOpenDomainDictionary,
-  onOpenVocabulary,
-  onOpenModelCatalog
+  onOpenVocabulary
 }: SidebarProps) {
   const [newModelName, setNewModelName] = useState("");
   const [creatingModel, setCreatingModel] = useState(false);
@@ -135,9 +133,6 @@ export function Sidebar({
       )}
 
       <div className="mt-auto pt-6">
-        <button type="button" className="btn btn-outline mb-2 w-full justify-start gap-2" onClick={onOpenModelCatalog}>
-          <Search size={17} />Models
-        </button>
         <button type="button" className="btn btn-outline mb-2 w-full justify-start gap-2" onClick={onOpenVocabulary}>
           <Languages size={17} />Vocabulary
         </button>

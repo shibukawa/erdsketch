@@ -53,6 +53,15 @@ export function relationshipDisplaySeedIDs(relationship: Relationship) {
   return [relationship.direction === "source-to-target" ? relationship.sourceId : relationship.targetId];
 }
 
+export function relationshipForeignKeyNullable(relationship: Relationship) {
+  const sourceMany = isMany(relationship.sourceMultiplicity);
+  const targetMany = isMany(relationship.targetMultiplicity);
+  if (sourceMany && !targetMany) return relationship.targetMultiplicity === "0..1";
+  if (targetMany && !sourceMany) return relationship.sourceMultiplicity === "0..1";
+  if (sourceMany && targetMany) return false;
+  return relationship.direction === "source-to-target" ? relationship.targetMultiplicity === "0..1" : relationship.sourceMultiplicity === "0..1";
+}
+
 export function relationshipVisibleOnCanvas(relationship: Relationship, references: RelationshipReference[]) {
   const reference = getRelationshipReference(references, relationship.id);
   return !reference || (reference.hiddenOnModelIds ?? []).length === 0;

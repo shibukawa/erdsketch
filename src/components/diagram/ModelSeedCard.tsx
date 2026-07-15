@@ -1,10 +1,11 @@
-import { Columns3, Database, KeyRound, Link2, Lock, Menu, Star } from "lucide-react";
+import { Columns3, Database, KeyRound, Link2, Lock, Menu, Pencil, Star } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from "react";
 import type { Collaborator } from "../../collaboration";
 import { cardHeight, cardWidth, roleMeta } from "../../features/modeling/constants";
 import type { CanvasAccessMode, CardDisplayMode, DataDomain, DomainCategory, ModelField, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
 import { expandDomainField, flattenLabels, getFieldEffectiveName, getModelStageLabel, relationshipDisplaySeedIDs, updateNameSet } from "../../features/modeling/utils";
 import { FieldListDialog } from "./FieldListDialog";
+import { ModelEditDialog } from "./ModelEditDialog";
 import { RoughShape } from "./RoughShape";
 import { getCachedDisplayName, type VocabularyMatchCache } from "../../features/modeling/vocabulary";
 import { VocabularyDisplayName } from "./VocabularyDisplayName";
@@ -42,7 +43,8 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
   const lockedByMe = accessMode === "owner" && owner?.id === me.id;
   const lockedByOther = !!owner && !lockedByMe;
   const [fieldListOpen, setFieldListOpen] = useState(false);
-  const titleInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const [modelEditOpen, setModelEditOpen] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
   const fields = seed.fields ?? [];
   const inheritedParentIds = relationships.filter((relationship) => relationship.kind === "inherit" && relationship.sourceId === seed.id).map((relationship) => relationship.targetId);
   const inheritedFields = seeds.filter((candidate) => inheritedParentIds.includes(candidate.id)).flatMap((candidate) => candidate.fields.map((field) => ({ ...field, id: `inherited:${candidate.id}:${field.id}`, name: `${getFieldEffectiveName(field, domains)} ↗`, useDomainName: false })));
@@ -98,7 +100,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
   );
 
   const handleTitleChange = useCallback(
-    (event: ChangeEvent<HTMLTextAreaElement>) => {
+    (event: ChangeEvent<HTMLInputElement>) => {
       onUpdate(seed.id, { names: updateNameSet(seed.title, seed.names, "business", event.target.value), vocabularyBinding: undefined });
     },
     [onUpdate, seed.id, seed.names, seed.title]
@@ -119,9 +121,28 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
     setFieldListOpen(false);
   }, []);
 
+  const handleOpenModelEdit = useCallback(() => {
+    setModelEditOpen(true);
+  }, []);
+
+  const handleCloseModelEdit = useCallback(() => {
+    setModelEditOpen(false);
+  }, []);
+
+  const handleSaveModelEdit = useCallback((patch: Partial<ModelSeed>) => {
+    onUpdate(seed.id, patch);
+    setModelEditOpen(false);
+  }, [onUpdate, seed.id]);
+
   const handleFieldsChange = useCallback(
     (nextFields: ModelField[]) => {
       onUpdate(seed.id, { fields: nextFields });
+    },
+    [onUpdate, seed.id]
+  );
+  const handleModelDefinitionChange = useCallback(
+    (patch: Partial<ModelSeed>) => {
+      onUpdate(seed.id, patch);
     },
     [onUpdate, seed.id]
   );
@@ -185,31 +206,28 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{modelStageLabel}</p>
-            {nameDisplayMode === "business" ? <textarea
+            {nameDisplayMode === "business" ? <input
               ref={titleInputRef}
               data-no-drag="true"
               readOnly={!lockedByMe}
-              rows={2}
-              className="h-12 w-full resize-none overflow-hidden rounded-md bg-transparent text-xl font-bold leading-tight outline-none focus:bg-white/80 focus:px-1"
+              className="h-7 w-full truncate rounded-md bg-transparent text-xl font-bold leading-7 outline-none focus:bg-white/80 focus:px-1"
               value={editableBusinessTitle}
               onChange={handleTitleChange}
               onPointerDown={handleEditablePointerDown}
               aria-label={`${editableBusinessTitle || "Untitled model"} title`}
-            /> : <div className="line-clamp-2 h-12 w-full break-words rounded-md text-xl font-bold leading-tight"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`table:${seed.id}`} legacyName={seed.title} names={seed.names} mode={nameDisplayMode} /></div>}
+            /> : <div className="h-7 w-full truncate rounded-md text-xl font-bold leading-7"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`table:${seed.id}`} legacyName={seed.title} names={seed.names} mode={nameDisplayMode} /></div>}
           </div>
-          <button
-            data-no-drag="true"
-            type="button"
-            className="btn btn-ghost btn-sm btn-square -mr-1 -mt-1 shrink-0 rounded-lg bg-white/60 text-slate-600 hover:bg-white"
-            aria-label={`Edit fields for ${seed.title}`}
-            aria-haspopup="dialog"
-            onClick={handleOpenFieldList}
-          >
-            <Menu size={18} />
-          </button>
+          <div className="-mr-1 -mt-1 flex shrink-0 gap-1">
+            <button data-no-drag="true" type="button" className="btn btn-ghost btn-sm btn-square shrink-0 rounded-lg bg-white/60 text-slate-600 hover:bg-white" aria-label={`Edit model settings for ${seed.title}`} aria-haspopup="dialog" onClick={handleOpenModelEdit}>
+              <Pencil size={16} />
+            </button>
+            <button data-no-drag="true" type="button" className="btn btn-ghost btn-sm btn-square shrink-0 rounded-lg bg-white/60 text-slate-600 hover:bg-white" aria-label={`Edit fields for ${seed.title}`} aria-haspopup="dialog" onClick={handleOpenFieldList}>
+              <Menu size={18} />
+            </button>
+          </div>
         </div>
 
-        <div key={displayMode} className="model-card-content mt-3" style={{ height: displayMode === "key-fields" ? summaryBodyHeight : 64 }}>
+        <div key={displayMode} className="model-card-content mt-1.5" style={{ height: displayMode === "key-fields" ? summaryBodyHeight : 64 }}>
           {displayMode === "description" ? (
             <textarea
               data-no-drag="true"
@@ -256,7 +274,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
           )}
         </div>
 
-        <div className="mt-4 flex flex-nowrap gap-1.5 whitespace-nowrap">
+        <div className="mt-2 flex flex-nowrap gap-1.5 whitespace-nowrap">
           {flattenLabels(seed).map((tag) => (
             <span
               key={tag}
@@ -304,6 +322,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
           allRelationshipReferences={relationshipReferences}
           canEdit={lockedByMe}
           onChange={handleFieldsChange}
+          onModelChange={handleModelDefinitionChange}
           onUpdateReference={onUpdateRelationshipReference}
           onDeleteReference={onDeleteRelationship}
           onCreateDomain={onCreateDomain}
@@ -312,6 +331,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
           onApplyRefinement={onApplyRefinement}
         />
       )}
+      {modelEditOpen && <ModelEditDialog model={seed} domains={domains} canEdit={lockedByMe} onSave={handleSaveModelEdit} onClose={handleCloseModelEdit} />}
     </article>
   );
 }

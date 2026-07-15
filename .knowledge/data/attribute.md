@@ -25,6 +25,16 @@ fields:
     type: boolean
   - name: unique
     type: boolean
+    default: false
+  - name: default
+    type: data:column-default
+    optional: true
+  - name: value_generation
+    type: data:value-generation
+    optional: true
+  - name: size_estimates
+    type: data:field-size-estimate
+    optional: true
   - name: primary_key
     type: boolean
     default: false
@@ -48,6 +58,10 @@ constraints:
   - Attribute never stores a relationship reference discriminator or relationship ID.
   - important has no SQL or schema-generation semantics.
   - primary_key implies important according to rule:primary-key-favorite.
+  - primary_key implies required for physical SQL projection.
+  - unique describes one logical attribute; composite uniqueness uses data:index-definition.
+  - Auto increment is explicit data:value-generation and is never inferred from primary_key.
+  - Estimated average size affects capacity estimation only and never changes the domain or DDL type.
   - important may be true without primary_key.
   - A primary-key attribute cannot have an effective important value of false.
   - Foreign-key assignment is outside field-list editing; data:relationship owns relationships.
@@ -64,4 +78,6 @@ related:
   - data:data-domain
   - rule:domain-expansion
   - rule:domain-key-projection
+  - requirement:sql-table-definition
+  - data:field-size-estimate
 ```

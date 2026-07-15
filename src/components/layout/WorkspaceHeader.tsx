@@ -1,4 +1,4 @@
-import { ChevronDown, Focus, Grid3X3, Layers3, LocateFixed, TableProperties, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronDown, Grid3X3, Layers3, LocateFixed, Search, ZoomIn, ZoomOut } from "lucide-react";
 import { startTransition, useCallback, useState, type ChangeEvent, type FocusEvent, type FormEvent } from "react";
 import type { Collaborator } from "../../collaboration";
 
@@ -74,7 +74,7 @@ export function WorkspaceHeader({ me, users, connected, scale, canvasName, onRen
         <ChevronDown size={18} className="ml-1 shrink-0 text-slate-400" />
       </button>
       <div className="flex items-center gap-2">
-        <button type="button" className="btn btn-outline btn-sm gap-2" onClick={onOpenModelCatalog}><TableProperties size={16} />Models</button>
+        <button type="button" className="btn btn-outline btn-sm gap-2" onClick={onOpenModelCatalog}><Search size={16} />Models</button>
         <button type="button" className="btn btn-outline btn-sm gap-2" onClick={onOpenCrudMatrix}><Grid3X3 size={16} />CRUD Matrix</button>
         <div className="mr-1 flex -space-x-2" aria-label={`${users.length} collaborators online`}>
           {otherUsers.slice(0, 4).map((user) => (
@@ -125,10 +125,6 @@ export function WorkspaceHeader({ me, users, connected, scale, canvasName, onRen
             <ZoomIn size={16} />
           </button>
         </div>
-        <button className="btn btn-primary btn-sm rounded-lg gap-2">
-          <Focus size={16} />
-          Grow Selected
-        </button>
       </div>
     </header>
   );

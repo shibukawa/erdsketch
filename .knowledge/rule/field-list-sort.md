@@ -25,14 +25,18 @@ precedence:
 behavior:
   before_commit: preserve_current_editor_order
   after_commit: show_ranked_projection
-  stored_cross_type_order: false
-  tie_order: stable_existing_order
+  stored_cross_type_order: primary_key_group
+  tie_order:
+    primary_key: user_authored_order
+    other_groups: stable_existing_order
 constraints:
   - A primary-key and foreign-key reference belongs to the primary-key group.
   - Sorting changes presentation only and never moves records between persistence collections.
+  - Primary-key grouping preserves rule:primary-key-column-order.
 related:
   - requirement:field-list-management
   - data:attribute
   - data:relationship-reference
   - ui:field-list-dialog
+  - rule:primary-key-column-order
 ```

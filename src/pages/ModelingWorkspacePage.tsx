@@ -20,10 +20,11 @@ import { ProjectCanvasSelectorDialog, type ProjectCanvasKind } from "../componen
 import { WorkspaceStartDialog } from "../components/layout/WorkspaceStartDialog";
 import { ModelCatalogDialog } from "../components/diagram/ModelCatalogDialog";
 import { OwnershipTransferDialog } from "../components/diagram/OwnershipTransferDialog";
-import { initialDomainCategories, initialDomains, initialRelationshipReferences, initialRelationships, initialSeeds } from "../features/modeling/constants";
+import { cardHeight, cardWidth, initialDomainCategories, initialDomains, initialRelationshipReferences, initialRelationships, initialSeeds } from "../features/modeling/constants";
 import type { CanvasModelPlacement, CardDisplayMode, DataDomain, DfdState, DomainCategory, DomainCategoryBundle, DragState, ErdCanvas, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference, Viewport, VocabularyBinding, VocabularyEntry } from "../features/modeling/types";
 import { getCachedDisplayName, replaceAliasInSource, type VocabularyMatch } from "../features/modeling/vocabulary";
 import { useVocabularyMatchCache } from "../features/modeling/useVocabularyMatchCache";
+import { defaultVolumeEstimate } from "../features/modeling/capacity";
 import { clampScale, flattenLabels, getFieldEffectiveName, getRelatedDragSeedIDs, getRelationshipDropTarget, getRelationshipReference, updateNameSet } from "../features/modeling/utils";
 import { DfdWorkspace } from "./DfdWorkspace";
 import { CrudMatrixDialog } from "../components/dfd/CrudMatrixDialog";
@@ -392,6 +393,7 @@ export function ModelingWorkspacePage() {
         x: point.x,
         y: point.y,
         role: "transaction",
+        volumeEstimate: defaultVolumeEstimate("transaction"),
         dependency: "independent",
         hasPrivacy: false,
         maturedLevel: 6,
@@ -676,8 +678,22 @@ export function ModelingWorkspacePage() {
   );
 
   const resetView = useCallback(() => {
-    setViewport({ x: 260, y: 140, scale: 1 });
-  }, []);
+    const canvas = canvasRef.current;
+    if (!canvas || canvasSeeds.length === 0) {
+      setViewport({ x: 260, y: 140, scale: 1 });
+      return;
+    }
+    const bounds = canvas.getBoundingClientRect();
+    const minX = Math.min(...canvasSeeds.map((seed) => seed.x));
+    const minY = Math.min(...canvasSeeds.map((seed) => seed.y));
+    const maxX = Math.max(...canvasSeeds.map((seed) => seed.x + cardWidth));
+    const maxY = Math.max(...canvasSeeds.map((seed) => seed.y + cardHeight));
+    setViewport({
+      x: bounds.width / 2 - (minX + maxX) / 2,
+      y: bounds.height / 2 - (minY + maxY) / 2,
+      scale: 1
+    });
+  }, [canvasSeeds]);
 
   const applyRefinement = useCallback(async (result: RefinementResult) => {
     const existingSeedIds = new Set(seeds.map((seed) => seed.id));
@@ -920,7 +936,6 @@ export function ModelingWorkspacePage() {
           onUpdateSeed={updateSeed}
           onOpenDomainDictionary={() => openDomainDictionary()}
           onOpenVocabulary={openVocabulary}
-          onOpenModelCatalog={() => setModelCatalogOpen(true)}
         />
 
         <section className="flex min-w-0 flex-1 flex-col">

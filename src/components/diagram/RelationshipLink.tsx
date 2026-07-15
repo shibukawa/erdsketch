@@ -30,8 +30,8 @@ export function RelationshipLink({ relationship, seeds, onEdit }: RelationshipLi
       <button
         type="button"
         data-no-pan="true"
-        className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-200 bg-white/90 px-2 py-0.5 text-[11px] font-bold text-slate-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800"
-        style={{ left: geometry.namePosition.x, top: geometry.namePosition.y }}
+        className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 border-0 bg-transparent px-1 py-0.5 text-[11px] font-semibold text-slate-950 transition hover:text-blue-700"
+        style={{ left: geometry.namePosition.x, top: geometry.namePosition.y, fontSize: 11, fontWeight: 600, lineHeight: 1, WebkitTextStroke: "4px white", paintOrder: "stroke fill" }}
         onClick={handleEdit}
         aria-label={`Edit ${relationship.name} relationship`}
         title={relationship.kind === "label" ? `Label: ${relationship.name}` : `${relationship.kind ?? "foreign-key"} · ${originIsSource ? "Source to target" : "Target to source"}: ${relationship.name}`}

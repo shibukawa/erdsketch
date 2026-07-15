@@ -66,7 +66,7 @@ export const initialSeeds: ModelSeed[] = [
     title: "Order",
     description: "Transaction root. Grow lifecycle, state, and line items from here.",
     fields: [
-      { id: "order-id", name: "id", primaryKey: true, important: false },
+      { id: "order-id", name: "id", primaryKey: true, important: false, domainId: "primitive-integer", required: true },
       { id: "order-number", name: "order_number", primaryKey: false, important: true },
       { id: "ordered-at", name: "ordered_at", primaryKey: false, important: true }
     ],
@@ -83,7 +83,7 @@ export const initialSeeds: ModelSeed[] = [
     title: "Customer",
     description: "Master candidate. Ownership and distribution pattern are still open.",
     fields: [
-      { id: "customer-id", name: "id", primaryKey: true, important: false },
+      { id: "customer-id", name: "id", primaryKey: true, important: false, domainId: "primitive-integer", required: true },
       { id: "customer-name", name: "name", primaryKey: false, important: true }
     ],
     x: 430,
@@ -99,7 +99,7 @@ export const initialSeeds: ModelSeed[] = [
     title: "Product",
     description: "Reference data. Could be snapshot at order time.",
     fields: [
-      { id: "product-id", name: "id", primaryKey: true, important: false },
+      { id: "product-id", name: "id", primaryKey: true, important: false, domainId: "primitive-integer", required: true },
       { id: "product-name", name: "name", primaryKey: false, important: true }
     ],
     x: 760,
@@ -114,7 +114,7 @@ export const initialSeeds: ModelSeed[] = [
     id: "order-item",
     title: "Order Item",
     description: "Likely dependent entity extracted from repeated product fields.",
-    fields: [{ id: "order-item-id", name: "id", primaryKey: true, important: false }],
+    fields: [{ id: "order-item-id", name: "id", primaryKey: true, important: false, domainId: "primitive-integer", required: true }],
     x: 230,
     y: 320,
     role: "transaction",

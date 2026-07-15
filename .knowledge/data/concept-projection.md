@@ -14,6 +14,7 @@ fields:
   - system_of_record_role
   - synchronization_method
   - freshness
+  - sql_table_projection
 system_of_record_roles:
   - SoR
   - Derived
@@ -42,7 +43,9 @@ example:
     - target: S3
       physical_name: archive
       role: Derived
+sql_target_detail: data:sql-table-projection
 related:
   - system:storage-target
   - ui:storage-view
+  - data:sql-table-projection
 ```

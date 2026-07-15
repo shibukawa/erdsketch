@@ -24,6 +24,9 @@ attributes:
     - data_type
     - required
     - unique
+    - default
+    - value_generation
+    - estimated_average_size_bytes
     - description
     - primary_key
     - important
@@ -34,4 +37,6 @@ related:
   - ui:entity-candidate-view
   - requirement:field-list-management
   - requirement:model-card-field-summary
+  - requirement:sql-table-definition
+  - requirement:capacity-estimation
 ```

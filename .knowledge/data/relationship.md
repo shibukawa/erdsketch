@@ -25,6 +25,7 @@ common_fields:
   - target_multiplicity
   - description
   - semantic_role
+  - data:referential-action
 multiplicity_values:
   - "0..1"
   - "1"
@@ -88,7 +89,7 @@ reference_projection:
 has_a_fields:
   - lifecycle
   - ownership
-  - cascade
+  - data:referential-action
 dependent_fields:
   - parent_entity
   - child_entity
@@ -102,6 +103,7 @@ is_a_fields:
 reference_kinds:
   foreign_key:
     sql_effect: foreign_key_or_join_table
+    on_delete: data:referential-action
   inherit:
     direction: child_to_parent
     sql_effect: copy_all_parent_attributes_into_child_table
@@ -146,4 +148,5 @@ related:
   - requirement:relationship-validation
   - rule:relationship-roughness
   - rule:inherit-attribute-projection
+  - data:referential-action
 ```

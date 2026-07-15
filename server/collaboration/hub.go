@@ -165,7 +165,11 @@ func (h *Hub) join(user Collaborator, assignAvailableName bool, seeds []ModelSee
 	}
 	h.users[user.ID] = user
 	if len(h.seeds) == 0 && len(seeds) > 0 {
-		h.seeds = append([]ModelSeed(nil), seeds...)
+		normalizedSeeds := make([]ModelSeed, len(seeds))
+		for index, seed := range seeds {
+			normalizedSeeds[index] = normalizeModelSeed(seed)
+		}
+		h.seeds = normalizedSeeds
 		h.placements = make([]CanvasModelPlacement, 0, len(seeds))
 		for _, seed := range seeds {
 			h.placements = append(h.placements, CanvasModelPlacement{CanvasID: DefaultCanvasID, SeedID: seed.ID, X: seed.X, Y: seed.Y, AccessMode: "owner"})
@@ -390,7 +394,12 @@ func (h *Hub) UpdateRelationship(clientID string, next Relationship, reference R
 	if !ok {
 		return RelationshipUpdate{}, ErrUnknownClient
 	}
-	if next.ID == "" || next.SourceID == "" || next.TargetID == "" || next.SourceID == next.TargetID || next.Name == "" || !h.hasSeed(next.SourceID) || !h.hasSeed(next.TargetID) || !validMultiplicity(next.SourceMultiplicity) || !validMultiplicity(next.TargetMultiplicity) || !validDirection(next.Direction) || !validRelationshipKind(next.Kind) {
+	if next.Kind != "foreign-key" {
+		next.OnDelete = ""
+	} else if next.OnDelete == "" {
+		next.OnDelete = "no_action"
+	}
+	if next.ID == "" || next.SourceID == "" || next.TargetID == "" || next.SourceID == next.TargetID || next.Name == "" || !h.hasSeed(next.SourceID) || !h.hasSeed(next.TargetID) || !validMultiplicity(next.SourceMultiplicity) || !validMultiplicity(next.TargetMultiplicity) || !validDirection(next.Direction) || !validRelationshipKind(next.Kind) || !validReferentialAction(next.OnDelete) || (next.OnDelete == "set_null" && !relationshipForeignKeyNullable(next)) {
 		return RelationshipUpdate{}, ErrRelationshipInvalid
 	}
 	if !h.hasSeedLockedBy(next.SourceID, clientID) || !h.hasSeedLockedBy(next.TargetID, clientID) {
@@ -498,8 +507,12 @@ func (h *Hub) UpdateSeedInCanvas(clientID, canvasID string, next ModelSeed, crea
 	if !ok {
 		return SeedUpdate{}, ErrUnknownClient
 	}
+	next = normalizeModelSeed(next)
 	if !fieldDomainsExist(next.Fields, h.domains) {
 		return SeedUpdate{}, ErrDomainNotFound
+	}
+	if !validModelSeed(next, h.domains) {
+		return SeedUpdate{}, ErrSeedInvalid
 	}
 	next.UsageScope = normalizedUsageScope(next.UsageScope)
 	seedIndex := -1
@@ -548,8 +561,12 @@ func (h *Hub) UpdateCatalogSeed(clientID string, next ModelSeed, create bool) (S
 	if !ok {
 		return SeedUpdate{}, ErrUnknownClient
 	}
+	next = normalizeModelSeed(next)
 	if next.ID == "" || strings.TrimSpace(next.Title) == "" || !fieldDomainsExist(next.Fields, h.domains) {
 		return SeedUpdate{}, ErrSeedNotFound
+	}
+	if !validModelSeed(next, h.domains) {
+		return SeedUpdate{}, ErrSeedInvalid
 	}
 	next.UsageScope = normalizedUsageScope(next.UsageScope)
 	index := seedIndexByID(h.seeds, next.ID)
@@ -931,6 +948,206 @@ func fieldDomainsExist(fields []ModelField, domains []DataDomain) bool {
 	return true
 }
 
+func normalizeModelSeed(seed ModelSeed) ModelSeed {
+	seed.Fields = append([]ModelField(nil), seed.Fields...)
+	for index := range seed.Fields {
+		if seed.Fields[index].PrimaryKey {
+			seed.Fields[index].Required = true
+			seed.Fields[index].Unique = false
+		}
+		if seed.Fields[index].ValueGeneration == "none" {
+			seed.Fields[index].ValueGeneration = ""
+		}
+	}
+	if seed.Role != "transaction" {
+		return seed
+	}
+	if seed.VolumeEstimate == nil {
+		seed.VolumeEstimate = &VolumeEstimate{
+			GrowthRate:      GrowthRate{Period: "day"},
+			RetentionPeriod: &RetentionPeriod{Value: 3, Unit: "year"},
+		}
+		return seed
+	}
+	volume := *seed.VolumeEstimate
+	seed.VolumeEstimate = &volume
+	if seed.VolumeEstimate.GrowthRate.Period == "" {
+		seed.VolumeEstimate.GrowthRate.Period = "day"
+	}
+	if seed.VolumeEstimate.RetentionPeriod == nil || seed.VolumeEstimate.RetentionPeriod.Value <= 0 {
+		seed.VolumeEstimate.RetentionPeriod = &RetentionPeriod{Value: 3, Unit: "year"}
+	}
+	return seed
+}
+
+func validModelSeed(seed ModelSeed, domains []DataDomain) bool {
+	for _, field := range seed.Fields {
+		if field.AverageSizeBytes != nil && *field.AverageSizeBytes < 0 {
+			return false
+		}
+		if field.DefaultValue != nil {
+			switch field.DefaultValue.Kind {
+			case "literal", "current_date", "current_timestamp":
+			default:
+				return false
+			}
+		}
+		switch field.ValueGeneration {
+		case "":
+		case "auto_increment":
+			if !field.PrimaryKey || effectiveDomainPrimitiveType(field.DomainID, domains, make(map[string]bool)) != "integer" {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	if seed.VolumeEstimate != nil {
+		volume := seed.VolumeEstimate
+		if volume.InitialRecordCount < 0 || volume.GrowthRate.Amount < 0 {
+			return false
+		}
+		switch volume.GrowthRate.Period {
+		case "hour", "day", "month":
+		default:
+			return false
+		}
+		if volume.MaximumRecordCount != nil && *volume.MaximumRecordCount < 0 {
+			return false
+		}
+	}
+	if seed.Role == "transaction" {
+		retention := seed.VolumeEstimate.RetentionPeriod
+		if retention == nil || retention.Value <= 0 {
+			return false
+		}
+		switch retention.Unit {
+		case "hour", "day", "month", "year":
+		default:
+			return false
+		}
+	}
+	return validIndexDefinitions(seed, domains) && validPartitionScheme(seed, domains)
+}
+
+func validIndexDefinitions(seed ModelSeed, domains []DataDomain) bool {
+	ids := make(map[string]bool)
+	names := make(map[string]bool)
+	for _, index := range seed.Indexes {
+		name := strings.ToLower(strings.TrimSpace(index.Name))
+		if index.ID == "" || ids[index.ID] || name == "" || names[name] || len(index.Keys) == 0 {
+			return false
+		}
+		ids[index.ID] = true
+		names[name] = true
+		keys := make(map[string]bool)
+		for _, key := range index.Keys {
+			if key.Direction != "ascending" && key.Direction != "descending" {
+				return false
+			}
+			if key.Source != "field" && key.Source != "relationship" {
+				return false
+			}
+			if key.Source == "field" && !validPhysicalFieldReference(seed.Fields, domains, key.SourceID, key.ComponentID) {
+				return false
+			}
+			if key.Source == "relationship" && (key.SourceID == "" || key.ComponentID != "") {
+				return false
+			}
+			identity := key.Source + ":" + key.SourceID + ":" + key.ComponentID
+			if keys[identity] {
+				return false
+			}
+			keys[identity] = true
+		}
+	}
+	return true
+}
+
+func validPartitionScheme(seed ModelSeed, domains []DataDomain) bool {
+	partitioning := seed.Partitioning
+	if partitioning == nil {
+		return true
+	}
+	if partitioning.Strategy != "range" || len(partitioning.Keys) == 0 {
+		return false
+	}
+	keys := make(map[string]bool)
+	for _, key := range partitioning.Keys {
+		if !validPhysicalFieldReference(seed.Fields, domains, key.FieldID, key.ComponentID) {
+			return false
+		}
+		identity := key.FieldID + ":" + key.ComponentID
+		if keys[identity] {
+			return false
+		}
+		keys[identity] = true
+	}
+	ids := make(map[string]bool)
+	names := make(map[string]bool)
+	for _, partitionRange := range partitioning.Ranges {
+		name := strings.ToLower(strings.TrimSpace(partitionRange.Name))
+		if partitionRange.ID == "" || ids[partitionRange.ID] || name == "" || names[name] || len(partitionRange.From) != len(partitioning.Keys) || len(partitionRange.To) != len(partitioning.Keys) {
+			return false
+		}
+		ids[partitionRange.ID] = true
+		names[name] = true
+		for _, bound := range append(append([]PartitionBound(nil), partitionRange.From...), partitionRange.To...) {
+			switch bound.Kind {
+			case "literal":
+				if strings.TrimSpace(bound.Value) == "" {
+					return false
+				}
+			case "minvalue", "maxvalue":
+			default:
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func validPhysicalFieldReference(fields []ModelField, domains []DataDomain, fieldID, componentID string) bool {
+	for _, field := range fields {
+		if field.ID != fieldID {
+			continue
+		}
+		if componentID == "" {
+			return true
+		}
+		index := domainIndex(domains, field.DomainID)
+		if index < 0 {
+			return false
+		}
+		for _, component := range domains[index].Components {
+			if component.ID == componentID {
+				return true
+			}
+		}
+		return false
+	}
+	return false
+}
+
+func effectiveDomainPrimitiveType(domainID string, domains []DataDomain, seen map[string]bool) string {
+	if domainID == "" || seen[domainID] {
+		return ""
+	}
+	seen[domainID] = true
+	index := domainIndex(domains, domainID)
+	if index < 0 {
+		return ""
+	}
+	domain := domains[index]
+	if domain.PrimitiveType != "" {
+		return domain.PrimitiveType
+	}
+	if domain.Shape == "scalar" && len(domain.Components) == 1 {
+		return effectiveDomainPrimitiveType(domain.Components[0].DomainID, domains, seen)
+	}
+	return ""
+}
+
 func domainReferencedByComposite(domains []DataDomain, domainID string) bool {
 	for _, domain := range domains {
 		for _, component := range domain.Components {
@@ -1083,6 +1300,33 @@ func validRelationshipKind(value string) bool {
 	}
 }
 
+func validReferentialAction(value string) bool {
+	switch value {
+	case "", "no_action", "restrict", "cascade", "set_null":
+		return true
+	default:
+		return false
+	}
+}
+
+func relationshipForeignKeyNullable(relationship Relationship) bool {
+	sourceMany := relationship.SourceMultiplicity == "0..*" || relationship.SourceMultiplicity == "1..*"
+	targetMany := relationship.TargetMultiplicity == "0..*" || relationship.TargetMultiplicity == "1..*"
+	if sourceMany && !targetMany {
+		return relationship.TargetMultiplicity == "0..1"
+	}
+	if targetMany && !sourceMany {
+		return relationship.SourceMultiplicity == "0..1"
+	}
+	if sourceMany && targetMany {
+		return false
+	}
+	if relationship.Direction == "source-to-target" {
+		return relationship.TargetMultiplicity == "0..1"
+	}
+	return relationship.SourceMultiplicity == "0..1"
+}
+
 func (h *Hub) broadcastLocked() {
 	state := h.snapshotLocked()
 	for _, stream := range h.streams {
@@ -1102,7 +1346,7 @@ func (h *Hub) broadcastLocked() {
 }
 
 func seedChanges(previous, next ModelSeed) []string {
-	changes := make([]string, 0, 10)
+	changes := make([]string, 0, 16)
 	if previous.Title != next.Title {
 		changes = append(changes, "title")
 	}
@@ -1138,6 +1382,18 @@ func seedChanges(previous, next ModelSeed) []string {
 	}
 	if previous.Rotation != next.Rotation {
 		changes = append(changes, "rotation")
+	}
+	if !reflect.DeepEqual(previous.Indexes, next.Indexes) {
+		changes = append(changes, "indexes")
+	}
+	if !reflect.DeepEqual(previous.Partitioning, next.Partitioning) {
+		changes = append(changes, "partitioning")
+	}
+	if !reflect.DeepEqual(previous.VolumeEstimate, next.VolumeEstimate) {
+		changes = append(changes, "volumeEstimate")
+	}
+	if previous.AdditionalSQL != next.AdditionalSQL {
+		changes = append(changes, "additionalSql")
 	}
 	if len(changes) == 0 {
 		return []string{"none"}

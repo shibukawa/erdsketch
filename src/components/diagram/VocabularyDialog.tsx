@@ -118,7 +118,7 @@ export function VocabularyDialog({ seeds, domains, entries, cache, indexing, nam
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
   return createPortal(
-    <>
+    <div className="dialog-overlay fixed inset-0 z-[90]">
       <div role="dialog" aria-modal="true" aria-labelledby="vocabulary-title" className="fixed inset-x-[1.5vw] inset-y-[4vh] z-[90] m-auto h-[min(92vh,900px)] w-[min(97vw,1280px)] rounded-xl border border-slate-200 bg-white p-0 shadow-2xl">
         <div className="flex h-full flex-col">
           <header className="flex items-center gap-4 border-b border-slate-200 px-6 py-4">
@@ -177,6 +177,6 @@ export function VocabularyDialog({ seeds, domains, entries, cache, indexing, nam
       </div>
       {registrationMatch && <VocabularyRegistrationDialog match={registrationMatch} entries={entries} onCreateEntry={onCreateEntry} onBindingChange={onBindingChange} onClose={closeRegistration} />}
       {settingsOpen && <ProjectSettingsDialog policy={namingPolicy} onChange={onNamingPolicyChange} onClose={closeSettings} />}
-    </>, document.body
+    </div>, document.body
   );
 }

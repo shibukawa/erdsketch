@@ -9,6 +9,7 @@
 {"category": "structure", "id": "data:attribute", "path": ".knowledge/data/attribute.md", "role": "supporting", "title": "Attribute", "type": "data"}
 {"category": "structure", "id": "data:canvas-model-placement", "path": ".knowledge/data/canvas-model-placement.md", "role": "supporting", "title": "Canvas Model Placement", "type": "data"}
 {"category": "structure", "id": "data:code-set", "path": ".knowledge/data/code-set.md", "role": "supporting", "title": "Code Set", "type": "data"}
+{"category": "structure", "id": "data:column-default", "path": ".knowledge/data/column-default.md", "role": "supporting", "title": "Column Default", "type": "data"}
 {"category": "structure", "id": "data:concept-projection", "path": ".knowledge/data/concept-projection.md", "role": "supporting", "title": "Concept Projection", "type": "data"}
 {"category": "structure", "id": "data:correction-pattern", "path": ".knowledge/data/correction-pattern.md", "role": "supporting", "title": "Correction Pattern", "type": "data"}
 {"category": "structure", "id": "data:create-history-pattern", "path": ".knowledge/data/create-history-pattern.md", "role": "supporting", "title": "Create History Model Pattern", "type": "data"}
@@ -18,6 +19,7 @@
 {"category": "structure", "id": "data:data-flow", "path": ".knowledge/data/data-flow.md", "role": "supporting", "title": "Data Flow", "type": "data"}
 {"category": "structure", "id": "data:data-lifecycle", "path": ".knowledge/data/data-lifecycle.md", "role": "supporting", "title": "Data Lifecycle", "type": "data"}
 {"category": "structure", "id": "data:data-ownership", "path": ".knowledge/data/data-ownership.md", "role": "supporting", "title": "Data Ownership", "type": "data"}
+{"category": "structure", "id": "data:ddl-extension-text", "path": ".knowledge/data/ddl-extension-text.md", "role": "supporting", "title": "DDL Extension Text", "type": "data"}
 {"category": "structure", "id": "data:dependent-entity", "path": ".knowledge/data/dependent-entity.md", "role": "supporting", "title": "Dependent Entity", "type": "data"}
 {"category": "structure", "id": "data:design-pattern", "path": ".knowledge/data/design-pattern.md", "role": "supporting", "title": "Design Pattern", "type": "data"}
 {"category": "structure", "id": "data:dfd-canvas", "path": ".knowledge/data/dfd-canvas.md", "role": "supporting", "title": "DFD Canvas", "type": "data"}
@@ -34,26 +36,33 @@
 {"category": "structure", "id": "data:extract-master-pattern", "path": ".knowledge/data/extract-master-pattern.md", "role": "supporting", "title": "Extract New Master Pattern", "type": "data"}
 {"category": "structure", "id": "data:extract-one-to-one-pattern", "path": ".knowledge/data/extract-one-to-one-pattern.md", "role": "supporting", "title": "Extract Model One-to-One Pattern", "type": "data"}
 {"category": "structure", "id": "data:extract-optional-model-pattern", "path": ".knowledge/data/extract-optional-model-pattern.md", "role": "supporting", "title": "Extract Optional Model Pattern", "type": "data"}
+{"category": "structure", "id": "data:field-size-estimate", "path": ".knowledge/data/field-size-estimate.md", "role": "supporting", "title": "Field Average Size Estimate", "type": "data"}
 {"category": "structure", "id": "data:governance-metadata", "path": ".knowledge/data/governance-metadata.md", "role": "supporting", "title": "Governance Metadata", "type": "data"}
+{"category": "structure", "id": "data:growth-rate", "path": ".knowledge/data/growth-rate.md", "role": "supporting", "title": "Growth Rate", "type": "data"}
+{"category": "structure", "id": "data:index-definition", "path": ".knowledge/data/index-definition.md", "role": "supporting", "title": "Index Definition", "type": "data"}
 {"category": "structure", "id": "data:master-data-distribution", "path": ".knowledge/data/master-data-distribution.md", "role": "supporting", "title": "Master Data Distribution", "type": "data"}
 {"category": "structure", "id": "data:model-catalog", "path": ".knowledge/data/model-catalog.md", "role": "supporting", "title": "Project Model Catalog", "type": "data"}
 {"category": "structure", "id": "data:model-seed", "path": ".knowledge/data/model-seed.md", "role": "supporting", "title": "Model Seed", "type": "data"}
 {"category": "structure", "id": "data:model-state", "path": ".knowledge/data/model-state.md", "role": "supporting", "title": "Model State", "type": "data"}
 {"category": "structure", "id": "data:model-transformation", "path": ".knowledge/data/model-transformation.md", "role": "supporting", "title": "Model Transformation", "type": "data"}
 {"category": "structure", "id": "data:multiple-items-pattern", "path": ".knowledge/data/multiple-items-pattern.md", "role": "supporting", "title": "Multiple Items Pattern", "type": "data"}
+{"category": "structure", "id": "data:partition-scheme", "path": ".knowledge/data/partition-scheme.md", "role": "supporting", "title": "Partition Scheme", "type": "data"}
 {"category": "structure", "id": "data:primitive-type", "path": ".knowledge/data/primitive-type.md", "role": "supporting", "title": "Primitive Type", "type": "data"}
 {"category": "structure", "id": "data:project", "path": ".knowledge/data/project.md", "role": "supporting", "title": "Modeling Project", "type": "data"}
 {"category": "structure", "id": "data:query-profile", "path": ".knowledge/data/query-profile.md", "role": "supporting", "title": "Query Profile", "type": "data"}
 {"category": "structure", "id": "data:reconciliation-pattern", "path": ".knowledge/data/reconciliation-pattern.md", "role": "supporting", "title": "Reconciliation Pattern", "type": "data"}
 {"category": "structure", "id": "data:reference-actual-value", "path": ".knowledge/data/reference-actual-value.md", "role": "supporting", "title": "Reference Value and Actual Value", "type": "data"}
 {"category": "structure", "id": "data:reference-implementation", "path": ".knowledge/data/reference-implementation.md", "role": "supporting", "title": "Reference Implementation", "type": "data"}
+{"category": "structure", "id": "data:referential-action", "path": ".knowledge/data/referential-action.md", "role": "supporting", "title": "Referential Action", "type": "data"}
 {"category": "structure", "id": "data:relationship-reference", "path": ".knowledge/data/relationship-reference.md", "role": "supporting", "title": "Relationship Reference", "type": "data"}
 {"category": "structure", "id": "data:relationship", "path": ".knowledge/data/relationship.md", "role": "supporting", "title": "Relationship", "type": "data"}
 {"category": "structure", "id": "data:snapshot-reference", "path": ".knowledge/data/snapshot-reference.md", "role": "supporting", "title": "Snapshot Reference", "type": "data"}
 {"category": "structure", "id": "data:split-by-code-set-pattern", "path": ".knowledge/data/split-by-code-set-pattern.md", "role": "supporting", "title": "Split Model by Code Set Pattern", "type": "data"}
+{"category": "structure", "id": "data:sql-table-projection", "path": ".knowledge/data/sql-table-projection.md", "role": "supporting", "title": "SQL Table Projection", "type": "data"}
 {"category": "structure", "id": "data:state-transition", "path": ".knowledge/data/state-transition.md", "role": "supporting", "title": "State Transition", "type": "data"}
 {"category": "structure", "id": "data:system-boundary-pattern", "path": ".knowledge/data/system-boundary-pattern.md", "role": "supporting", "title": "System Boundary Pattern", "type": "data"}
 {"category": "structure", "id": "data:time-characteristic", "path": ".knowledge/data/time-characteristic.md", "role": "supporting", "title": "Time Characteristic", "type": "data"}
+{"category": "structure", "id": "data:value-generation", "path": ".knowledge/data/value-generation.md", "role": "supporting", "title": "Value Generation", "type": "data"}
 {"category": "structure", "id": "data:value-object", "path": ".knowledge/data/value-object.md", "role": "supporting", "title": "Value Object", "type": "data"}
 {"category": "structure", "id": "data:vocabulary-binding", "path": ".knowledge/data/vocabulary-binding.md", "role": "supporting", "title": "Vocabulary Binding", "type": "data"}
 {"category": "structure", "id": "data:vocabulary-entry", "path": ".knowledge/data/vocabulary-entry.md", "role": "supporting", "title": "Vocabulary Entry", "type": "data"}
@@ -71,6 +80,7 @@
 {"category": "constraint", "id": "policy:deletion-policy", "path": ".knowledge/policy/deletion-policy.md", "role": "supporting", "title": "Deletion Policy", "type": "policy"}
 {"category": "objective", "id": "requirement:ai-review", "path": ".knowledge/requirement/ai-review.md", "role": "primary", "title": "AI Review", "type": "requirement"}
 {"category": "objective", "id": "requirement:ai-vocabulary-assistance", "path": ".knowledge/requirement/ai-vocabulary-assistance.md", "role": "primary", "title": "AI Vocabulary Assistance", "type": "requirement"}
+{"category": "objective", "id": "requirement:capacity-estimation", "path": ".knowledge/requirement/capacity-estimation.md", "role": "primary", "title": "Capacity Estimation", "type": "requirement"}
 {"category": "objective", "id": "requirement:code-set-management", "path": ".knowledge/requirement/code-set-management.md", "role": "primary", "title": "Code Set Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:crud-matrix-reporting", "path": ".knowledge/requirement/crud-matrix-reporting.md", "role": "primary", "title": "CRUD Matrix Reporting", "type": "requirement"}
 {"category": "objective", "id": "requirement:design-decision-history", "path": ".knowledge/requirement/design-decision-history.md", "role": "primary", "title": "Design Decision History", "type": "requirement"}
@@ -92,6 +102,7 @@
 {"category": "objective", "id": "requirement:performance-design", "path": ".knowledge/requirement/performance-design.md", "role": "primary", "title": "Performance Design", "type": "requirement"}
 {"category": "objective", "id": "requirement:relationship-management", "path": ".knowledge/requirement/relationship-management.md", "role": "primary", "title": "Relationship Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:relationship-validation", "path": ".knowledge/requirement/relationship-validation.md", "role": "primary", "title": "Relationship Validation Inventory", "type": "requirement"}
+{"category": "objective", "id": "requirement:sql-table-definition", "path": ".knowledge/requirement/sql-table-definition.md", "role": "primary", "title": "SQL Table Definition", "type": "requirement"}
 {"category": "objective", "id": "requirement:unmatched-name-presentation", "path": ".knowledge/requirement/unmatched-name-presentation.md", "role": "primary", "title": "Unmatched Name Presentation", "type": "requirement"}
 {"category": "objective", "id": "requirement:vocabulary-alias-correction", "path": ".knowledge/requirement/vocabulary-alias-correction.md", "role": "primary", "title": "Vocabulary Alias Correction", "type": "requirement"}
 {"category": "objective", "id": "requirement:vocabulary-cache-maintenance", "path": ".knowledge/requirement/vocabulary-cache-maintenance.md", "role": "primary", "title": "Vocabulary Cache Maintenance", "type": "requirement"}
@@ -113,11 +124,14 @@
 {"category": "constraint", "id": "rule:field-list-sort", "path": ".knowledge/rule/field-list-sort.md", "role": "supporting", "title": "Field List Sort", "type": "rule"}
 {"category": "constraint", "id": "rule:inherit-attribute-projection", "path": ".knowledge/rule/inherit-attribute-projection.md", "role": "supporting", "title": "Inherit Attribute Projection", "type": "rule"}
 {"category": "constraint", "id": "rule:model-seed-labels", "path": ".knowledge/rule/model-seed-labels.md", "role": "supporting", "title": "Model Seed Structured Hints", "type": "rule"}
+{"category": "constraint", "id": "rule:primary-key-column-order", "path": ".knowledge/rule/primary-key-column-order.md", "role": "supporting", "title": "Primary Key Column Order", "type": "rule"}
 {"category": "constraint", "id": "rule:primary-key-favorite", "path": ".knowledge/rule/primary-key-favorite.md", "role": "supporting", "title": "Primary Key Is Favorite", "type": "rule"}
+{"category": "constraint", "id": "rule:record-count-estimation", "path": ".knowledge/rule/record-count-estimation.md", "role": "supporting", "title": "Record Count Estimation", "type": "rule"}
 {"category": "constraint", "id": "rule:relationship-move-lock", "path": ".knowledge/rule/relationship-move-lock.md", "role": "supporting", "title": "Relationship Move Lock", "type": "rule"}
 {"category": "constraint", "id": "rule:relationship-operation-history", "path": ".knowledge/rule/relationship-operation-history.md", "role": "supporting", "title": "Relationship Operation History", "type": "rule"}
 {"category": "constraint", "id": "rule:relationship-roughness", "path": ".knowledge/rule/relationship-roughness.md", "role": "supporting", "title": "Relationship Roughness", "type": "rule"}
 {"category": "constraint", "id": "rule:sql-naming-policy", "path": ".knowledge/rule/sql-naming-policy.md", "role": "supporting", "title": "SQL Naming Policy", "type": "rule"}
+{"category": "constraint", "id": "rule:storage-size-estimation", "path": ".knowledge/rule/storage-size-estimation.md", "role": "supporting", "title": "Storage Size Estimation", "type": "rule"}
 {"category": "constraint", "id": "rule:vocabulary-resolution", "path": ".knowledge/rule/vocabulary-resolution.md", "role": "supporting", "title": "Vocabulary Resolution", "type": "rule"}
 {"category": "external", "id": "system:storage-target", "path": ".knowledge/system/storage-target.md", "role": "supporting", "title": "Storage Target", "type": "system"}
 {"category": "vocabulary", "id": "term:relationship-vocabulary", "path": ".knowledge/term/relationship-vocabulary.md", "role": "supporting", "title": "Relationship Vocabulary", "type": "term"}
@@ -134,12 +148,14 @@
 {"category": "interface", "id": "ui:erd-canvas-selector-dialog", "path": ".knowledge/ui/erd-canvas-selector-dialog.md", "role": "primary", "title": "ERD Canvas Selector Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:erd-sketch-canvas", "path": ".knowledge/ui/erd-sketch-canvas.md", "role": "primary", "title": "ERD Sketch Canvas", "type": "ui"}
 {"category": "interface", "id": "ui:field-list-dialog", "path": ".knowledge/ui/field-list-dialog.md", "role": "primary", "title": "Field List Dialog", "type": "ui"}
+{"category": "interface", "id": "ui:index-definition-dialog", "path": ".knowledge/ui/index-definition-dialog.md", "role": "primary", "title": "Index Definition Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:lifecycle-view", "path": ".knowledge/ui/lifecycle-view.md", "role": "primary", "title": "Lifecycle View", "type": "ui"}
 {"category": "interface", "id": "ui:model-card-display-mode", "path": ".knowledge/ui/model-card-display-mode.md", "role": "primary", "title": "Model Card Display Mode", "type": "ui"}
 {"category": "interface", "id": "ui:model-catalog-view", "path": ".knowledge/ui/model-catalog-view.md", "role": "primary", "title": "Project Model Catalog View", "type": "ui"}
 {"category": "interface", "id": "ui:model-refinement-panel", "path": ".knowledge/ui/model-refinement-panel.md", "role": "primary", "title": "Model Refinement Panel", "type": "ui"}
 {"category": "interface", "id": "ui:modeling-quick-create", "path": ".knowledge/ui/modeling-quick-create.md", "role": "primary", "title": "Modeling Quick Create", "type": "ui"}
 {"category": "interface", "id": "ui:normalization-view", "path": ".knowledge/ui/normalization-view.md", "role": "primary", "title": "Normalization View", "type": "ui"}
+{"category": "interface", "id": "ui:partition-definition-dialog", "path": ".knowledge/ui/partition-definition-dialog.md", "role": "primary", "title": "Partition Definition Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:pattern-library-view", "path": ".knowledge/ui/pattern-library-view.md", "role": "primary", "title": "Pattern Library View", "type": "ui"}
 {"category": "interface", "id": "ui:project-settings-view", "path": ".knowledge/ui/project-settings-view.md", "role": "primary", "title": "Project Settings View", "type": "ui"}
 {"category": "interface", "id": "ui:relationship-view", "path": ".knowledge/ui/relationship-view.md", "role": "primary", "title": "Relationship View", "type": "ui"}

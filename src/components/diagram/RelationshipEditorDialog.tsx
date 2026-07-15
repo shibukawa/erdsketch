@@ -2,6 +2,7 @@ import { ArrowLeftRight, Link2, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent, type SyntheticEvent } from "react";
 import { createPortal } from "react-dom";
 import type { ModelSeed, Multiplicity, Relationship, RelationshipDirection, RelationshipKind } from "../../features/modeling/types";
+import { relationshipForeignKeyNullable } from "../../features/modeling/utils";
 
 const multiplicities: Multiplicity[] = ["0..1", "1", "0..*", "1..*"];
 
@@ -16,11 +17,11 @@ type RelationshipEditorDialogProps = {
 };
 
 export function RelationshipEditorDialog({ relationship, source, target, canDelete, onSave, onDelete, onClose }: RelationshipEditorDialogProps) {
-  const [draft, setDraft] = useState<Relationship>(() => ({ ...relationship, kind: relationship.kind ?? "foreign-key" }));
+  const [draft, setDraft] = useState<Relationship>(() => ({ ...relationship, kind: relationship.kind ?? "foreign-key", onDelete: relationship.onDelete ?? "no_action" }));
   const dialogRef = useRef<HTMLDialogElement | null>(null);
 
   useEffect(() => {
-    setDraft({ ...relationship, kind: relationship.kind ?? "foreign-key" });
+    setDraft({ ...relationship, kind: relationship.kind ?? "foreign-key", onDelete: relationship.onDelete ?? "no_action" });
   }, [relationship]);
 
   useEffect(() => {
@@ -38,7 +39,11 @@ export function RelationshipEditorDialog({ relationship, source, target, canDele
     setDraft((current) => ({ ...current, targetMultiplicity: event.target.value as Multiplicity }));
   }, []);
   const handleKindChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
-    setDraft((current) => ({ ...current, kind: event.target.value as RelationshipKind }));
+    const kind = event.target.value as RelationshipKind;
+    setDraft((current) => ({ ...current, kind, onDelete: kind === "foreign-key" ? current.onDelete ?? "no_action" : undefined }));
+  }, []);
+  const handleOnDeleteChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
+    setDraft((current) => ({ ...current, onDelete: event.target.value as Relationship["onDelete"] }));
   }, []);
   const handleDirection = useCallback(() => {
     setDraft((current) => ({
@@ -58,7 +63,7 @@ export function RelationshipEditorDialog({ relationship, source, target, canDele
   const handleSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
       event.preventDefault();
-      if (!draft.name.trim()) return;
+      if (!draft.name.trim() || (draft.onDelete === "set_null" && !relationshipForeignKeyNullable(draft))) return;
       onSave({ ...draft, name: draft.name.trim() });
     },
     [draft, onSave]
@@ -100,6 +105,7 @@ export function RelationshipEditorDialog({ relationship, source, target, canDele
             </label>
           </div>
           {draft.kind === "inherit" && <p className="rounded-lg bg-violet-50 px-3 py-2 text-xs text-violet-900">The source is the child and the target is the parent. SQL export copies every effective parent field into the child table.</p>}
+          {draft.kind === "foreign-key" && <label className="block"><span className="text-sm font-bold text-slate-700">ON DELETE</span><select className="select select-bordered mt-2 w-full" value={draft.onDelete ?? "no_action"} onChange={handleOnDeleteChange}><option value="no_action">NO ACTION</option><option value="restrict">RESTRICT</option><option value="cascade">CASCADE</option><option value="set_null">SET NULL</option></select>{draft.onDelete === "set_null" && !relationshipForeignKeyNullable(draft) && <span className="mt-1 block text-xs font-semibold text-red-700">SET NULL requires an optional referenced endpoint.</span>}</label>}
           {draft.kind !== "label" && <><div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
             <label className="block">
               <span className="block truncate text-sm font-bold text-slate-700">{source?.title ?? "Source"}</span>
