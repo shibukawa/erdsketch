@@ -8,6 +8,7 @@ A relationship-following drag is an atomic collaborative movement operation.
 
 ```yaml
 lock_protocol:
+  authority: actor:session-host
   before_movement:
     compute: complete_rule:dependent-drag-follow_movement_set
     acquire_lock_for: every_model_in_movement_set
@@ -27,6 +28,9 @@ lock_protocol:
     user_feedback: movement_blocked_because_related_models_could_not_be_locked
   concurrent_graph_change:
     requirement: movement_set_must_remain_stable_while_locked
+  transport:
+    message: data:collaboration-message
+    relay: system:collaboration-relay
 undo:
   command_count: one
   scope: every_moved_model

@@ -1,3 +1,5 @@
+{"category": "behavior", "id": "actor:session-host", "path": ".knowledge/actor/session-host.md", "role": "supporting", "title": "Collaboration Session Host", "type": "actor"}
+{"category": "behavior", "id": "actor:session-participant", "path": ".knowledge/actor/session-participant.md", "role": "supporting", "title": "Collaboration Session Participant", "type": "actor"}
 {"category": "concept", "id": "concept:assistive-ai-experience", "path": ".knowledge/concept/assistive-ai-experience.md", "role": "supporting", "title": "Assistive AI Experience", "type": "concept"}
 {"category": "concept", "id": "concept:design-ide", "path": ".knowledge/concept/design-ide.md", "role": "supporting", "title": "Design IDE", "type": "concept"}
 {"category": "concept", "id": "concept:design-pattern-catalog", "path": ".knowledge/concept/design-pattern-catalog.md", "role": "supporting", "title": "Design Pattern Catalog", "type": "concept"}
@@ -10,6 +12,7 @@
 {"category": "structure", "id": "data:canvas-annotation", "path": ".knowledge/data/canvas-annotation.md", "role": "supporting", "title": "Canvas Annotation", "type": "data"}
 {"category": "structure", "id": "data:canvas-model-placement", "path": ".knowledge/data/canvas-model-placement.md", "role": "supporting", "title": "Canvas Model Placement", "type": "data"}
 {"category": "structure", "id": "data:code-set", "path": ".knowledge/data/code-set.md", "role": "supporting", "title": "Code Set", "type": "data"}
+{"category": "structure", "id": "data:collaboration-message", "path": ".knowledge/data/collaboration-message.md", "role": "supporting", "title": "Collaboration Message", "type": "data"}
 {"category": "structure", "id": "data:column-default", "path": ".knowledge/data/column-default.md", "role": "supporting", "title": "Column Default", "type": "data"}
 {"category": "structure", "id": "data:concept-projection", "path": ".knowledge/data/concept-projection.md", "role": "supporting", "title": "Concept Projection", "type": "data"}
 {"category": "structure", "id": "data:correction-pattern", "path": ".knowledge/data/correction-pattern.md", "role": "supporting", "title": "Correction Pattern", "type": "data"}
@@ -48,7 +51,11 @@
 {"category": "structure", "id": "data:model-transformation", "path": ".knowledge/data/model-transformation.md", "role": "supporting", "title": "Model Transformation", "type": "data"}
 {"category": "structure", "id": "data:multiple-items-pattern", "path": ".knowledge/data/multiple-items-pattern.md", "role": "supporting", "title": "Multiple Items Pattern", "type": "data"}
 {"category": "structure", "id": "data:partition-scheme", "path": ".knowledge/data/partition-scheme.md", "role": "supporting", "title": "Partition Scheme", "type": "data"}
+{"category": "structure", "id": "data:persistence-worker-message", "path": ".knowledge/data/persistence-worker-message.md", "role": "supporting", "title": "Persistence Worker Message", "type": "data"}
+{"category": "structure", "id": "data:portable-project-archive", "path": ".knowledge/data/portable-project-archive.md", "role": "supporting", "title": "Portable Project Archive", "type": "data"}
 {"category": "structure", "id": "data:primitive-type", "path": ".knowledge/data/primitive-type.md", "role": "supporting", "title": "Primitive Type", "type": "data"}
+{"category": "structure", "id": "data:project-document-set", "path": ".knowledge/data/project-document-set.md", "role": "supporting", "title": "Project Document Set", "type": "data"}
+{"category": "structure", "id": "data:project-recovery-journal", "path": ".knowledge/data/project-recovery-journal.md", "role": "supporting", "title": "Project Recovery Journal", "type": "data"}
 {"category": "structure", "id": "data:project", "path": ".knowledge/data/project.md", "role": "supporting", "title": "Modeling Project", "type": "data"}
 {"category": "structure", "id": "data:query-profile", "path": ".knowledge/data/query-profile.md", "role": "supporting", "title": "Query Profile", "type": "data"}
 {"category": "structure", "id": "data:reconciliation-pattern", "path": ".knowledge/data/reconciliation-pattern.md", "role": "supporting", "title": "Reconciliation Pattern", "type": "data"}
@@ -71,10 +78,16 @@
 {"category": "structure", "id": "data:vocabulary-suggestion", "path": ".knowledge/data/vocabulary-suggestion.md", "role": "supporting", "title": "Vocabulary Suggestion", "type": "data"}
 {"category": "structure", "id": "data:vocabulary-usage", "path": ".knowledge/data/vocabulary-usage.md", "role": "supporting", "title": "Vocabulary Usage", "type": "data"}
 {"category": "structure", "id": "data:volume-estimate", "path": ".knowledge/data/volume-estimate.md", "role": "supporting", "title": "Volume Estimate", "type": "data"}
+{"category": "constraint", "id": "decision:dedicated-persistence-worker", "path": ".knowledge/decision/dedicated-persistence-worker.md", "role": "supporting", "title": "Dedicated Persistence Worker", "type": "decision"}
+{"category": "constraint", "id": "decision:frontend-session-authority", "path": ".knowledge/decision/frontend-session-authority.md", "role": "supporting", "title": "Frontend Session Authority", "type": "decision"}
+{"category": "constraint", "id": "decision:storage-adapter-selection", "path": ".knowledge/decision/storage-adapter-selection.md", "role": "supporting", "title": "Storage Adapter Selection", "type": "decision"}
 {"category": "interface", "id": "event:data-change-event", "path": ".knowledge/event/data-change-event.md", "role": "supporting", "title": "Data Change Event", "type": "event"}
 {"category": "behavior", "id": "flow:dfd-first-modeling", "path": ".knowledge/flow/dfd-first-modeling.md", "role": "primary", "title": "DFD First Modeling", "type": "flow"}
+{"category": "behavior", "id": "flow:host-authoritative-collaboration", "path": ".knowledge/flow/host-authoritative-collaboration.md", "role": "primary", "title": "Host-Authoritative Collaboration", "type": "flow"}
 {"category": "behavior", "id": "flow:modeling-lifecycle", "path": ".knowledge/flow/modeling-lifecycle.md", "role": "primary", "title": "Modeling Lifecycle", "type": "flow"}
 {"category": "behavior", "id": "flow:place-existing-model-on-canvas", "path": ".knowledge/flow/place-existing-model-on-canvas.md", "role": "primary", "title": "Place Existing Model on Canvas", "type": "flow"}
+{"category": "behavior", "id": "flow:project-load-save", "path": ".knowledge/flow/project-load-save.md", "role": "primary", "title": "Project Load and Save", "type": "flow"}
+{"category": "behavior", "id": "flow:project-restart-recovery", "path": ".knowledge/flow/project-restart-recovery.md", "role": "primary", "title": "Project Restart Recovery", "type": "flow"}
 {"category": "behavior", "id": "flow:transfer-canvas-model-ownership", "path": ".knowledge/flow/transfer-canvas-model-ownership.md", "role": "primary", "title": "Transfer Canvas Model Ownership", "type": "flow"}
 {"category": "behavior", "id": "flow:vocabulary-cache-lifecycle", "path": ".knowledge/flow/vocabulary-cache-lifecycle.md", "role": "primary", "title": "Vocabulary Cache Lifecycle", "type": "flow"}
 {"category": "behavior", "id": "flow:vocabulary-first-naming", "path": ".knowledge/flow/vocabulary-first-naming.md", "role": "primary", "title": "Vocabulary First Naming", "type": "flow"}
@@ -99,9 +112,11 @@
 {"category": "objective", "id": "requirement:model-state-management", "path": ".knowledge/requirement/model-state-management.md", "role": "primary", "title": "Model State Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:multi-canvas-modeling", "path": ".knowledge/requirement/multi-canvas-modeling.md", "role": "primary", "title": "Multi-Canvas Modeling", "type": "requirement"}
 {"category": "objective", "id": "requirement:name-display-switching", "path": ".knowledge/requirement/name-display-switching.md", "role": "primary", "title": "Name Display Switching", "type": "requirement"}
+{"category": "objective", "id": "requirement:named-opfs-project-management", "path": ".knowledge/requirement/named-opfs-project-management.md", "role": "primary", "title": "Named OPFS Project Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:normalization-support", "path": ".knowledge/requirement/normalization-support.md", "role": "primary", "title": "Normalization Support", "type": "requirement"}
 {"category": "objective", "id": "requirement:pattern-library-experience", "path": ".knowledge/requirement/pattern-library-experience.md", "role": "primary", "title": "Pattern Library Experience", "type": "requirement"}
 {"category": "objective", "id": "requirement:performance-design", "path": ".knowledge/requirement/performance-design.md", "role": "primary", "title": "Performance Design", "type": "requirement"}
+{"category": "objective", "id": "requirement:portable-project-persistence", "path": ".knowledge/requirement/portable-project-persistence.md", "role": "primary", "title": "Portable Project Persistence", "type": "requirement"}
 {"category": "objective", "id": "requirement:relationship-management", "path": ".knowledge/requirement/relationship-management.md", "role": "primary", "title": "Relationship Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:relationship-validation", "path": ".knowledge/requirement/relationship-validation.md", "role": "primary", "title": "Relationship Validation Inventory", "type": "requirement"}
 {"category": "objective", "id": "requirement:sql-table-definition", "path": ".knowledge/requirement/sql-table-definition.md", "role": "primary", "title": "SQL Table Definition", "type": "requirement"}
@@ -114,6 +129,7 @@
 {"category": "constraint", "id": "rule:canvas-annotation-collaboration", "path": ".knowledge/rule/canvas-annotation-collaboration.md", "role": "supporting", "title": "Canvas Annotation Collaboration", "type": "rule"}
 {"category": "constraint", "id": "rule:canvas-annotation-semantics", "path": ".knowledge/rule/canvas-annotation-semantics.md", "role": "supporting", "title": "Canvas Annotation Semantics", "type": "rule"}
 {"category": "constraint", "id": "rule:canvas-model-ownership", "path": ".knowledge/rule/canvas-model-ownership.md", "role": "supporting", "title": "Canvas Model Ownership", "type": "rule"}
+{"category": "constraint", "id": "rule:continuous-project-recovery", "path": ".knowledge/rule/continuous-project-recovery.md", "role": "supporting", "title": "Continuous Project Recovery", "type": "rule"}
 {"category": "constraint", "id": "rule:dependent-drag-follow", "path": ".knowledge/rule/dependent-drag-follow.md", "role": "supporting", "title": "Dependent Drag Follow", "type": "rule"}
 {"category": "constraint", "id": "rule:dfd-connection-policy", "path": ".knowledge/rule/dfd-connection-policy.md", "role": "supporting", "title": "DFD Connection Policy", "type": "rule"}
 {"category": "constraint", "id": "rule:dfd-flow-routing", "path": ".knowledge/rule/dfd-flow-routing.md", "role": "supporting", "title": "DFD Flow Routing", "type": "rule"}
@@ -137,7 +153,13 @@
 {"category": "constraint", "id": "rule:sql-naming-policy", "path": ".knowledge/rule/sql-naming-policy.md", "role": "supporting", "title": "SQL Naming Policy", "type": "rule"}
 {"category": "constraint", "id": "rule:storage-size-estimation", "path": ".knowledge/rule/storage-size-estimation.md", "role": "supporting", "title": "Storage Size Estimation", "type": "rule"}
 {"category": "constraint", "id": "rule:vocabulary-resolution", "path": ".knowledge/rule/vocabulary-resolution.md", "role": "supporting", "title": "Vocabulary Resolution", "type": "rule"}
+{"category": "external", "id": "system:browser-local-file-adapter", "path": ".knowledge/system/browser-local-file-adapter.md", "role": "supporting", "title": "Browser Local File Adapter", "type": "system"}
+{"category": "external", "id": "system:collaboration-relay", "path": ".knowledge/system/collaboration-relay.md", "role": "supporting", "title": "Collaboration Relay", "type": "system"}
+{"category": "external", "id": "system:native-project-file-adapter", "path": ".knowledge/system/native-project-file-adapter.md", "role": "supporting", "title": "Native Project File Adapter", "type": "system"}
+{"category": "external", "id": "system:origin-private-project-store", "path": ".knowledge/system/origin-private-project-store.md", "role": "supporting", "title": "Origin-Private Project Store", "type": "system"}
+{"category": "external", "id": "system:persistence-worker", "path": ".knowledge/system/persistence-worker.md", "role": "supporting", "title": "Persistence Worker", "type": "system"}
 {"category": "external", "id": "system:storage-target", "path": ".knowledge/system/storage-target.md", "role": "supporting", "title": "Storage Target", "type": "system"}
+{"category": "external", "id": "system:webrtc-collaboration-transport", "path": ".knowledge/system/webrtc-collaboration-transport.md", "role": "supporting", "title": "WebRTC Collaboration Transport", "type": "system"}
 {"category": "vocabulary", "id": "term:relationship-vocabulary", "path": ".knowledge/term/relationship-vocabulary.md", "role": "supporting", "title": "Relationship Vocabulary", "type": "term"}
 {"category": "vocabulary", "id": "term:vocabulary", "path": ".knowledge/term/vocabulary.md", "role": "supporting", "title": "Vocabulary", "type": "term"}
 {"category": "interface", "id": "ui:canvas-annotation-toolbar", "path": ".knowledge/ui/canvas-annotation-toolbar.md", "role": "primary", "title": "Canvas Annotation Toolbar", "type": "ui"}
@@ -162,6 +184,7 @@
 {"category": "interface", "id": "ui:normalization-view", "path": ".knowledge/ui/normalization-view.md", "role": "primary", "title": "Normalization View", "type": "ui"}
 {"category": "interface", "id": "ui:partition-definition-dialog", "path": ".knowledge/ui/partition-definition-dialog.md", "role": "primary", "title": "Partition Definition Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:pattern-library-view", "path": ".knowledge/ui/pattern-library-view.md", "role": "primary", "title": "Pattern Library View", "type": "ui"}
+{"category": "interface", "id": "ui:project-management-dialog", "path": ".knowledge/ui/project-management-dialog.md", "role": "primary", "title": "Project Management Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:project-settings-view", "path": ".knowledge/ui/project-settings-view.md", "role": "primary", "title": "Project Settings View", "type": "ui"}
 {"category": "interface", "id": "ui:relationship-view", "path": ".knowledge/ui/relationship-view.md", "role": "primary", "title": "Relationship View", "type": "ui"}
 {"category": "interface", "id": "ui:storage-view", "path": ".knowledge/ui/storage-view.md", "role": "primary", "title": "Storage View", "type": "ui"}
@@ -169,4 +192,5 @@
 {"category": "interface", "id": "ui:vocabulary-registration-dialog", "path": ".knowledge/ui/vocabulary-registration-dialog.md", "role": "primary", "title": "Vocabulary Registration Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:vocabulary-view", "path": ".knowledge/ui/vocabulary-view.md", "role": "primary", "title": "Vocabulary View", "type": "ui"}
 {"category": "interface", "id": "ui:volume-view", "path": ".knowledge/ui/volume-view.md", "role": "primary", "title": "Volume View", "type": "ui"}
+{"category": "interface", "id": "ui:workspace-data-navigation", "path": ".knowledge/ui/workspace-data-navigation.md", "role": "primary", "title": "Workspace Data Navigation", "type": "ui"}
 {"category": "objective", "id": "vision:modeling-workbench", "path": ".knowledge/vision/modeling-workbench.md", "role": "primary", "title": "Modeling Workbench", "type": "vision"}

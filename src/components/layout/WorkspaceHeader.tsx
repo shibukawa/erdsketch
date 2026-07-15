@@ -1,6 +1,7 @@
-import { ChevronDown, Grid3X3, Layers3, LocateFixed, Search, ZoomIn, ZoomOut } from "lucide-react";
+import { Grid3X3, LocateFixed, Search, ZoomIn, ZoomOut } from "lucide-react";
 import { startTransition, useCallback, useState, type ChangeEvent, type FocusEvent, type FormEvent } from "react";
 import type { Collaborator } from "../../collaboration";
+import { WorkspaceProjectNavigation } from "./WorkspaceProjectNavigation";
 
 type WorkspaceHeaderProps = {
   me: Collaborator;
@@ -14,9 +15,15 @@ type WorkspaceHeaderProps = {
   onOpenCanvasSelector: () => void;
   onOpenModelCatalog: () => void;
   onOpenCrudMatrix: () => void;
+  isHost: boolean;
+  recoveryReady: boolean;
+  persistentStorage: boolean;
+  recoveryError?: string;
+  activeProject?: { displayName: string; kind: "named" | "temporary" };
+  onOpenProjectManager: () => void;
 };
 
-export function WorkspaceHeader({ me, users, connected, scale, canvasName, onRename, onResetView, onUpdateScale, onOpenCanvasSelector, onOpenModelCatalog, onOpenCrudMatrix }: WorkspaceHeaderProps) {
+export function WorkspaceHeader({ me, users, connected, scale, canvasName, onRename, onResetView, onUpdateScale, onOpenCanvasSelector, onOpenModelCatalog, onOpenCrudMatrix, isHost, recoveryReady, persistentStorage, recoveryError, activeProject, onOpenProjectManager }: WorkspaceHeaderProps) {
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(me.name);
   const otherUsers = users.filter((user) => user.id !== me.id);
@@ -62,17 +69,8 @@ export function WorkspaceHeader({ me, users, connected, scale, canvasName, onRen
   }, [onUpdateScale, scale]);
 
   return (
-    <header className="z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-4 shadow-sm">
-      <button
-        type="button"
-        className="btn h-auto min-h-12 max-w-[360px] justify-start gap-3 rounded-xl border-slate-200 bg-slate-50 px-4 py-2 text-left shadow-sm hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800"
-        onClick={onOpenCanvasSelector}
-        aria-label={`Select canvas, current canvas: ${canvasName}`}
-      >
-        <Layers3 size={24} className="shrink-0" />
-        <span className="truncate text-xl font-bold">{canvasName}</span>
-        <ChevronDown size={18} className="ml-1 shrink-0 text-slate-400" />
-      </button>
+    <header className="z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-7 py-4 shadow-sm">
+      <WorkspaceProjectNavigation isHost={isHost} recoveryReady={recoveryReady} persistentStorage={persistentStorage} recoveryError={recoveryError} activeProject={activeProject} canvasName={canvasName} onOpenProjectManager={onOpenProjectManager} onOpenCanvasSelector={onOpenCanvasSelector} />
       <div className="flex items-center gap-2">
         <button type="button" className="btn btn-outline btn-sm gap-2" onClick={onOpenModelCatalog}><Search size={16} />Models</button>
         <button type="button" className="btn btn-outline btn-sm gap-2" onClick={onOpenCrudMatrix}><Grid3X3 size={16} />CRUD Matrix</button>

@@ -32,6 +32,7 @@ requirements:
     ownership_rule: rule:canvas-model-ownership
   navigation:
     surface: ui:erd-canvas-selector-dialog
+    header_order: after_ui:project-management-dialog
   inventory:
     surface: ui:model-catalog-view
     shows:

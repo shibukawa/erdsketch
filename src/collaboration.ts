@@ -1,36 +1,16 @@
 import { startTransition, useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
-import type { CanvasModelPlacement, DataDomain, DfdState, DomainCategory, ErdCanvas, NamingPolicy, RefinementResult, Relationship, RelationshipReference, VocabularyEntry } from "./features/modeling/types";
 import { normalizeFlowCrud } from "./features/dfd/dfd";
 import type { CanvasAnnotation, CanvasType, SaveAnnotation } from "./features/annotations/types";
+import type { CanvasModelPlacement, DataDomain, DfdState, DomainCategory, ErdCanvas, NamingPolicy, RefinementResult, Relationship, RelationshipReference, VocabularyEntry } from "./features/modeling/types";
+import { applyDurableOperation, applyEphemeralOperation } from "./collaboration/hostState";
+import { durableState, isDurableOperation, type CollaborationState, type Collaborator, type DurableOperation, type DurableState, type Operation, type RelayJoinResult, type RelayMessage } from "./collaboration/types";
+import { chooseProjectDirectory } from "./persistence/projectDocument";
+import { loadNativeSeedOverrides } from "./persistence/nativeSeeds";
+import { PersistenceClient, type CatalogView, type OpfsProject, type PersistenceSession } from "./persistence/persistenceClient";
 
-export type Collaborator = {
-  id: string;
-  name: string;
-  color: string;
-  x: number;
-  y: number;
-  online: boolean;
-  canvasId: string;
-  canvasType?: CanvasType;
-  selectionId?: string;
-  editingAnnotationId?: string;
-};
+export type { Collaborator } from "./collaboration/types";
 
-type CollaborationState<T> = {
-  canvases: ErdCanvas[];
-  placements: CanvasModelPlacement[];
-  seeds: T[];
-  relationships: Relationship[];
-  relationshipReferences: RelationshipReference[];
-  domains: DataDomain[];
-  domainCategories: DomainCategory[];
-  namingPolicy: NamingPolicy;
-  vocabularyEntries: VocabularyEntry[];
-  dfd: DfdState;
-  users: Collaborator[];
-  locks: Record<string, Collaborator>;
-  annotations: CanvasAnnotation[];
-};
+const colors = ["#e11d48", "#7c3aed", "#2563eb", "#0891b2", "#059669", "#ca8a04", "#ea580c", "#db2777"];
 
 const defaultDfdState = (): DfdState => ({
   canvases: [{ id: "dfd-main", name: "Main data flow" }],
@@ -50,14 +30,7 @@ function normalizeDfdState(raw: DfdState): DfdState {
     physicalProcesses: node.physicalProcesses?.map((physical, index) => typeof physical === "string" ? { id: `${node.definitionId}:physical:${index}`, name: physical } : physical)
   }));
   const groups = raw.groups ?? [];
-  const flows = (raw.flows ?? []).map((flow) => normalizeFlowCrud(flow, nodes, groups));
-  return { canvases: raw.canvases, nodes, flows, groups, crudMatrix: raw.crudMatrix ?? { orientation: "processes_rows", processOrder: [], modelOrder: [] } };
-}
-
-const colors = ["#e11d48", "#7c3aed", "#2563eb", "#0891b2", "#059669", "#ca8a04", "#ea580c", "#db2777"];
-
-function randomItem<T>(items: T[]) {
-  return items[Math.floor(Math.random() * items.length)];
+  return { canvases: raw.canvases, nodes, groups, flows: (raw.flows ?? []).map((flow) => normalizeFlowCrud(flow, nodes, groups)), crudMatrix: raw.crudMatrix ?? { orientation: "processes_rows", processOrder: [], modelOrder: [] } };
 }
 
 function getIdentity() {
@@ -66,29 +39,27 @@ function getIdentity() {
     clientId = crypto.randomUUID();
     sessionStorage.setItem("erdsketch-client-id", clientId);
   }
-  const name = localStorage.getItem("erdsketch-user-name") ?? "";
-  return { user: { id: clientId, name, color: randomItem(colors), x: 0, y: 0, online: true, canvasId: "main", canvasType: "erd" as const }, assignAvailableName: !name };
+  let name = localStorage.getItem("erdsketch-user-name")?.trim();
+  if (!name) {
+    name = `Modeler ${clientId.slice(0, 4)}`;
+    localStorage.setItem("erdsketch-user-name", name);
+  }
+  return { id: clientId, name, color: colors[Math.floor(Math.random() * colors.length)], x: 0, y: 0, online: true, canvasId: "main", canvasType: "erd" as const };
 }
 
 async function post(path: string, body: unknown) {
-  return fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
+  return fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 }
 
-export function useCollaboration<T extends { id: string; x?: number; y?: number }>(initialSeeds: T[], initialRelationships: Relationship[] = [], initialReferences: RelationshipReference[] = [], initialDomains: DataDomain[] = [], initialDomainCategories: DomainCategory[] = []) {
-  const [identity] = useState(getIdentity);
-  const [me, setMe] = useState<Collaborator>(identity.user);
-  const [state, setState] = useState<CollaborationState<T>>({
+function initialState<T extends { id: string; x?: number; y?: number }>(me: Collaborator, seeds: T[], relationships: Relationship[], references: RelationshipReference[], domains: DataDomain[], domainCategories: DomainCategory[]): CollaborationState<T> {
+  return {
     canvases: [{ id: "main", name: "Main canvas" }],
-    placements: initialSeeds.map((seed, index) => ({ canvasId: "main", seedId: seed.id, x: seed.x ?? 80 + index * 40, y: seed.y ?? 60 + index * 30, accessMode: "owner" })),
-    seeds: initialSeeds,
-    relationships: initialRelationships,
-    relationshipReferences: initialReferences,
-    domains: initialDomains,
-    domainCategories: initialDomainCategories,
+    placements: seeds.map((seed, index) => ({ canvasId: "main", seedId: seed.id, x: seed.x ?? 80 + index * 40, y: seed.y ?? 60 + index * 30, accessMode: "owner" })),
+    seeds,
+    relationships,
+    relationshipReferences: references,
+    domains,
+    domainCategories,
     namingPolicy: {
       tablePluralization: "singular",
       tableJoinMode: "separator", tableSeparator: "_",
@@ -97,496 +68,518 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     },
     vocabularyEntries: [],
     dfd: defaultDfdState(),
-    users: [],
+    users: [me],
     locks: {},
     annotations: []
-  });
+  };
+}
+
+type RecoveryStatus = Pick<PersistenceSession<unknown>, "recoveredOperations" | "ignoredTailRecords" | "persistentStorage"> & { ready: boolean; error?: string };
+
+export function useCollaboration<T extends { id: string; x?: number; y?: number }>(initialSeeds: T[], initialRelationships: Relationship[] = [], initialReferences: RelationshipReference[] = [], initialDomains: DataDomain[] = [], initialDomainCategories: DomainCategory[] = []) {
+  const [me, setMe] = useState<Collaborator>(getIdentity);
+  const [state, setState] = useState(() => initialState(me, initialSeeds, initialRelationships, initialReferences, initialDomains, initialDomainCategories));
   const [connected, setConnected] = useState(false);
-  const joinedRef = useRef(false);
+  const [isHost, setIsHost] = useState(false);
+  const [nativeFileSystemAvailable, setNativeFileSystemAvailable] = useState(false);
+  const [projects, setProjects] = useState<OpfsProject[]>([]);
+  const [activeProject, setActiveProject] = useState<OpfsProject | null>(null);
+  const [recoveryStatus, setRecoveryStatus] = useState<RecoveryStatus>({ ready: false, recoveredOperations: 0, ignoredTailRecords: 0, persistentStorage: false });
+  const stateRef = useRef(state);
+  const confirmedStateRef = useRef(state);
+  const roleRef = useRef<"host" | "participant">("participant");
+  const relayAvailableRef = useRef(false);
+  const persistenceRef = useRef<PersistenceClient<T> | null>(null);
+  const activeProjectRef = useRef<OpfsProject | null>(null);
+  const initialProjectStateRef = useRef(durableState(state));
+  const durableWritesBlockedRef = useRef(false);
+  const projectDirectoryRef = useRef<FileSystemDirectoryHandle | null>(null);
+  const sequenceRef = useRef(0);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const commitQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const pendingRequestsRef = useRef(new Map<string, (accepted: boolean) => void>());
   const cursorFrameRef = useRef<number | undefined>(undefined);
   const pendingCursorRef = useRef<{ x: number; y: number } | undefined>(undefined);
-  const pendingSeedsRef = useRef(new Map<string, T>());
-  const outboundSeedsRef = useRef(new Map<string, { seed: T; canvasId: string }>());
-  const savingSeedsRef = useRef(new Set<string>());
-  const pendingPlacementsRef = useRef(new Map<string, CanvasModelPlacement>());
-  const outboundPlacementsRef = useRef(new Map<string, CanvasModelPlacement>());
-  const savingPlacementsRef = useRef(new Set<string>());
-  const pendingDfdRef = useRef<DfdState | null>(null);
-  const outboundDfdRef = useRef<DfdState | null>(null);
-  const savingDfdRef = useRef(false);
-  const pendingAnnotationsRef = useRef(new Map<string, CanvasAnnotation>());
-  const deletedAnnotationsRef = useRef(new Set<string>());
 
-  const applyServerState = useCallback((incoming: CollaborationState<T>) => {
+  const replaceVisibleState = useCallback((next: CollaborationState<T>) => {
+    stateRef.current = next;
+    startTransition(() => setState(next));
+  }, []);
+
+  const replaceProjectCatalogView = useCallback((view: CatalogView) => {
+    activeProjectRef.current = view.activeProject;
     startTransition(() => {
-      setState(() => {
-        const serverIDs = new Set(incoming.seeds.map((seed) => seed.id));
-        const seeds = incoming.seeds.map((serverSeed) => {
-          const pending = pendingSeedsRef.current.get(serverSeed.id);
-          if (!pending) return serverSeed;
-          if (JSON.stringify(pending) === JSON.stringify(serverSeed)) {
-            pendingSeedsRef.current.delete(serverSeed.id);
-            return serverSeed;
-          }
-          return pending;
-        });
-        for (const pending of pendingSeedsRef.current.values()) {
-          if (!serverIDs.has(pending.id)) seeds.push(pending);
-        }
-        const incomingCanvases = incoming.canvases?.length ? incoming.canvases : [{ id: "main", name: "Main canvas" }];
-        const serverPlacements = incoming.placements ?? incoming.seeds.map((seed, index) => ({ canvasId: "main", seedId: seed.id, x: seed.x ?? 80 + index * 40, y: seed.y ?? 60 + index * 30, accessMode: "owner" as const }));
-        const placements = serverPlacements.map((serverPlacement) => {
-          const key = `${serverPlacement.canvasId}:${serverPlacement.seedId}`;
-          const pending = pendingPlacementsRef.current.get(key);
-          if (!pending) return serverPlacement;
-          if (JSON.stringify(pending) === JSON.stringify(serverPlacement)) {
-            pendingPlacementsRef.current.delete(key);
-            return serverPlacement;
-          }
-          return pending;
-        });
-        const serverPlacementKeys = new Set(serverPlacements.map((placement) => `${placement.canvasId}:${placement.seedId}`));
-        for (const [key, pending] of pendingPlacementsRef.current) {
-          if (!serverPlacementKeys.has(key)) placements.push(pending);
-        }
-        const rawDfd = incoming.dfd?.canvases?.length ? incoming.dfd : defaultDfdState();
-        const serverDfd = normalizeDfdState({ canvases: rawDfd.canvases, nodes: rawDfd.nodes ?? [], flows: rawDfd.flows ?? [], groups: rawDfd.groups ?? [] });
-        let dfd = serverDfd;
-        if (pendingDfdRef.current) {
-          if (JSON.stringify(pendingDfdRef.current) === JSON.stringify(serverDfd)) pendingDfdRef.current = null;
-          else dfd = pendingDfdRef.current;
-        }
-        const serverAnnotations = incoming.annotations ?? [];
-        const annotations = serverAnnotations.flatMap((serverAnnotation) => {
-          if (deletedAnnotationsRef.current.has(serverAnnotation.id)) return [];
-          const pending = pendingAnnotationsRef.current.get(serverAnnotation.id);
-          if (!pending) return [serverAnnotation];
-          if (JSON.stringify(pending) === JSON.stringify(serverAnnotation)) {
-            pendingAnnotationsRef.current.delete(serverAnnotation.id);
-            return [serverAnnotation];
-          }
-          return [pending];
-        });
-        const serverAnnotationIDs = new Set(serverAnnotations.map((annotation) => annotation.id));
-        for (const pending of pendingAnnotationsRef.current.values()) {
-          if (!serverAnnotationIDs.has(pending.id) && !deletedAnnotationsRef.current.has(pending.id)) annotations.push(pending);
-        }
-        return {
-          ...incoming,
-          canvases: incomingCanvases,
-          placements,
-          namingPolicy: incoming.namingPolicy ?? {
-            tablePluralization: "singular",
-            tableJoinMode: "separator", tableSeparator: "_",
-            fieldJoinMode: "separator", fieldSeparator: "_",
-            domainJoinMode: "concatenate", domainSeparator: "_"
-          },
-          vocabularyEntries: incoming.vocabularyEntries ?? [],
-          dfd,
-          seeds,
-          annotations
-        };
-      });
+      setProjects(view.projects);
+      setActiveProject(view.activeProject);
     });
   }, []);
 
-  const getSessionUser = useEffectEvent(() => me);
-  const handleIncomingState = useEffectEvent((incoming: CollaborationState<T>) => {
-    applyServerState(incoming);
+  const installPersistenceSession = useCallback((session: PersistenceSession<T>, users: Collaborator[]) => {
+    const next: CollaborationState<T> = { ...session.state, users, locks: {} };
+    sequenceRef.current = session.sequence;
+    confirmedStateRef.current = next;
+    replaceVisibleState(next);
+    replaceProjectCatalogView(session);
+    startTransition(() => setRecoveryStatus({
+      ready: true,
+      recoveredOperations: session.recoveredOperations,
+      ignoredTailRecords: session.ignoredTailRecords,
+      persistentStorage: session.persistentStorage
+    }));
+    return next;
+  }, [replaceProjectCatalogView, replaceVisibleState]);
+
+  const sendRelay = useCallback(async (message: Omit<RelayMessage<T>, "senderId">) => {
+    if (!relayAvailableRef.current) return true;
+    const response = await post("/api/relay/message", { clientId: me.id, message });
+    return response.ok;
+  }, [me.id]);
+
+  const publishState = useCallback(async (kind: "operation_accepted" | "state_snapshot", requestId?: string, targetId?: string) => {
+    await sendRelay({ kind, messageId: requestId, targetId, payload: { requestId, sequence: sequenceRef.current, state: confirmedStateRef.current, project: activeProjectRef.current ?? undefined } });
+  }, [sendRelay]);
+
+  const commitHostNow = useCallback(async (operation: Operation<T>, requestId: string, actorID: string, targetID?: string) => {
+    try {
+      const current = confirmedStateRef.current;
+      let next: CollaborationState<T>;
+      if (isDurableOperation(operation)) {
+        const persistence = persistenceRef.current;
+        if (!persistence) throw new Error("recovery storage is not ready");
+        if (durableWritesBlockedRef.current) throw new Error("durable changes are paused because recovery storage failed");
+        next = applyDurableOperation(current, operation, actorID);
+        let committed: Awaited<ReturnType<PersistenceClient<T>["append"]>>;
+        try {
+          committed = await persistence.append(operation, requestId, sequenceRef.current);
+        } catch (error) {
+          durableWritesBlockedRef.current = true;
+          setRecoveryStatus((status) => ({ ...status, error: error instanceof Error ? error.message : String(error) }));
+          try {
+            const recovered = await persistence.initialize(structuredClone(initialProjectStateRef.current));
+            installPersistenceSession(recovered, current.users);
+            durableWritesBlockedRef.current = false;
+            if (await persistence.hasMessage(requestId)) {
+              await publishState("operation_accepted", requestId);
+              return true;
+            }
+          } catch (recoveryError) {
+            setRecoveryStatus((status) => ({ ...status, error: recoveryError instanceof Error ? recoveryError.message : String(recoveryError) }));
+          }
+          throw error;
+        }
+        if (committed.duplicate) {
+          sequenceRef.current = committed.sequence;
+          await publishState("operation_accepted", requestId, targetID);
+          return true;
+        }
+        sequenceRef.current = committed.sequence;
+        confirmedStateRef.current = next;
+        replaceVisibleState(next);
+        await publishState("operation_accepted", requestId);
+        if (committed.shouldCheckpoint) void persistence.checkpoint(durableState(next)).catch((error: unknown) => setRecoveryStatus((status) => ({ ...status, error: error instanceof Error ? error.message : String(error) })));
+      } else {
+        next = applyEphemeralOperation(current, operation, actorID);
+        confirmedStateRef.current = next;
+        replaceVisibleState(next);
+        await publishState("operation_accepted", requestId);
+      }
+      return true;
+    } catch (error) {
+      await sendRelay({ kind: "operation_rejected", messageId: requestId, targetId: targetID ?? actorID, payload: { requestId, error: error instanceof Error ? error.message : String(error) } });
+      replaceVisibleState(confirmedStateRef.current);
+      return false;
+    }
+  }, [installPersistenceSession, publishState, replaceVisibleState, sendRelay]);
+
+  const commitHost = useCallback((operation: Operation<T>, requestId: string, actorID: string, targetID?: string) => {
+    const task = () => commitHostNow(operation, requestId, actorID, targetID);
+    const result = commitQueueRef.current.then(task, task);
+    commitQueueRef.current = result.then(() => undefined, () => undefined);
+    return result;
+  }, [commitHostNow]);
+
+  const dispatch = useCallback(async (operation: Operation<T>) => {
+    const requestId = crypto.randomUUID();
+    if (roleRef.current === "host") return commitHost(operation, requestId, me.id);
+    if (!connected || !relayAvailableRef.current) return false;
+    const accepted = new Promise<boolean>((resolve) => {
+      const timer = window.setTimeout(() => {
+        pendingRequestsRef.current.delete(requestId);
+        resolve(false);
+      }, 10_000);
+      pendingRequestsRef.current.set(requestId, (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      });
+    });
+    if (!(await sendRelay({ kind: "operation_intent", messageId: requestId, payload: { requestId, operation } }))) {
+      pendingRequestsRef.current.get(requestId)?.(false);
+      pendingRequestsRef.current.delete(requestId);
+    }
+    return accepted;
+  }, [commitHost, connected, me.id, sendRelay]);
+
+  const handleRelayMessage = useEffectEvent((message: RelayMessage<T>) => {
+    if (roleRef.current === "host") {
+      if (message.kind === "operation_intent") {
+        const payload = message.payload as { requestId?: string; operation?: Operation<T> } | undefined;
+        if (payload?.requestId && payload.operation) void commitHost(payload.operation, payload.requestId, message.senderId, message.senderId);
+      } else if (message.kind === "participant_joined") {
+        const user = message.payload as Collaborator;
+        const current = confirmedStateRef.current;
+        const users = [...current.users.filter((item) => item.id !== user.id), user];
+        confirmedStateRef.current = { ...current, users };
+        replaceVisibleState(confirmedStateRef.current);
+        void publishState("state_snapshot", undefined, user.id);
+      } else if (message.kind === "participant_left") {
+        const { clientId } = message.payload as { clientId: string };
+        const current = confirmedStateRef.current;
+        const locks = Object.fromEntries(Object.entries(current.locks).filter(([, owner]) => owner.id !== clientId));
+        confirmedStateRef.current = { ...current, users: current.users.filter((user) => user.id !== clientId), locks };
+        replaceVisibleState(confirmedStateRef.current);
+        void publishState("state_snapshot");
+      }
+      return;
+    }
+    if (message.kind === "operation_accepted" || message.kind === "state_snapshot") {
+      const payload = message.payload as { requestId?: string; sequence?: number; state?: CollaborationState<T>; project?: OpfsProject } | undefined;
+      if (payload?.state) {
+        payload.state.dfd = normalizeDfdState(payload.state.dfd?.canvases?.length ? payload.state.dfd : defaultDfdState());
+        confirmedStateRef.current = payload.state;
+        sequenceRef.current = payload.sequence ?? sequenceRef.current;
+        replaceVisibleState(payload.state);
+      }
+      if (payload?.project) {
+        activeProjectRef.current = payload.project;
+        startTransition(() => setActiveProject(payload.project ?? null));
+      }
+      if (payload?.requestId) {
+        pendingRequestsRef.current.get(payload.requestId)?.(true);
+        pendingRequestsRef.current.delete(payload.requestId);
+      }
+    } else if (message.kind === "operation_rejected") {
+      const payload = message.payload as { requestId?: string } | undefined;
+      if (payload?.requestId) {
+        pendingRequestsRef.current.get(payload.requestId)?.(false);
+        pendingRequestsRef.current.delete(payload.requestId);
+      }
+      replaceVisibleState(confirmedStateRef.current);
+    }
   });
-  const handleServerMessage = useEffectEvent((event: MessageEvent<string>) => {
-    handleIncomingState(JSON.parse(event.data) as CollaborationState<T>);
-  });
-  const handleConnectionOpen = useEffectEvent(() => {
-    joinedRef.current = true;
-    setConnected(true);
-  });
-  const handleConnectionError = useEffectEvent(() => {
-    joinedRef.current = false;
-    setConnected(false);
+
+  const initializeHost = useEffectEvent(async (users: Collaborator[]) => {
+    let current = confirmedStateRef.current;
+    if (relayAvailableRef.current) {
+      try {
+        const overrides = await loadNativeSeedOverrides();
+        const byID = new Map(overrides.map((seed) => [seed.id, seed]));
+        const seeds = current.seeds.map((seed) => ({ ...seed, ...byID.get(seed.id) }));
+        const placements = current.placements.map((placement) => {
+          const override = byID.get(placement.seedId);
+          return override ? { ...placement, x: override.x ?? placement.x, y: override.y ?? placement.y } : placement;
+        });
+        current = { ...current, seeds, placements };
+      } catch {
+        // Bundled seed data remains the static-mode and backend-read fallback.
+      }
+    }
+    initialProjectStateRef.current = durableState(current);
+    persistenceRef.current?.dispose();
+    const persistence = new PersistenceClient<T>();
+    persistenceRef.current = persistence;
+    const recovered = await persistence.initialize(durableState(current));
+    durableWritesBlockedRef.current = false;
+    installPersistenceSession(recovered, users);
   });
 
   useEffect(() => {
-    let events: EventSource | undefined;
     let cancelled = false;
-    const sessionUser = getSessionUser();
-    void post("/api/collaboration/join", {
-      user: sessionUser,
-      seeds: initialSeeds,
-      relationships: initialRelationships,
-      relationshipReferences: initialReferences,
-      domains: initialDomains,
-      assignAvailableName: identity.assignAvailableName
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Could not join collaboration session");
-        const joinedState = (await response.json()) as CollaborationState<T>;
+    const join = async () => {
+      try {
+        const response = await post("/api/relay/join", { clientId: me.id, user: me });
+        if (!response.ok) throw new Error("relay unavailable");
+        const joined = await response.json() as RelayJoinResult;
         if (cancelled) return;
-        const assignedUser = joinedState.users.find((user) => user.id === sessionUser.id);
-        if (assignedUser) {
-          setMe(assignedUser);
-          if (identity.assignAvailableName) localStorage.setItem("erdsketch-user-name", assignedUser.name);
+        relayAvailableRef.current = true;
+        setNativeFileSystemAvailable(true);
+        roleRef.current = joined.role;
+        setIsHost(joined.role === "host");
+        const users = joined.participants.map((participant) => participant.user);
+        confirmedStateRef.current = { ...confirmedStateRef.current, users };
+        replaceVisibleState(confirmedStateRef.current);
+        if (joined.role === "host") await initializeHost(users);
+        if (cancelled) return;
+        const events = new EventSource(`/api/relay/events?clientId=${encodeURIComponent(me.id)}`);
+        eventSourceRef.current = events;
+        events.onmessage = (event) => handleRelayMessage(JSON.parse(event.data) as RelayMessage<T>);
+        events.onopen = () => {
+          setConnected(true);
+          if (roleRef.current === "host") void publishState("state_snapshot");
+          else void sendRelay({ kind: "operation_intent", messageId: crypto.randomUUID(), payload: { requestId: crypto.randomUUID(), operation: { type: "presence", patch: {} } } });
+        };
+        events.onerror = () => setConnected(false);
+      } catch {
+        if (cancelled) return;
+        relayAvailableRef.current = false;
+        setNativeFileSystemAvailable(false);
+        roleRef.current = "host";
+        setIsHost(true);
+        try {
+          await initializeHost([me]);
+          setConnected(true);
+        } catch (error) {
+          setRecoveryStatus({ ready: false, recoveredOperations: 0, ignoredTailRecords: 0, persistentStorage: false, error: error instanceof Error ? error.message : String(error) });
+          setConnected(false);
         }
-        joinedRef.current = true;
-        handleIncomingState(joinedState);
-        events = new EventSource(`/api/collaboration/events?clientId=${encodeURIComponent(sessionUser.id)}`);
-        events.onopen = handleConnectionOpen;
-        events.onmessage = handleServerMessage;
-        events.onerror = handleConnectionError;
-      })
-      .catch(handleConnectionError);
+      }
+    };
+    void join();
     return () => {
       cancelled = true;
-      events?.close();
+      eventSourceRef.current?.close();
+      persistenceRef.current?.dispose();
+      persistenceRef.current = null;
       if (cursorFrameRef.current !== undefined) cancelAnimationFrame(cursorFrameRef.current);
     };
-  }, [identity.assignAvailableName, initialDomainCategories, initialDomains, initialReferences, initialRelationships, initialSeeds, me.id]);
+  }, [me.id]);
 
-  const rename = useCallback(
-    async (name: string) => {
-      const normalized = name.trim();
-      if (!normalized) return false;
-      localStorage.setItem("erdsketch-user-name", normalized);
-      setMe((current) => ({ ...current, name: normalized }));
-      const response = await post("/api/collaboration/user", { clientId: me.id, name: normalized });
-      return response.ok;
-    },
-    [me.id]
-  );
+  const rename = useCallback(async (name: string) => {
+    const normalized = name.trim();
+    if (!normalized) return false;
+    localStorage.setItem("erdsketch-user-name", normalized);
+    setMe((current) => ({ ...current, name: normalized }));
+    return dispatch({ type: "presence", patch: { name: normalized } });
+  }, [dispatch]);
 
-  const moveCursor = useCallback(
-    (x: number, y: number) => {
-      if (!joinedRef.current) return;
-      pendingCursorRef.current = { x, y };
-      if (cursorFrameRef.current !== undefined) return;
-      cursorFrameRef.current = requestAnimationFrame(() => {
-        cursorFrameRef.current = undefined;
-        if (pendingCursorRef.current) {
-          void post("/api/collaboration/user", { clientId: me.id, ...pendingCursorRef.current });
-        }
-      });
-    },
-    [me.id]
-  );
+  const moveCursor = useCallback((x: number, y: number) => {
+    pendingCursorRef.current = { x, y };
+    if (cursorFrameRef.current !== undefined) return;
+    cursorFrameRef.current = requestAnimationFrame(() => {
+      cursorFrameRef.current = undefined;
+      if (pendingCursorRef.current) void dispatch({ type: "presence", patch: pendingCursorRef.current });
+    });
+  }, [dispatch]);
 
   const changeCanvas = useCallback(async (canvasId: string, canvasType: CanvasType = "erd") => {
     setMe((current) => ({ ...current, canvasId, canvasType }));
-    const response = await post("/api/collaboration/user", { clientId: me.id, canvasId, canvasType });
-    return response.ok;
-  }, [me.id]);
+    return dispatch({ type: "presence", patch: { canvasId, canvasType } });
+  }, [dispatch]);
 
   const updateAnnotationPresence = useCallback(async (selectionId = "", editingAnnotationId = "") => {
     setMe((current) => ({ ...current, selectionId, editingAnnotationId }));
-    const response = await post("/api/collaboration/user", { clientId: me.id, selectionId, editingAnnotationId });
-    return response.ok;
-  }, [me.id]);
+    return dispatch({ type: "presence", patch: { selectionId, editingAnnotationId } });
+  }, [dispatch]);
 
-  const lock = useCallback(
-    async (seedId: string) => {
-      const response = await post("/api/collaboration/lock", { clientId: me.id, seedIds: [seedId], action: "lock" });
-      if (response.ok) {
-        startTransition(() => {
-          setState((current) => {
-            const locks = Object.fromEntries(Object.entries(current.locks).filter(([, owner]) => owner.id !== me.id));
-            locks[seedId] = me;
-            return { ...current, locks };
-          });
-        });
-      }
-      return response.ok;
-    },
-    [me]
-  );
+  const lockAll = useCallback((seedIds: string[]) => dispatch({ type: "lock", seedIds: [...new Set(seedIds)] }), [dispatch]);
+  const lock = useCallback((seedId: string) => lockAll([seedId]), [lockAll]);
+  const unlockAll = useCallback(async (seedIds: string[]) => { await dispatch({ type: "unlock", seedIds: [...new Set(seedIds)] }); }, [dispatch]);
+  const unlock = useCallback(async (seedId: string) => { await unlockAll([seedId]); }, [unlockAll]);
 
-  const unlock = useCallback(
-    async (seedId: string) => {
-      const response = await post("/api/collaboration/lock", { clientId: me.id, seedIds: [seedId], action: "unlock" });
-      if (response.ok) {
-        startTransition(() => {
-          setState((current) => {
-            const locks = { ...current.locks };
-            delete locks[seedId];
-            return { ...current, locks };
-          });
-        });
-      }
-    },
-    [me.id]
-  );
+  const saveSeed = useCallback((seed: T, create = false, canvasId = "main") => dispatch({ type: "seed", seed, create, canvasId }), [dispatch]);
+  const saveCatalogSeed = useCallback((seed: T, create = false) => dispatch({ type: "seed", seed, create, canvasId: "main", catalog: true }), [dispatch]);
+  const savePlacement = useCallback((placement: CanvasModelPlacement, create = false) => dispatch({ type: "placement", placement, create }), [dispatch]);
+  const saveCanvas = useCallback((canvas: ErdCanvas, create = false) => dispatch({ type: "canvas", canvas, create }), [dispatch]);
+  const saveDfd = useCallback((dfd: DfdState) => dispatch({ type: "dfd", dfd }), [dispatch]);
+  const transferOwnership = useCallback((seedId: string, expectedOwnerId: string, targetCanvasId: string) => dispatch({ type: "ownership", seedId, expectedOwnerId, targetCanvasId }), [dispatch]);
+  const saveDomain = useCallback((domain: DataDomain, options: { create?: boolean; delete?: boolean } = {}) => dispatch({ type: "domain", domain, create: options.create ?? false, delete: options.delete ?? false }), [dispatch]);
+  const saveDomainCategory = useCallback((category: DomainCategory, create = false) => dispatch({ type: "domain_category", category, create }), [dispatch]);
+  const saveNamingPolicy = useCallback((policy: NamingPolicy) => dispatch({ type: "naming_policy", policy }), [dispatch]);
+  const saveVocabularyEntry = useCallback((entry: VocabularyEntry, options: { create?: boolean; delete?: boolean } = {}) => dispatch({ type: "vocabulary", entry, create: options.create ?? false, delete: options.delete ?? false }), [dispatch]);
+  const saveRelationship = useCallback((relationship: Relationship, reference: RelationshipReference, options: { create?: boolean; delete?: boolean } = {}) => dispatch({ type: "relationship", relationship, reference, create: options.create ?? false, delete: options.delete ?? false }), [dispatch]);
+  const saveRefinement = useCallback((result: RefinementResult) => dispatch({ type: "refinement", result }), [dispatch]);
+  const saveAnnotation: SaveAnnotation = useCallback((annotation: CanvasAnnotation, options = {}) => dispatch({ type: "annotation", annotation, create: options.create ?? false, delete: options.delete ?? false }), [dispatch]);
 
-  const lockAll = useCallback(
-    async (seedIds: string[]) => {
-      const uniqueIDs = [...new Set(seedIds)];
-      const response = await post("/api/collaboration/lock", { clientId: me.id, seedIds: uniqueIDs, action: "lock" });
-      if (!response.ok) return false;
-      startTransition(() => {
-        setState((current) => {
-          const locks = { ...current.locks };
-          for (const seedId of uniqueIDs) locks[seedId] = me;
-          return { ...current, locks };
-        });
-      });
+  const activateProjectNow = useCallback(async (projectId: string, checkpointCurrent = true) => {
+    const persistence = persistenceRef.current;
+    if (!persistence) throw new Error("OPFS project catalog is not ready");
+    if (activeProjectRef.current?.projectId === projectId) return true;
+    const recovered = await persistence.activateProject(
+      projectId,
+      durableState(confirmedStateRef.current),
+      structuredClone(initialProjectStateRef.current),
+      checkpointCurrent
+    );
+    durableWritesBlockedRef.current = false;
+    installPersistenceSession(recovered, confirmedStateRef.current.users);
+    await publishState("state_snapshot");
+    return true;
+  }, [installPersistenceSession, publishState]);
+
+  const runProjectTask = useCallback((task: () => Promise<boolean>) => {
+    if (roleRef.current !== "host") return Promise.resolve(false);
+    const result = commitQueueRef.current.then(task, task);
+    commitQueueRef.current = result.then(() => undefined, () => undefined);
+    return result;
+  }, []);
+
+  const failProjectTask = useCallback((error: unknown) => {
+    startTransition(() => setRecoveryStatus((status) => ({ ...status, error: error instanceof Error ? error.message : String(error) })));
+    return false;
+  }, []);
+
+  const loadOpfsProject = useCallback((projectId: string) => runProjectTask(async () => {
+    try {
+      return await activateProjectNow(projectId);
+    } catch (error) {
+      return failProjectTask(error);
+    }
+  }), [activateProjectNow, failProjectTask, runProjectTask]);
+
+  const createOpfsProject = useCallback((displayName: string) => runProjectTask(async () => {
+    const persistence = persistenceRef.current;
+    if (!persistence) return false;
+    try {
+      const session = await persistence.createProject(displayName, durableState(confirmedStateRef.current), structuredClone(initialProjectStateRef.current));
+      installPersistenceSession(session, confirmedStateRef.current.users);
+      await publishState("state_snapshot");
       return true;
-    },
-    [me]
-  );
+    } catch (error) {
+      return failProjectTask(error);
+    }
+  }), [failProjectTask, installPersistenceSession, publishState, runProjectTask]);
 
-  const unlockAll = useCallback(
-    async (seedIds: string[]) => {
-      const uniqueIDs = [...new Set(seedIds)];
-      const response = await post("/api/collaboration/lock", { clientId: me.id, seedIds: uniqueIDs, action: "unlock" });
-      if (!response.ok) return;
-      startTransition(() => {
-        setState((current) => {
-          const locks = { ...current.locks };
-          for (const seedId of uniqueIDs) {
-            if (locks[seedId]?.id === me.id) delete locks[seedId];
-          }
-          return { ...current, locks };
-        });
-      });
-    },
-    [me.id]
-  );
-
-  const saveSeed = useCallback(
-    async (seed: T, create = false, canvasId = "main") => {
-      pendingSeedsRef.current.set(seed.id, seed);
-      if (create) {
-        const response = await post("/api/collaboration/seed", { clientId: me.id, seed, create: true, canvasId });
-        if (!response.ok) pendingSeedsRef.current.delete(seed.id);
-        return response.ok;
-      }
-
-      outboundSeedsRef.current.set(seed.id, { seed, canvasId });
-      if (savingSeedsRef.current.has(seed.id)) return true;
-      savingSeedsRef.current.add(seed.id);
-      let saved = true;
-      try {
-        while (outboundSeedsRef.current.has(seed.id)) {
-          const next = outboundSeedsRef.current.get(seed.id)!;
-          outboundSeedsRef.current.delete(seed.id);
-          const response = await post("/api/collaboration/seed", { clientId: me.id, seed: next.seed, create: false, canvasId: next.canvasId });
-          saved = response.ok;
-          if (!saved) {
-            pendingSeedsRef.current.delete(seed.id);
-            outboundSeedsRef.current.delete(seed.id);
-          }
-        }
-      } finally {
-        savingSeedsRef.current.delete(seed.id);
-      }
-      return saved;
-    },
-    [me.id]
-  );
-
-  const setLocalSeeds = useCallback((seeds: T[]) => {
-    setState((current) => ({ ...current, seeds }));
-  }, []);
-
-  const setLocalPlacements = useCallback((placements: CanvasModelPlacement[]) => {
-    setState((current) => ({ ...current, placements }));
-  }, []);
-
-  const setLocalCanvases = useCallback((canvases: ErdCanvas[]) => {
-    setState((current) => ({ ...current, canvases }));
-  }, []);
-
-  const savePlacement = useCallback(async (placement: CanvasModelPlacement, create = false) => {
-    const key = `${placement.canvasId}:${placement.seedId}`;
-    pendingPlacementsRef.current.set(key, placement);
-    outboundPlacementsRef.current.set(key, placement);
-    if (savingPlacementsRef.current.has(key)) return true;
-    savingPlacementsRef.current.add(key);
-    let saved = true;
+  const saveOpfsProjectAs = useCallback((displayName: string) => runProjectTask(async () => {
+    const persistence = persistenceRef.current;
+    if (!persistence) return false;
     try {
-      while (outboundPlacementsRef.current.has(key)) {
-        const next = outboundPlacementsRef.current.get(key)!;
-        outboundPlacementsRef.current.delete(key);
-        const response = await post("/api/collaboration/placement", { clientId: me.id, placement: next, create });
-        saved = response.ok;
-        create = false;
-        if (!saved) {
-          pendingPlacementsRef.current.delete(key);
-          outboundPlacementsRef.current.delete(key);
-        }
-      }
-    } finally {
-      savingPlacementsRef.current.delete(key);
+      const current = durableState(confirmedStateRef.current);
+      const session = await persistence.saveAs(displayName, current);
+      installPersistenceSession(session, confirmedStateRef.current.users);
+      await publishState("state_snapshot");
+      return true;
+    } catch (error) {
+      return failProjectTask(error);
     }
-    return saved;
-  }, [me.id]);
+  }), [failProjectTask, installPersistenceSession, publishState, runProjectTask]);
 
-  const saveCanvas = useCallback(async (canvas: ErdCanvas, create = false) => {
-    const response = await post("/api/collaboration/canvas", { clientId: me.id, canvas, create });
-    return response.ok;
-  }, [me.id]);
-
-  const waitForJoin = useCallback(async () => {
-    for (let attempt = 0; attempt < 40 && !joinedRef.current; attempt += 1) {
-      await new Promise<void>((resolve) => setTimeout(resolve, 50));
-    }
-    return joinedRef.current;
-  }, []);
-
-  const setLocalDfd = useCallback((dfd: DfdState) => {
-    setState((current) => ({ ...current, dfd }));
-  }, []);
-
-  const saveDfd = useCallback(async (dfd: DfdState) => {
-    pendingDfdRef.current = dfd;
-    outboundDfdRef.current = dfd;
-    if (savingDfdRef.current) return true;
-    savingDfdRef.current = true;
-    let saved = true;
+  const renameOpfsProject = useCallback((projectId: string, displayName: string) => runProjectTask(async () => {
+    const persistence = persistenceRef.current;
+    if (!persistence) return false;
     try {
-      if (!(await waitForJoin())) return false;
-      while (outboundDfdRef.current) {
-        const next = outboundDfdRef.current;
-        outboundDfdRef.current = null;
-        const response = await post("/api/collaboration/dfd", { clientId: me.id, dfd: next });
-        saved = response.ok;
-        if (!saved) {
-          pendingDfdRef.current = null;
-          outboundDfdRef.current = null;
-        }
-      }
-    } finally {
-      savingDfdRef.current = false;
+      const view = await persistence.renameProject(projectId, displayName);
+      replaceProjectCatalogView(view);
+      if (activeProjectRef.current?.projectId === projectId) await publishState("state_snapshot");
+      return true;
+    } catch (error) {
+      return failProjectTask(error);
     }
-    return saved;
-  }, [me.id, waitForJoin]);
+  }), [failProjectTask, publishState, replaceProjectCatalogView, runProjectTask]);
 
-  const saveCatalogSeed = useCallback(async (seed: T, create = false) => {
-    if (!(await waitForJoin())) return false;
-    const response = await post("/api/collaboration/catalog-seed", { clientId: me.id, seed, create });
-    return response.ok;
-  }, [me.id, waitForJoin]);
+  const deleteOpfsProject = useCallback((projectId: string) => runProjectTask(async () => {
+    const persistence = persistenceRef.current;
+    if (!persistence) return false;
+    try {
+      const session = await persistence.deleteProject(projectId, durableState(confirmedStateRef.current), structuredClone(initialProjectStateRef.current));
+      installPersistenceSession(session, confirmedStateRef.current.users);
+      await publishState("state_snapshot");
+      return true;
+    } catch (error) {
+      return failProjectTask(error);
+    }
+  }), [failProjectTask, installPersistenceSession, publishState, runProjectTask]);
 
-  const transferOwnership = useCallback(async (seedId: string, expectedOwnerId: string, targetCanvasId: string) => {
-    const response = await post("/api/collaboration/ownership", { clientId: me.id, seedId, expectedOwnerId, targetCanvasId });
-    return response.ok;
-  }, [me.id]);
+  const saveProject = useCallback(async () => {
+    const persistence = persistenceRef.current;
+    if (roleRef.current !== "host" || !persistence) return false;
+    const current = durableState(confirmedStateRef.current);
+    try {
+      if (!relayAvailableRef.current && !projectDirectoryRef.current && window.showDirectoryPicker) projectDirectoryRef.current = await chooseProjectDirectory() ?? null;
+      await persistence.checkpoint(current);
+      const projectId = activeProjectRef.current?.projectId;
+      if (!projectId) throw new Error("Active OPFS project is not ready");
+      if (relayAvailableRef.current) await persistence.saveNative(me.id, projectId, current);
+      else if (projectDirectoryRef.current) await persistence.saveDirectory(projectDirectoryRef.current, projectId, current);
+      else await persistence.downloadArchive(projectId, current);
+      replaceProjectCatalogView(await persistence.touchProject(projectId));
+      return true;
+    } catch (error) {
+      setRecoveryStatus((status) => ({ ...status, error: error instanceof Error ? error.message : String(error) }));
+      return false;
+    }
+  }, [me.id, replaceProjectCatalogView]);
 
-  const setLocalRelationships = useCallback((relationships: Relationship[], relationshipReferences: RelationshipReference[]) => {
-    setState((current) => ({ ...current, relationships, relationshipReferences }));
-  }, []);
-
-  const setLocalDomains = useCallback((domains: DataDomain[]) => {
-    setState((current) => ({ ...current, domains }));
-  }, []);
-
-  const setLocalDomainCategories = useCallback((domainCategories: DomainCategory[]) => {
-    setState((current) => ({ ...current, domainCategories }));
-  }, []);
-
-  const saveDomain = useCallback(
-    async (domain: DataDomain, options: { create?: boolean; delete?: boolean } = {}) => {
-      const response = await post("/api/collaboration/domain", {
-        clientId: me.id,
-        domain,
-        create: options.create ?? false,
-        delete: options.delete ?? false
-      });
-      return response.ok;
-    },
-    [me.id]
-  );
-
-  const saveDomainCategory = useCallback(
-    async (category: DomainCategory, create = false) => {
-      const response = await post("/api/collaboration/domain-category", { clientId: me.id, category, create });
-      return response.ok;
-    },
-    [me.id]
-  );
-
-  const saveNamingPolicy = useCallback(async (policy: NamingPolicy) => {
-    const response = await post("/api/collaboration/naming-policy", { clientId: me.id, policy });
-    if (response.ok) setState((current) => ({ ...current, namingPolicy: policy }));
-    return response.ok;
-  }, [me.id]);
-
-  const saveVocabularyEntry = useCallback(async (entry: VocabularyEntry, options: { create?: boolean; delete?: boolean } = {}) => {
-    const response = await post("/api/collaboration/vocabulary", {
-      clientId: me.id,
-      entry,
-      create: options.create ?? false,
-      delete: options.delete ?? false
-    });
-    return response.ok;
-  }, [me.id]);
-
-  const setLocalVocabularyEntries = useCallback((next: VocabularyEntry[] | ((current: VocabularyEntry[]) => VocabularyEntry[])) => {
-    setState((current) => ({ ...current, vocabularyEntries: typeof next === "function" ? next(current.vocabularyEntries) : next }));
-  }, []);
-
-  const saveRelationship = useCallback(
-    async (relationship: Relationship, reference: RelationshipReference, options: { create?: boolean; delete?: boolean } = {}) => {
-      const response = await post("/api/collaboration/relationship", {
-        clientId: me.id,
-        relationship,
-        reference,
-        create: options.create ?? false,
-        delete: options.delete ?? false
-      });
-      return response.ok;
-    },
-    [me.id]
-  );
-
-  const saveRefinement = useCallback(async (result: RefinementResult) => {
-    const response = await post("/api/collaboration/refinement", { clientId: me.id, ...result });
-    return response.ok;
-  }, [me.id]);
-
-  const saveAnnotation: SaveAnnotation = useCallback(async (annotation, options = {}) => {
-    if (!(await waitForJoin())) return false;
-    const response = await post("/api/collaboration/annotation", {
-      clientId: me.id,
-      annotation,
-      create: options.create ?? false,
-      delete: options.delete ?? false
-    });
-    return response.ok;
-  }, [me.id, waitForJoin]);
-
-  const setLocalAnnotations = useCallback((next: CanvasAnnotation[] | ((current: CanvasAnnotation[]) => CanvasAnnotation[])) => {
-    setState((current) => {
-      const annotations = typeof next === "function" ? next(current.annotations) : next;
-      const nextIDs = new Set(annotations.map((annotation) => annotation.id));
-      for (const annotation of annotations) {
-        const previous = current.annotations.find((item) => item.id === annotation.id);
-        if (!previous || JSON.stringify(previous) !== JSON.stringify(annotation)) pendingAnnotationsRef.current.set(annotation.id, annotation);
-        deletedAnnotationsRef.current.delete(annotation.id);
+  const openProject = useCallback(async () => {
+    if (roleRef.current !== "host") return false;
+    try {
+      const persistence = persistenceRef.current;
+      if (!persistence) throw new Error("Recovery storage is not ready");
+      let loaded: DurableState<T> | undefined;
+      const projectId = activeProjectRef.current?.projectId;
+      if (!projectId) throw new Error("Active OPFS project is not ready");
+      if (relayAvailableRef.current) loaded = await persistence.loadNative(me.id, projectId);
+      else if (window.showDirectoryPicker) {
+        projectDirectoryRef.current = await chooseProjectDirectory() ?? null;
+        if (projectDirectoryRef.current) loaded = await persistence.loadDirectory(projectDirectoryRef.current, projectId);
       }
-      for (const annotation of current.annotations) {
-        if (!nextIDs.has(annotation.id)) {
-          pendingAnnotationsRef.current.delete(annotation.id);
-          deletedAnnotationsRef.current.add(annotation.id);
-        }
-      }
-      return { ...current, annotations };
-    });
+      if (!loaded) return false;
+      return dispatch({ type: "replace_project", state: loaded });
+    } catch (error) {
+      setRecoveryStatus((status) => ({ ...status, error: error instanceof Error ? error.message : String(error) }));
+      return false;
+    }
+  }, [dispatch, me.id]);
+
+  const exportProject = useCallback(async () => {
+    if (roleRef.current !== "host") return false;
+    try {
+      const persistence = persistenceRef.current;
+      if (!persistence) throw new Error("Recovery storage is not ready");
+      await persistence.checkpoint(durableState(confirmedStateRef.current));
+      const projectId = activeProjectRef.current?.projectId;
+      if (!projectId) throw new Error("Active OPFS project is not ready");
+      await persistence.downloadArchive(projectId, durableState(confirmedStateRef.current));
+      return true;
+    } catch (error) {
+      setRecoveryStatus((status) => ({ ...status, error: error instanceof Error ? error.message : String(error) }));
+      return false;
+    }
   }, []);
+
+  const importProject = useCallback(async (file: File) => {
+    if (roleRef.current !== "host") return false;
+    try {
+      const persistence = persistenceRef.current;
+      if (!persistence) throw new Error("Recovery storage is not ready");
+      return dispatch({ type: "replace_project", state: await persistence.decodeArchive(file) });
+    } catch (error) {
+      setRecoveryStatus((status) => ({ ...status, error: error instanceof Error ? error.message : String(error) }));
+      return false;
+    }
+  }, [dispatch]);
+
+  const setLocal = useCallback((update: (current: CollaborationState<T>) => CollaborationState<T>) => {
+    const next = update(stateRef.current);
+    stateRef.current = next;
+    setState(next);
+  }, []);
+  const setLocalSeeds = useCallback((seeds: T[]) => setLocal((current) => ({ ...current, seeds })), [setLocal]);
+  const setLocalPlacements = useCallback((placements: CanvasModelPlacement[]) => setLocal((current) => ({ ...current, placements })), [setLocal]);
+  const setLocalCanvases = useCallback((canvases: ErdCanvas[]) => setLocal((current) => ({ ...current, canvases })), [setLocal]);
+  const setLocalDfd = useCallback((dfd: DfdState) => setLocal((current) => ({ ...current, dfd })), [setLocal]);
+  const setLocalRelationships = useCallback((relationships: Relationship[], relationshipReferences: RelationshipReference[]) => setLocal((current) => ({ ...current, relationships, relationshipReferences })), [setLocal]);
+  const setLocalDomains = useCallback((domains: DataDomain[]) => setLocal((current) => ({ ...current, domains })), [setLocal]);
+  const setLocalDomainCategories = useCallback((domainCategories: DomainCategory[]) => setLocal((current) => ({ ...current, domainCategories })), [setLocal]);
+  const setLocalVocabularyEntries = useCallback((next: VocabularyEntry[] | ((current: VocabularyEntry[]) => VocabularyEntry[])) => setLocal((current) => ({ ...current, vocabularyEntries: typeof next === "function" ? next(current.vocabularyEntries) : next })), [setLocal]);
+  const setLocalAnnotations = useCallback((next: CanvasAnnotation[] | ((current: CanvasAnnotation[]) => CanvasAnnotation[])) => setLocal((current) => ({ ...current, annotations: typeof next === "function" ? next(current.annotations) : next })), [setLocal]);
 
   return {
     me,
-    seeds: state.seeds,
-    canvases: state.canvases,
-    placements: state.placements,
-    users: state.users,
-    locks: state.locks,
-    relationships: state.relationships,
-    relationshipReferences: state.relationshipReferences,
-    domains: state.domains,
-    domainCategories: state.domainCategories,
-    namingPolicy: state.namingPolicy,
-    vocabularyEntries: state.vocabularyEntries,
-    dfd: state.dfd,
-    annotations: state.annotations,
+    ...state,
     connected,
+    isHost,
+    nativeFileSystemAvailable,
+    projects,
+    activeProject,
+    recoveryStatus,
+    loadOpfsProject,
+    createOpfsProject,
+    saveOpfsProjectAs,
+    renameOpfsProject,
+    deleteOpfsProject,
+    saveProject,
+    openProject,
+    exportProject,
+    importProject,
     rename,
     changeCanvas,
     updateAnnotationPresence,

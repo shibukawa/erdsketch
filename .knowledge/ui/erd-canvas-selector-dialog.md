@@ -33,4 +33,5 @@ constraints:
   - Opening the dialog does not leave the current canvas until another canvas is selected.
   - The current canvas is distinguishable in the list.
   - Presence is live collaboration state, not persisted canvas membership.
+  - ui:workspace-data-navigation places project management before this canvas-level control.
 ```

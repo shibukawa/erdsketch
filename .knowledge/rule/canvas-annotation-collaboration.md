@@ -24,6 +24,8 @@ sync:
     - delete
   local_feedback: optimistic
   remote_visibility: without_reload
+  authority: actor:session-host
+  ordering: data:collaboration-message host_sequence
 conflict:
   sticky_text:
     policy: single_active_editor
@@ -40,5 +42,6 @@ history:
 constraints:
   - A remote update does not cancel the local active tool.
   - Presence state is transient and is not stored as annotation content.
-  - Reconnection refreshes current annotations before accepting new local mutations.
+  - Reconnection refreshes current annotations from actor:session-host before accepting new local mutations.
+  - system:collaboration-relay transports annotation messages but does not decide conflicts.
 ```

@@ -7,6 +7,8 @@ import (
 	"net/http"
 
 	"erdsketch/server/collaboration"
+	"erdsketch/server/project"
+	"erdsketch/server/relay"
 	"erdsketch/server/seed"
 )
 
@@ -14,10 +16,17 @@ type SeedLister interface {
 	List(context.Context) ([]seed.Document, error)
 }
 
+type ProjectStore interface {
+	Load(context.Context, string) (project.DocumentSet, error)
+	Save(context.Context, project.DocumentSet) error
+}
+
 type Handler struct {
-	hub    *collaboration.Hub
-	seeds  SeedLister
-	logger *log.Logger
+	hub      *collaboration.Hub
+	relay    *relay.Hub
+	seeds    SeedLister
+	projects ProjectStore
+	logger   *log.Logger
 }
 
 func New(hub *collaboration.Hub, seeds SeedLister, logger *log.Logger) http.Handler {
@@ -45,6 +54,21 @@ func New(hub *collaboration.Hub, seeds SeedLister, logger *log.Logger) http.Hand
 	mux.HandleFunc("/api/collaboration/dfd", handler.updateDFD)
 	mux.HandleFunc("/api/collaboration/catalog-seed", handler.updateCatalogSeed)
 	mux.HandleFunc("/api/collaboration/annotation", handler.updateAnnotation)
+	return mux
+}
+
+func NewRuntime(relayHub *relay.Hub, seeds SeedLister, projects ProjectStore, logger *log.Logger) http.Handler {
+	if logger == nil {
+		logger = log.Default()
+	}
+	handler := &Handler{relay: relayHub, seeds: seeds, projects: projects, logger: logger}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/health", handler.health)
+	mux.HandleFunc("/api/seeds", handler.listSeeds)
+	mux.HandleFunc("/api/relay/join", handler.relayJoin)
+	mux.HandleFunc("/api/relay/events", handler.relayEvents)
+	mux.HandleFunc("/api/relay/message", handler.relayMessage)
+	mux.HandleFunc("/api/project", handler.projectFile)
 	return mux
 }
 
