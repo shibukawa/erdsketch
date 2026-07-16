@@ -79,8 +79,15 @@ ui:
         - clarified_label
         - linked_text_label
     editing:
-      title: click_to_edit
-      description: click_to_edit
+      placement:
+        preview: gesture_local
+        commit: rule:collaborative-edit-commit
+      title:
+        interaction: click_to_edit
+        commit: rule:collaborative-text-commit
+      description:
+        interaction: click_to_edit
+        commit: rule:collaborative-text-commit
       role:
         interaction: single_select
         default: transaction
@@ -98,6 +105,9 @@ ui:
         interaction: manual_select
         source: data:model-state
         automatic_update: deferred
+      maturity_slider:
+        preview: component_local
+        commit: rule:collaborative-edit-commit
     card_content:
       control: ui:model-card-display-mode
       modes:
@@ -138,7 +148,9 @@ constraints:
   - Dragging a dependent model moves all transitively reachable independent models, including offscreen models; reverse dependency direction does not follow.
   - A group drag starts only after every model in its movement set is locked.
   - A group drag is one atomic undo unit.
+  - Model placement is updated locally and synchronized only when its drag ends.
   - Shared visual annotations follow requirement:collaborative-canvas-annotation.
+  - Remote text-edit presence shows an editor name and animated pencil without transmitting draft characters.
 related:
   - data:model-seed
   - concept:model-growth

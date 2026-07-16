@@ -1,5 +1,5 @@
 import { Database, FileJson, Link2, Menu, Monitor, Play, RadioTower } from "lucide-react";
-import { useCallback, useEffect, useState, type ChangeEvent, type FocusEvent, type KeyboardEvent, type PointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FocusEvent, type KeyboardEvent, type PointerEvent } from "react";
 import type { CardDisplayMode, DfdNode, ModelSeed } from "../../features/modeling/types";
 import { DFD_NODE_SIZE } from "../../features/dfd/dfd";
 import { DfdRoughShape } from "./DfdRoughShape";
@@ -17,8 +17,15 @@ type Props = {
 export function DfdNodeCard({ node, model, selected, connectionSource, relationshipDropTarget, displayMode, onSelect, onPointerDown, onLinkPointerDown, onEditModelFields, onUpdateNode, onUpdateModel }: Props) {
   const size = DFD_NODE_SIZE[node.kind];
   const title = model?.title ?? node.name;
+  const description = model?.description ?? node.description ?? "";
   const [titleDraft, setTitleDraft] = useState(title);
-  useEffect(() => setTitleDraft(title), [node.id, title]);
+  const [descriptionDraft, setDescriptionDraft] = useState(description);
+  const titleEditingRef = useRef(false);
+  const descriptionEditingRef = useRef(false);
+  const titleCancelRef = useRef(false);
+  const descriptionCancelRef = useRef(false);
+  useEffect(() => { if (!titleEditingRef.current) setTitleDraft(title); }, [node.id, title]);
+  useEffect(() => { if (!descriptionEditingRef.current) setDescriptionDraft(description); }, [description, node.id]);
   const handleClick = useCallback(() => onSelect(node.id), [node.id, onSelect]);
   const handlePointerDown = useCallback((event: PointerEvent<HTMLElement>) => onPointerDown(event, node), [node, onPointerDown]);
   const handleLink = useCallback((event: PointerEvent<HTMLButtonElement>) => onLinkPointerDown(event, node), [node, onLinkPointerDown]);
@@ -27,6 +34,7 @@ export function DfdNodeCard({ node, model, selected, connectionSource, relations
   const handleTitleChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
     setTitleDraft(event.target.value.replace(/\r?\n/g, " "));
   }, []);
+  const handleTitleFocus = useCallback(() => { titleEditingRef.current = true; titleCancelRef.current = false; }, []);
   const commitTitle = useCallback(() => {
     const nextTitle = titleDraft.trim();
     if (!nextTitle) {
@@ -38,22 +46,51 @@ export function DfdNodeCard({ node, model, selected, connectionSource, relations
     if (model) onUpdateModel({ title: nextTitle });
     else onUpdateNode({ name: nextTitle });
   }, [model, onUpdateModel, onUpdateNode, title, titleDraft]);
-  const handleTitleBlur = useCallback((_event: FocusEvent<HTMLTextAreaElement>) => commitTitle(), [commitTitle]);
+  const handleTitleBlur = useCallback((_event: FocusEvent<HTMLTextAreaElement>) => {
+    titleEditingRef.current = false;
+    if (titleCancelRef.current) {
+      titleCancelRef.current = false;
+      setTitleDraft(title);
+      return;
+    }
+    commitTitle();
+  }, [commitTitle, title]);
   const handleTitleKeyDown = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    event.currentTarget.blur();
-  }, []);
+    if (event.key === "Escape") {
+      titleCancelRef.current = true;
+      setTitleDraft(title);
+    }
+    if (event.key === "Enter" || event.key === "Escape") {
+      event.preventDefault();
+      event.currentTarget.blur();
+    }
+  }, [title]);
   const handleDescriptionChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
-    if (model) onUpdateModel({ description: event.target.value });
-    else onUpdateNode({ description: event.target.value });
-  }, [model, onUpdateModel, onUpdateNode]);
+    setDescriptionDraft(event.target.value);
+  }, []);
+  const handleDescriptionFocus = useCallback(() => { descriptionEditingRef.current = true; descriptionCancelRef.current = false; }, []);
+  const handleDescriptionBlur = useCallback((event: FocusEvent<HTMLTextAreaElement>) => {
+    descriptionEditingRef.current = false;
+    if (descriptionCancelRef.current) {
+      descriptionCancelRef.current = false;
+      setDescriptionDraft(description);
+      return;
+    }
+    if (event.currentTarget.value === description) return;
+    if (model) onUpdateModel({ description: event.currentTarget.value });
+    else onUpdateNode({ description: event.currentTarget.value });
+  }, [description, model, onUpdateModel, onUpdateNode]);
+  const handleDescriptionKeyDown = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Escape") return;
+    descriptionCancelRef.current = true;
+    setDescriptionDraft(description);
+    event.currentTarget.blur();
+  }, [description]);
   const logical = node.kind === "process" && Boolean(node.physicalProcesses?.length);
   const roughness = node.kind === "model" ? model?.maturedLevel ?? 1 : 1;
   const modelKeyFields = model?.fields.filter((field) => field.primaryKey || field.important) ?? [];
-  const description = model?.description ?? node.description ?? "";
-  const titleControl = selected ? <textarea data-no-drag="true" rows={2} className="h-9 min-w-0 flex-1 resize-none overflow-hidden bg-transparent text-left text-sm font-bold leading-[1.1] outline-none" value={titleDraft} onChange={handleTitleChange} onBlur={handleTitleBlur} onKeyDown={handleTitleKeyDown} onPointerDown={handleEditablePointerDown} aria-label={`${title || "Untitled"} title`} /> : <strong className="line-clamp-2 min-w-0 flex-1 break-words text-left text-sm leading-[1.1]">{title}</strong>;
-  const descriptionControl = selected ? <textarea data-no-drag="true" className="h-full w-full resize-none bg-transparent text-left text-[9px] leading-tight text-slate-600 outline-none" value={description} onChange={handleDescriptionChange} onPointerDown={handleEditablePointerDown} placeholder="Add description" aria-label={`${title || "Untitled"} description`} /> : <p className="line-clamp-4 w-full text-left text-[9px] leading-tight text-slate-600">{description || "No description"}</p>;
+  const titleControl = selected ? <textarea data-no-drag="true" rows={2} className="h-9 min-w-0 flex-1 resize-none overflow-hidden bg-transparent text-left text-sm font-bold leading-[1.1] outline-none" value={titleDraft} onFocus={handleTitleFocus} onChange={handleTitleChange} onBlur={handleTitleBlur} onKeyDown={handleTitleKeyDown} onPointerDown={handleEditablePointerDown} aria-label={`${title || "Untitled"} title`} /> : <strong className="line-clamp-2 min-w-0 flex-1 break-words text-left text-sm leading-[1.1]">{title}</strong>;
+  const descriptionControl = selected ? <textarea data-no-drag="true" className="h-full w-full resize-none bg-transparent text-left text-[9px] leading-tight text-slate-600 outline-none" value={descriptionDraft} onFocus={handleDescriptionFocus} onChange={handleDescriptionChange} onBlur={handleDescriptionBlur} onKeyDown={handleDescriptionKeyDown} onPointerDown={handleEditablePointerDown} placeholder="Add description" aria-label={`${title || "Untitled"} description`} /> : <p className="line-clamp-4 w-full text-left text-[9px] leading-tight text-slate-600">{description || "No description"}</p>;
 
   return <article data-dfd-node={node.id} className={`absolute cursor-move select-none text-slate-900 ${connectionSource ? "ring-2 ring-amber-400 ring-offset-2" : ""}`} style={{ left: node.x, top: node.y, width: size.width, height: size.height }} onClick={handleClick} onPointerDown={handlePointerDown}>
     <DfdRoughShape node={node} width={size.width} height={size.height} roughness={roughness} selected={selected} />

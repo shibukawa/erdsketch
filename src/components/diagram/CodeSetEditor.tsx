@@ -67,20 +67,11 @@ export function CodeSetEditor({ baseType, entries, canEdit, onChange }: CodeSetE
     commitEntryInput(event.currentTarget);
   }, [commitEntryInput]);
 
-  const handleEntryChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    if (event.currentTarget.dataset.field !== "value") return;
-    const id = event.currentTarget.dataset.entryId;
-    const value = event.currentTarget.value.trim();
-    if (!id) return;
-    if (value && baseType === "integer" && !/^-?\d+$/.test(value)) return;
-    if (value && baseType === "decimal" && !/^-?(?:\d+(?:\.\d*)?|\.\d+)$/.test(value)) return;
-    onChange(baseType, entries.map((entry) => entry.id === id ? { ...entry, value } : entry));
-  }, [baseType, entries, onChange]);
-
   const handleInputKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== "Enter") return;
-    commitEntryInput(event.currentTarget);
-    event.currentTarget.blur();
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+    if (event.key === "Escape") event.currentTarget.value = event.currentTarget.defaultValue;
+    if (event.key === "Enter") commitEntryInput(event.currentTarget);
+    if (event.key === "Enter" || event.key === "Escape") event.currentTarget.blur();
   }, [commitEntryInput]);
 
   const handleRemove = useCallback((event: MouseEvent<HTMLButtonElement>) => {
@@ -125,7 +116,7 @@ export function CodeSetEditor({ baseType, entries, canEdit, onChange }: CodeSetE
       <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Storage type</span><select className="select select-bordered w-full bg-white" value={baseType} onChange={handleBaseTypeChange} disabled={!canEdit}><option value="varchar">Varchar</option><option value="decimal">Decimal</option><option value="integer">Integer</option></select></label>
       <label className="input input-bordered flex h-10 items-center gap-2 bg-white"><Plus size={15} className="text-slate-400" /><input className="min-w-0 grow text-sm" value={quickEntry} onChange={handleQuickEntryChange} onKeyDown={handleQuickEntryKeyDown} disabled={!canEdit} placeholder="Type name and press Enter" aria-label="New code name" /><kbd className="kbd kbd-sm bg-slate-50 text-slate-500">Enter</kbd></label>
       <div className="space-y-2" aria-label="Code set entries">
-        {entries.map((entry, index) => <div key={entry.id} data-entry-id={entry.id} className={`grid grid-cols-[auto_1fr_1fr_auto] items-center gap-2 rounded-md border bg-white p-2 ${dropTargetId === entry.id ? "border-violet-500 ring-2 ring-violet-200" : "border-slate-200"} ${draggingId === entry.id ? "opacity-40" : ""}`} onDragOver={handleDragOver} onDrop={handleDrop}><span className="cursor-grab text-slate-300 active:cursor-grabbing" data-entry-id={entry.id} draggable={canEdit} onDragStart={handleDragStart} onDragEnd={clearDrag} aria-label={`Drag ${entry.name} to reorder`}><GripVertical size={15} /></span><input key={`${entry.id}:name:${entry.name}`} className="input input-bordered input-sm min-w-0 bg-white font-mono text-xs font-semibold" data-entry-id={entry.id} data-field="name" defaultValue={entry.name} onBlur={handleEntryCommit} onKeyDown={handleInputKeyDown} disabled={!canEdit} aria-label={`Code ${index + 1} name`} /><input className="input input-bordered input-sm min-w-0 bg-white font-mono text-xs" data-entry-id={entry.id} data-field="value" value={entry.value} onChange={handleEntryChange} onBlur={handleEntryCommit} onKeyDown={handleInputKeyDown} disabled={!canEdit} inputMode={baseType === "varchar" ? "text" : "decimal"} placeholder="Value" aria-label={`${entry.name} value`} /><button type="button" className="btn btn-ghost btn-xs btn-square text-red-600" data-entry-id={entry.id} onClick={handleRemove} disabled={!canEdit} aria-label={`Remove ${entry.name}`}><Trash2 size={14} /></button></div>)}
+        {entries.map((entry, index) => <div key={entry.id} data-entry-id={entry.id} className={`grid grid-cols-[auto_1fr_1fr_auto] items-center gap-2 rounded-md border bg-white p-2 ${dropTargetId === entry.id ? "border-violet-500 ring-2 ring-violet-200" : "border-slate-200"} ${draggingId === entry.id ? "opacity-40" : ""}`} onDragOver={handleDragOver} onDrop={handleDrop}><span className="cursor-grab text-slate-300 active:cursor-grabbing" data-entry-id={entry.id} draggable={canEdit} onDragStart={handleDragStart} onDragEnd={clearDrag} aria-label={`Drag ${entry.name} to reorder`}><GripVertical size={15} /></span><input key={`${entry.id}:name:${entry.name}`} className="input input-bordered input-sm min-w-0 bg-white font-mono text-xs font-semibold" data-entry-id={entry.id} data-field="name" defaultValue={entry.name} onBlur={handleEntryCommit} onKeyDown={handleInputKeyDown} disabled={!canEdit} aria-label={`Code ${index + 1} name`} /><input key={`${entry.id}:value:${entry.value}`} className="input input-bordered input-sm min-w-0 bg-white font-mono text-xs" data-entry-id={entry.id} data-field="value" defaultValue={entry.value} onBlur={handleEntryCommit} onKeyDown={handleInputKeyDown} disabled={!canEdit} inputMode={baseType === "varchar" ? "text" : "decimal"} placeholder="Value" aria-label={`${entry.name} value`} /><button type="button" className="btn btn-ghost btn-xs btn-square text-red-600" data-entry-id={entry.id} onClick={handleRemove} disabled={!canEdit} aria-label={`Remove ${entry.name}`}><Trash2 size={14} /></button></div>)}
         {entries.length === 0 && <p className="rounded-md border border-dashed border-violet-200 bg-white px-3 py-4 text-center text-xs text-slate-500">No codes yet. Add a name above, then enter its stored value.</p>}
       </div>
     </div>

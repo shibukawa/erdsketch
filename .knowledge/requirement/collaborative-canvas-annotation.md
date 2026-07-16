@@ -36,6 +36,7 @@ semantics:
 acceptance:
   - Two users on the same canvas see annotation creation, editing, movement, and deletion without reload.
   - Users see live collaborator cursors, selections, and text-edit ownership on the active canvas.
+  - Annotation text follows rule:collaborative-text-commit so host snapshots cannot overwrite unfinished typing.
   - Attached arrow endpoints follow moved canvas items.
   - A closed pen stroke can become a background boundary without moving enclosed items.
   - Annotations persist with their canvas and reopen at the same geometry and layer.

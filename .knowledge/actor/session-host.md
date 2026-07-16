@@ -17,6 +17,7 @@ responsibilities:
   - own edit locks and conflict decisions
   - publish accepted operations and snapshots
   - perform flow:project-load-save
+  - create peer invitations and enforce permission:collaboration-session-access
 constraints:
   - Host status is not an account-wide privilege.
   - Other participants never commit project mutations directly.

@@ -162,9 +162,9 @@ export function useCanvasAnnotations({ canvasType, canvasId, annotations, me, sc
       ? { ...gesture.before, width: Math.max(140, (gesture.before.width ?? 220) + dx), height: Math.max(90, (gesture.before.height ?? 140) + dy) }
       : translateAnnotation(gesture.before, dx, dy);
     setGesture({ ...gesture, current: next });
-    updateLocal(next);
+    setDraft(next);
     return true;
-  }, [findAnchor, gesture, screenToWorld, updateLocal]);
+  }, [findAnchor, gesture, screenToWorld]);
 
   const handleCanvasPointerUp = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (!gesture || gesture.pointerId !== event.pointerId) return false;
@@ -173,7 +173,7 @@ export function useCanvasAnnotations({ canvasType, canvasId, annotations, me, sc
       const valid = annotation.kind === "arrow"
         ? !!annotation.start && !!annotation.end && (annotation.start.itemId !== annotation.end.itemId || Math.hypot(annotation.end.x - annotation.start.x, annotation.end.y - annotation.start.y) > 8)
         : (annotation.points?.length ?? 0) >= (annotation.kind === "background_boundary" ? 3 : 2);
-      if (valid) {
+      if (event.type !== "pointercancel" && valid) {
         setSelectedId(annotation.id);
         setActiveTool("select");
         void updatePresence(annotation.id, "");
@@ -181,7 +181,7 @@ export function useCanvasAnnotations({ canvasType, canvasId, annotations, me, sc
       }
     } else {
       const after = gesture.current;
-      if (after && JSON.stringify(after) !== JSON.stringify(gesture.before)) void recordAndSave(gesture.before, after);
+      if (event.type !== "pointercancel" && after && JSON.stringify(after) !== JSON.stringify(gesture.before)) void recordAndSave(gesture.before, after);
     }
     setDraft(null);
     setGesture(null);
@@ -193,10 +193,6 @@ export function useCanvasAnnotations({ canvasType, canvasId, annotations, me, sc
     setSelectedId(annotation.id);
     void updatePresence(annotation.id, annotation.id);
   }, [updatePresence]);
-
-  const changeText = useCallback((annotation: CanvasAnnotation, text: string) => {
-    updateLocal({ ...annotation, text, updatedBy: me.id });
-  }, [me.id, updateLocal]);
 
   const finishTextEdit = useCallback((annotation: CanvasAnnotation) => {
     const before = editingBeforeRef.current;
@@ -312,7 +308,7 @@ export function useCanvasAnnotations({ canvasType, canvasId, annotations, me, sc
     canvasAnnotations,
     handleCanvasPointerDown, handleCanvasPointerMove, handleCanvasPointerUp,
     handleAnnotationPointerDown, selectAnnotation,
-    beginTextEdit, changeText, finishTextEdit,
+    beginTextEdit, finishTextEdit,
     deleteSelected, duplicateSelected, changeSelectedColor, convertSelectedToBoundary, moveSelectedForward, moveSelectedBackward, clearSelection, detachItem, undo, redo,
     canUndo: historyRef.current.length > 0,
     canRedo: redoRef.current.length > 0,

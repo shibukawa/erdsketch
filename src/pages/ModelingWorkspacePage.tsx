@@ -31,8 +31,16 @@ import { DfdWorkspace } from "./DfdWorkspace";
 import { CrudMatrixDialog } from "../components/dfd/CrudMatrixDialog";
 import { useCanvasAnnotations } from "../features/annotations/useCanvasAnnotations";
 import type { AnnotationAnchor, CanvasPoint } from "../features/annotations/types";
+import { ShareWorkDialog } from "../components/collaboration/ShareWorkDialog";
+import { JoinSharedWorkDialog } from "../components/collaboration/JoinSharedWorkDialog";
+import type { ParticipantRecoveryCandidate } from "../collaboration/webrtc/participantCheckpoint";
+import { CoworkDisconnectionDialog } from "../components/collaboration/CoworkDisconnectionDialog";
+import { CoworkClosedScreen } from "../components/collaboration/CoworkClosedScreen";
+import { CoworkReadOnlySnapshotNotice } from "../components/collaboration/CoworkReadOnlySnapshotNotice";
 
-export function ModelingWorkspacePage() {
+type ModelingWorkspacePageProps = { initialInvitationToken?: string; initialParticipantRecovery?: ParticipantRecoveryCandidate<ModelSeed> };
+
+export function ModelingWorkspacePage({ initialInvitationToken, initialParticipantRecovery }: ModelingWorkspacePageProps) {
   const {
     me,
     seeds,
@@ -53,6 +61,11 @@ export function ModelingWorkspacePage() {
     projects,
     activeProject,
     recoveryStatus,
+    sharing,
+    participantRecovery,
+    participantSnapshotReadOnly,
+    viewParticipantSnapshot,
+    abandonParticipantRecovery,
     loadOpfsProject,
     createOpfsProject,
     saveOpfsProjectAs,
@@ -65,6 +78,7 @@ export function ModelingWorkspacePage() {
     rename,
     changeCanvas,
     updateAnnotationPresence,
+    updateModelEditingPresence,
     moveCursor,
     lock,
     unlock,
@@ -92,11 +106,12 @@ export function ModelingWorkspacePage() {
     setLocalDomainCategories,
     setLocalVocabularyEntries,
     setLocalAnnotations
-  } = useCollaboration(initialSeeds, initialRelationships, initialRelationshipReferences, initialDomains, initialDomainCategories);
+  } = useCollaboration(initialSeeds, initialRelationships, initialRelationshipReferences, initialDomains, initialDomainCategories, { initialInvitationToken, initialParticipantRecovery });
   const fileSystemAvailable = typeof window !== "undefined" && typeof window.showDirectoryPicker === "function";
   const [query, setQuery] = useState("");
+  const [coworkClosed, setCoworkClosed] = useState(false);
   const [workspaceMode, setWorkspaceMode] = useState<"erd" | "dfd">("erd");
-  const [startDialogOpen, setStartDialogOpen] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("erdsketch:workspace-started") !== "1");
+  const [startDialogOpen, setStartDialogOpen] = useState(() => !initialInvitationToken && !initialParticipantRecovery && typeof window !== "undefined" && window.localStorage.getItem("erdsketch:workspace-started") !== "1");
   const [cardDisplayMode, setCardDisplayMode] = useState<CardDisplayMode>("description");
   const [nameDisplayMode, setNameDisplayMode] = useState<NameDisplayMode>("business");
   const [vocabularyOpen, setVocabularyOpen] = useState(false);
@@ -121,8 +136,9 @@ export function ModelingWorkspacePage() {
   const activePlacements = useMemo(() => placements.filter((placement) => placement.canvasId === activeCanvasId), [activeCanvasId, placements]);
   const canvasSeeds = useMemo(() => activePlacements.flatMap((placement) => {
     const seed = seeds.find((candidate) => candidate.id === placement.seedId);
-    return seed ? [{ ...seed, x: placement.x, y: placement.y }] : [];
-  }), [activePlacements, seeds]);
+    const preview = dragState?.type === "seed" ? dragState.previewPositions[placement.seedId] : undefined;
+    return seed ? [{ ...seed, x: preview?.x ?? placement.x, y: preview?.y ?? placement.y }] : [];
+  }), [activePlacements, dragState, seeds]);
   const activeSeedIds = useMemo(() => new Set(canvasSeeds.map((seed) => seed.id)), [canvasSeeds]);
   const canvasRelationships = useMemo(() => relationships.filter((relationship) => activeSeedIds.has(relationship.sourceId) && activeSeedIds.has(relationship.targetId)), [activeSeedIds, relationships]);
 
@@ -139,7 +155,7 @@ export function ModelingWorkspacePage() {
   const selectedSeed = useMemo(() => canvasSeeds.find((seed) => seed.id === selectedId) ?? canvasSeeds[0], [canvasSeeds, selectedId]);
   const selectedPlacement = useMemo(() => activePlacements.find((placement) => placement.seedId === selectedSeed?.id), [activePlacements, selectedSeed?.id]);
   const selectedOwner = selectedSeed ? locks[selectedSeed.id] : undefined;
-  const canEditSelected = !!selectedSeed && selectedPlacement?.accessMode === "owner" && selectedOwner?.id === me.id;
+  const canEditSelected = !participantSnapshotReadOnly && !!selectedSeed && selectedPlacement?.accessMode === "owner" && selectedOwner?.id === me.id;
   const remoteUsers = useMemo(
     () => users.filter((user) => user.id !== me.id && user.canvasId === activeCanvasId && (user.x !== 0 || user.y !== 0)),
     [activeCanvasId, me.id, users]
@@ -172,6 +188,10 @@ export function ModelingWorkspacePage() {
     },
     [activeCanvasId, activePlacements, saveSeed, seeds, setLocalSeeds]
   );
+
+  const handleModelEditingChange = useCallback((seedId: string, editing: boolean) => {
+    void updateModelEditingPresence(editing ? seedId : "");
+  }, [updateModelEditingPresence]);
 
   const createDomain = useCallback(
     async (name: string, categoryId = "user-defined") => {
@@ -548,6 +568,7 @@ export function ModelingWorkspacePage() {
       if (placement?.accessMode !== "owner") {
         if (noDrag) return;
         event.currentTarget.setPointerCapture(event.pointerId);
+        const origins = { [seed.id]: { x: seed.x, y: seed.y } };
         setDragState({
           type: "seed",
           pointerId: event.pointerId,
@@ -555,7 +576,8 @@ export function ModelingWorkspacePage() {
           offsetX: point.x - seed.x,
           offsetY: point.y - seed.y,
           seedIds: [seed.id],
-          origins: { [seed.id]: { x: seed.x, y: seed.y } },
+          origins,
+          previewPositions: origins,
           groupLocked: true,
           ready: true
         });
@@ -563,6 +585,7 @@ export function ModelingWorkspacePage() {
       }
       if (owner && owner.id !== me.id) return;
       const relatedSeedIDs = getRelatedDragSeedIDs(seed, canvasSeeds, canvasRelationships, relationshipReferences);
+      const origins = Object.fromEntries(canvasSeeds.filter((item) => relatedSeedIDs.includes(item.id)).map((item) => [item.id, { x: item.x, y: item.y }]));
       if (!noDrag) {
         try {
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -576,7 +599,8 @@ export function ModelingWorkspacePage() {
           offsetX: point.x - seed.x,
           offsetY: point.y - seed.y,
           seedIds: relatedSeedIDs,
-          origins: Object.fromEntries(canvasSeeds.filter((item) => relatedSeedIDs.includes(item.id)).map((item) => [item.id, { x: item.x, y: item.y }])),
+          origins,
+          previewPositions: origins,
           groupLocked: false,
           ready: false
         });
@@ -648,14 +672,13 @@ export function ModelingWorkspacePage() {
       const origin = dragState.origins[dragState.seedId];
       const deltaX = point.x - dragState.offsetX - origin.x;
       const deltaY = point.y - dragState.offsetY - origin.y;
-      const movedPlacements = placements.map((placement) => {
-        if (placement.canvasId !== activeCanvasId || !dragState.seedIds.includes(placement.seedId)) return placement;
-        return { ...placement, x: dragState.origins[placement.seedId].x + deltaX, y: dragState.origins[placement.seedId].y + deltaY };
-      });
-      setLocalPlacements(movedPlacements);
-      for (const movedPlacement of movedPlacements.filter((placement) => placement.canvasId === activeCanvasId && dragState.seedIds.includes(placement.seedId))) void savePlacement(movedPlacement);
+      const previewPositions = Object.fromEntries(dragState.seedIds.map((seedId) => [seedId, {
+        x: dragState.origins[seedId].x + deltaX,
+        y: dragState.origins[seedId].y + deltaY
+      }]));
+      setDragState({ ...dragState, previewPositions });
     },
-    [activeCanvasId, annotationController, cursorToWorld, dragState, lockAll, moveCursor, placements, savePlacement, screenToWorld, setLocalPlacements]
+    [annotationController, cursorToWorld, dragState, lockAll, moveCursor, screenToWorld]
   );
 
   const handlePointerLeave = useCallback(
@@ -684,12 +707,30 @@ export function ModelingWorkspacePage() {
         }
       }
       if (dragState.type === "seed") {
-        historyRef.current.push(dragState.origins);
+        const cancelled = event.type === "pointercancel";
+        const changed = dragState.seedIds.some((seedId) => {
+          const before = dragState.origins[seedId];
+          const after = dragState.previewPositions[seedId];
+          return before && after && (before.x !== after.x || before.y !== after.y);
+        });
+        if (!cancelled && dragState.ready && dragState.groupLocked && changed) {
+          const nextPlacements = placements.map((placement) => {
+            const preview = placement.canvasId === activeCanvasId ? dragState.previewPositions[placement.seedId] : undefined;
+            return preview ? { ...placement, ...preview } : placement;
+          });
+          setLocalPlacements(nextPlacements);
+          let allSaved = true;
+          for (const placement of nextPlacements.filter((item) => item.canvasId === activeCanvasId && dragState.seedIds.includes(item.seedId))) {
+            if (!(await savePlacement(placement))) allSaved = false;
+          }
+          if (allSaved) historyRef.current.push(dragState.origins);
+          else window.alert("The model position change could not be synchronized.");
+        }
         if (dragState.groupLocked) await unlockAll(dragState.seedIds.filter((seedId) => seedId !== dragState.seedId));
       }
       setDragState(null);
     },
-    [annotationController, canvasSeeds, dragState, lockAll, screenToWorld, unlockAll]
+    [activeCanvasId, annotationController, canvasSeeds, dragState, lockAll, placements, savePlacement, screenToWorld, setLocalPlacements, unlockAll]
   );
 
   const handleEditRelationship = useCallback(
@@ -974,8 +1015,33 @@ export function ModelingWorkspacePage() {
     return true;
   }, [ownershipTransferSeedId, placements, seeds, setLocalPlacements, transferOwnership]);
 
+  const handleCloseDisconnectedCowork = useCallback(() => {
+    abandonParticipantRecovery();
+    setCoworkClosed(true);
+    window.setTimeout(() => window.close(), 0);
+  }, [abandonParticipantRecovery]);
+
+  if (coworkClosed) return <CoworkClosedScreen />;
+
+  const coworkRecoveryDialog = participantRecovery && <CoworkDisconnectionDialog
+    reason={participantRecovery.reason}
+    hasSnapshot={participantRecovery.hasSnapshot}
+    updatedAt={participantRecovery.updatedAt}
+    onViewSnapshot={viewParticipantSnapshot}
+    onCloseWorkspace={handleCloseDisconnectedCowork}
+  />;
+
   if (workspaceMode === "dfd") {
-    return <><DfdWorkspace dfd={dfd} erdCanvases={canvases} activeCanvasId={activeDfdCanvasId} models={seeds} me={me} users={users} connected={connected} isHost={isHost} recoveryReady={recoveryStatus.ready} persistentStorage={recoveryStatus.persistentStorage} recoveryError={recoveryStatus.error} activeProject={activeProject ?? undefined} onOpenProjectManager={openProjectManager} onSetLocalDfd={setLocalDfd} onSaveDfd={saveDfd} onSaveCatalogModel={saveCatalogSeed} onSetLocalModels={setLocalSeeds} relationships={relationships} relationshipReferences={relationshipReferences} domains={domains} domainCategories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} onLockModel={lock} onUnlockModel={unlock} onUpdateRelationshipReference={(relationshipId, patch) => void updateRelationshipReference(relationshipId, patch)} onDeleteRelationship={(relationshipId) => { const relationship = relationships.find((item) => item.id === relationshipId); if (relationship) void deleteRelationship(relationship); }} onCreateDomain={(name) => void createDomain(name)} onOpenDomainDictionary={openDomainDictionary} onApplyRefinement={applyRefinement} onActiveCanvasChange={setActiveDfdCanvasId} onSelectErdCanvas={selectCanvas} onCreateProjectCanvas={createProjectCanvas} onRenameProjectCanvas={renameProjectCanvas} onOpenCrudMatrix={openCrudMatrix} annotations={annotations} onSetLocalAnnotations={setLocalAnnotations} onSaveAnnotation={saveAnnotation} onUpdateAnnotationPresence={updateAnnotationPresence} onMoveCursor={moveCursor} onChangeCanvasPresence={changeCanvas} />{projectManagerOpen && <ProjectManagerDialog projects={projects} activeProjectId={activeProject?.projectId} isHost={isHost} recoveryReady={recoveryStatus.ready} recoveryError={recoveryStatus.error} fileSystemAvailable={fileSystemAvailable} onCreate={createOpfsProject} onSaveAs={saveOpfsProjectAs} onLoad={loadOpfsProject} onRename={renameOpfsProject} onDelete={deleteOpfsProject} onOpenFileSystem={openProject} onSaveFileSystem={saveProject} onExport={exportProject} onImport={importProject} onClose={closeProjectManager} />}{crudMatrixOpen && <CrudMatrixDialog dfd={dfd} models={seeds} onChange={updateProjectDfd} onClose={closeCrudMatrix} />}{startDialogOpen && <WorkspaceStartDialog onStart={startWorkspace} onManageProjects={openProjectManager} />}</>;
+    return <>
+      <DfdWorkspace dfd={dfd} erdCanvases={canvases} activeCanvasId={activeDfdCanvasId} models={seeds} me={me} users={users} connected={connected} isHost={isHost} recoveryReady={recoveryStatus.ready} persistentStorage={recoveryStatus.persistentStorage} recoveryError={recoveryStatus.error} activeProject={activeProject ?? undefined} onOpenProjectManager={openProjectManager} onSetLocalDfd={setLocalDfd} onSaveDfd={saveDfd} onSaveCatalogModel={saveCatalogSeed} onSetLocalModels={setLocalSeeds} relationships={relationships} relationshipReferences={relationshipReferences} domains={domains} domainCategories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} onLockModel={lock} onUnlockModel={unlock} onUpdateRelationshipReference={(relationshipId, patch) => void updateRelationshipReference(relationshipId, patch)} onDeleteRelationship={(relationshipId) => { const relationship = relationships.find((item) => item.id === relationshipId); if (relationship) void deleteRelationship(relationship); }} onCreateDomain={(name) => void createDomain(name)} onOpenDomainDictionary={openDomainDictionary} onApplyRefinement={applyRefinement} onActiveCanvasChange={setActiveDfdCanvasId} onSelectErdCanvas={selectCanvas} onCreateProjectCanvas={createProjectCanvas} onRenameProjectCanvas={renameProjectCanvas} onOpenCrudMatrix={openCrudMatrix} onShareWork={sharing.openHostDialog} annotations={annotations} onSetLocalAnnotations={setLocalAnnotations} onSaveAnnotation={saveAnnotation} onUpdateAnnotationPresence={updateAnnotationPresence} onMoveCursor={moveCursor} onChangeCanvasPresence={changeCanvas} />
+      {projectManagerOpen && <ProjectManagerDialog projects={projects} activeProjectId={activeProject?.projectId} isHost={isHost} recoveryReady={recoveryStatus.ready} recoveryError={recoveryStatus.error} fileSystemAvailable={fileSystemAvailable} onCreate={createOpfsProject} onSaveAs={saveOpfsProjectAs} onLoad={loadOpfsProject} onRename={renameOpfsProject} onDelete={deleteOpfsProject} onOpenFileSystem={openProject} onSaveFileSystem={saveProject} onExport={exportProject} onImport={importProject} onClose={closeProjectManager} />}
+      {crudMatrixOpen && <CrudMatrixDialog dfd={dfd} models={seeds} onChange={updateProjectDfd} onClose={closeCrudMatrix} />}
+      {startDialogOpen && !participantRecovery && <WorkspaceStartDialog onStart={startWorkspace} onManageProjects={openProjectManager} />}
+      <ShareWorkDialog sharing={sharing} />
+      <JoinSharedWorkDialog sharing={sharing} />
+      {coworkRecoveryDialog}
+      {participantSnapshotReadOnly && <CoworkReadOnlySnapshotNotice />}
+    </>;
   }
 
   return (
@@ -1011,6 +1077,7 @@ export function ModelingWorkspacePage() {
             onOpenCanvasSelector={() => setCanvasSelectorOpen(true)}
             onOpenModelCatalog={() => setModelCatalogOpen(true)}
             onOpenCrudMatrix={openCrudMatrix}
+            onShareWork={sharing.openHostDialog}
             isHost={isHost}
             recoveryReady={recoveryStatus.ready}
             persistentStorage={recoveryStatus.persistentStorage}
@@ -1046,6 +1113,7 @@ export function ModelingWorkspacePage() {
             onPointerUp={stopDragging}
             onSeedPointerDown={handleSeedPointerDown}
             onUpdateSeed={updateSeed}
+            onModelEditingChange={handleModelEditingChange}
             onTitleFocusHandled={handleTitleFocusHandled}
             onUnlockSeed={unlock}
             onRelationshipPointerDown={handleRelationshipPointerDown}
@@ -1079,7 +1147,7 @@ export function ModelingWorkspacePage() {
         <DomainDictionaryDialog
           domains={domains}
           categories={domainCategories}
-          canEdit
+          canEdit={!participantSnapshotReadOnly}
           initialNameDisplayMode={nameDisplayMode}
           vocabularyCache={vocabularyCache}
           assignmentTarget={domainDictionaryContext.fieldId && domainDictionaryContext.label ? { fieldId: domainDictionaryContext.fieldId, label: domainDictionaryContext.label } : undefined}
@@ -1116,7 +1184,11 @@ export function ModelingWorkspacePage() {
       {modelCatalogOpen && <ModelCatalogDialog seeds={seeds} canvases={canvases} placements={placements} activeCanvasId={activeCanvasId} onOpenPlacement={selectCanvas} onPlace={(seedId) => void placeExistingModel(seedId)} onTransfer={openOwnershipTransfer} onClose={() => setModelCatalogOpen(false)} />}
       {ownershipTransferSeedId && seeds.find((seed) => seed.id === ownershipTransferSeedId) && <OwnershipTransferDialog seed={seeds.find((seed) => seed.id === ownershipTransferSeedId)!} canvases={canvases} placements={placements} onTransfer={confirmOwnershipTransfer} onClose={() => setOwnershipTransferSeedId(null)} />}
       {crudMatrixOpen && <CrudMatrixDialog dfd={dfd} models={seeds} onChange={updateProjectDfd} onClose={closeCrudMatrix} />}
-      {startDialogOpen && <WorkspaceStartDialog onStart={startWorkspace} onManageProjects={openProjectManager} />}
+      {startDialogOpen && !participantRecovery && <WorkspaceStartDialog onStart={startWorkspace} onManageProjects={openProjectManager} />}
+      <ShareWorkDialog sharing={sharing} />
+      <JoinSharedWorkDialog sharing={sharing} />
+      {coworkRecoveryDialog}
+      {participantSnapshotReadOnly && <CoworkReadOnlySnapshotNotice />}
     </main></VocabularyNavigationProvider>
   );
 }

@@ -26,7 +26,10 @@ execution_boundary:
 requirements:
   - Transport replacement does not move authority away from actor:session-host.
   - Relay and WebRTC use the same message semantics and host sequence.
+  - V1 setup follows decision:manual-webrtc-signaling and policy:ice-server-configuration.
+  - Every peer has host-retained permission:collaboration-session-access.
   - Reconnection starts with a host state snapshot before new intents.
+  - RTCDataChannel close, failed connection state, page restoration without the consumed invitation fragment, and stale participant heartbeat are session-loss signals for flow:recover-disconnected-cowork-participant.
   - Backpressure, maximum message size, and snapshot chunking are explicit transport concerns.
   - RTCDataChannel transfer to a worker is an optimization, not a compatibility requirement.
   - Network transport and durable persistence remain separate failure and backpressure domains.
@@ -36,7 +39,5 @@ non_goals:
   - CRDT_authority
   - moving_actor:session-host_authority_into_a_worker
 open_decisions:
-  - signaling_transport
-  - ICE_server_configuration
   - snapshot_chunk_size
 ```

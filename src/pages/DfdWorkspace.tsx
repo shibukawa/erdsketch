@@ -52,6 +52,7 @@ type DfdWorkspaceProps = {
   onCreateProjectCanvas: (kind: ProjectCanvasKind, name: string) => Promise<boolean>;
   onRenameProjectCanvas: (kind: ProjectCanvasKind, canvas: { id: string; name: string }) => Promise<boolean>;
   onOpenCrudMatrix: () => void;
+  onShareWork: () => void;
   annotations: CanvasAnnotation[];
   onSetLocalAnnotations: (next: CanvasAnnotation[] | ((current: CanvasAnnotation[]) => CanvasAnnotation[])) => void;
   onSaveAnnotation: SaveAnnotation;
@@ -62,7 +63,7 @@ type DfdWorkspaceProps = {
 
 type DragState =
   | { type: "pan"; pointerId: number; startX: number; startY: number; origin: Viewport }
-  | { type: "node"; pointerId: number; nodeId: string; offsetX: number; offsetY: number }
+  | { type: "node"; pointerId: number; nodeId: string; offsetX: number; offsetY: number; current: DfdState }
   | { type: "connection"; pointerId: number; sourceId: string; x: number; y: number; targetId?: string }
   | null;
 
@@ -81,7 +82,7 @@ const dailyTips = [
   "Overlap same-class nodes to replace repeated lines with one grouped flow."
 ];
 
-export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, users, connected, isHost, recoveryReady, persistentStorage, recoveryError, activeProject, onOpenProjectManager, onSetLocalDfd, onSaveDfd, onSaveCatalogModel, onSetLocalModels, relationships, relationshipReferences, domains, domainCategories, nameDisplayMode, vocabularyCache, onLockModel, onUnlockModel, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, onApplyRefinement, onActiveCanvasChange, onSelectErdCanvas, onCreateProjectCanvas, onRenameProjectCanvas, onOpenCrudMatrix, annotations, onSetLocalAnnotations, onSaveAnnotation, onUpdateAnnotationPresence, onMoveCursor, onChangeCanvasPresence }: DfdWorkspaceProps) {
+export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, users, connected, isHost, recoveryReady, persistentStorage, recoveryError, activeProject, onOpenProjectManager, onSetLocalDfd, onSaveDfd, onSaveCatalogModel, onSetLocalModels, relationships, relationshipReferences, domains, domainCategories, nameDisplayMode, vocabularyCache, onLockModel, onUnlockModel, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, onApplyRefinement, onActiveCanvasChange, onSelectErdCanvas, onCreateProjectCanvas, onRenameProjectCanvas, onOpenCrudMatrix, onShareWork, annotations, onSetLocalAnnotations, onSaveAnnotation, onUpdateAnnotationPresence, onMoveCursor, onChangeCanvasPresence }: DfdWorkspaceProps) {
   const [viewport, setViewport] = useState<Viewport>({ x: 250, y: 130, scale: 1 });
   const [cardDisplayMode, setCardDisplayMode] = useState<CardDisplayMode>("description");
   const [selectedEndpointId, setSelectedEndpointId] = useState<string>();
@@ -107,9 +108,10 @@ export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, use
   }, [activeCanvasId, dfd.canvases, onActiveCanvasChange]);
   useEffect(() => { void onChangeCanvasPresence(activeCanvasId, "dfd"); }, [activeCanvasId, onChangeCanvasPresence]);
 
-  const activeNodes = useMemo(() => dfd.nodes.filter((node) => node.canvasId === activeCanvasId), [activeCanvasId, dfd.nodes]);
-  const activeGroups = useMemo(() => dfd.groups.filter((group) => group.canvasId === activeCanvasId), [activeCanvasId, dfd.groups]);
-  const activeFlows = useMemo(() => dfd.flows.filter((flow) => flow.canvasId === activeCanvasId), [activeCanvasId, dfd.flows]);
+  const visibleDfd = dragState?.type === "node" ? dragState.current : dfd;
+  const activeNodes = useMemo(() => visibleDfd.nodes.filter((node) => node.canvasId === activeCanvasId), [activeCanvasId, visibleDfd.nodes]);
+  const activeGroups = useMemo(() => visibleDfd.groups.filter((group) => group.canvasId === activeCanvasId), [activeCanvasId, visibleDfd.groups]);
+  const activeFlows = useMemo(() => visibleDfd.flows.filter((flow) => flow.canvasId === activeCanvasId), [activeCanvasId, visibleDfd.flows]);
   const selectedNode = useMemo(() => activeNodes.find((node) => node.id === selectedEndpointId), [activeNodes, selectedEndpointId]);
   const selectedGroup = useMemo(() => activeGroups.find((group) => group.id === selectedEndpointId), [activeGroups, selectedEndpointId]);
   const selectedFlow = useMemo(() => activeFlows.find((flow) => flow.id === selectedFlowId), [activeFlows, selectedFlowId]);
@@ -372,7 +374,7 @@ export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, use
     event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedEndpointId(node.id);
     setSelectedFlowId(undefined);
-    setDragState({ type: "node", pointerId: event.pointerId, nodeId: node.id, offsetX: point.x - node.x, offsetY: point.y - node.y });
+    setDragState({ type: "node", pointerId: event.pointerId, nodeId: node.id, offsetX: point.x - node.x, offsetY: point.y - node.y, current: dfdRef.current });
   }, [annotationController, worldPoint]);
   const linkPointerDown = useCallback((event: PointerEvent<HTMLButtonElement>, node: DfdNode) => {
     event.preventDefault(); event.stopPropagation();
@@ -411,8 +413,9 @@ export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, use
       setDragState({ ...dragState, x: point.x, y: point.y, targetId: target?.id });
       return;
     }
-    setLocalDfd({ ...dfdRef.current, nodes: dfdRef.current.nodes.map((node) => node.id === dragState.nodeId ? { ...node, x: point.x - dragState.offsetX, y: point.y - dragState.offsetY } : node) });
-  }, [activeGroups, activeNodes, annotationController, dragState, onMoveCursor, setLocalDfd, worldPoint]);
+    const current = { ...dragState.current, nodes: dragState.current.nodes.map((node) => node.id === dragState.nodeId ? { ...node, x: point.x - dragState.offsetX, y: point.y - dragState.offsetY } : node) };
+    setDragState({ ...dragState, current });
+  }, [activeGroups, activeNodes, annotationController, dragState, onMoveCursor, worldPoint]);
   const canvasPointerUp = useCallback((event: PointerEvent<HTMLDivElement>) => {
     if (annotationController.handleCanvasPointerUp(event)) return;
     if (!dragState || dragState.pointerId !== event.pointerId) return;
@@ -420,8 +423,7 @@ export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, use
       if (dragState.targetId) beginConnection(dragState.sourceId, dragState.targetId);
       setConnectionSourceId(undefined); setDragState(null); return;
     }
-    const next = dragState.type === "node" ? groupAfterOverlap(dfdRef.current, dragState.nodeId) : dfdRef.current;
-    if (dragState.type === "node") persistDfd(next);
+    if (dragState.type === "node" && event.type !== "pointercancel") persistDfd(groupAfterOverlap(dragState.current, dragState.nodeId));
     setDragState(null);
   }, [annotationController, beginConnection, dragState, persistDfd]);
   const updateScale = useCallback((nextScale: number, anchor?: { clientX: number; clientY: number }) => {
@@ -470,7 +472,7 @@ export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, use
   const annotationUsers = users.filter((user) => user.canvasType === "dfd" && user.canvasId === activeCanvasId);
   const remoteUsers = annotationUsers.filter((user) => user.id !== me.id && (user.x !== 0 || user.y !== 0));
 
-  return <main className="h-screen overflow-hidden bg-slate-100 text-slate-950"><div className="flex h-full"><DfdSidebar selectedNode={selectedNode} selectedGroup={selectedGroup} selectedFlow={selectedFlow} selectedModel={selectedModel} warnings={warnings} nodes={activeNodes} groups={activeGroups} models={models} displayMode={cardDisplayMode} externalDefinitions={externalDefinitions} onDisplayModeChange={setCardDisplayMode} onQuickCreate={quickCreate} onOpenModelPicker={() => setModelPickerOpen(true)} onUpdateNode={updateSelectedNode} onUpdateFlow={updateSelectedFlow} onUpdateModel={updateSelectedModel} onUngroup={ungroup} onDeleteSelected={deleteSelected} onFocusWarning={focusWarning} /><section className="flex min-w-0 flex-1 flex-col"><DfdWorkspaceHeader me={me} users={users} connected={connected} isHost={isHost} recoveryReady={recoveryReady} persistentStorage={persistentStorage} recoveryError={recoveryError} activeProject={activeProject} onOpenProjectManager={onOpenProjectManager} canvasName={dfd.canvases.find((canvas) => canvas.id === activeCanvasId)?.name ?? "DFD canvas"} scale={viewport.scale} onOpenCanvasSelector={() => setCanvasSelectorOpen(true)} onOpenModelPicker={() => setModelPickerOpen(true)} onOpenCrudMatrix={onOpenCrudMatrix} onResetView={() => setViewport({ x: 250, y: 130, scale: 1 })} onUpdateScale={(scale) => updateScale(scale)} /><DfdCanvas canvasRef={canvasRef} nodes={activeNodes} groups={activeGroups} flows={activeFlows} models={models} viewport={viewport} selectedEndpointId={selectedEndpointId} selectedFlowId={selectedFlowId} connectionSourceId={connectionSourceId} connectionDrag={dragState?.type === "connection" ? dragState : undefined} connectionDropTargetId={dragState?.type === "connection" ? dragState.targetId : undefined} tip={tip} displayMode={cardDisplayMode} onCanvasPointerDown={canvasPointerDown} onCanvasPointerMove={canvasPointerMove} onCanvasPointerUp={canvasPointerUp} onNodePointerDown={nodePointerDown} onLinkPointerDown={linkPointerDown} onGroupLinkPointerDown={groupLinkPointerDown} onEditModelFields={(node) => void openModelFields(node)} onUpdateNode={updateSelectedNode} onUpdateModel={updateSelectedModel} onSelectEndpoint={selectEndpoint} onSelectFlow={selectFlow} annotationController={annotationController} annotationUsers={annotationUsers} me={me} remoteUsers={remoteUsers} resolveAnnotationAnchor={resolveDfdAnnotationAnchor} /></section></div>
+  return <main className="h-screen overflow-hidden bg-slate-100 text-slate-950"><div className="flex h-full"><DfdSidebar selectedNode={selectedNode} selectedGroup={selectedGroup} selectedFlow={selectedFlow} selectedModel={selectedModel} warnings={warnings} nodes={activeNodes} groups={activeGroups} models={models} displayMode={cardDisplayMode} externalDefinitions={externalDefinitions} onDisplayModeChange={setCardDisplayMode} onQuickCreate={quickCreate} onOpenModelPicker={() => setModelPickerOpen(true)} onUpdateNode={updateSelectedNode} onUpdateFlow={updateSelectedFlow} onUpdateModel={updateSelectedModel} onUngroup={ungroup} onDeleteSelected={deleteSelected} onFocusWarning={focusWarning} /><section className="flex min-w-0 flex-1 flex-col"><DfdWorkspaceHeader me={me} users={users} connected={connected} isHost={isHost} recoveryReady={recoveryReady} persistentStorage={persistentStorage} recoveryError={recoveryError} activeProject={activeProject} onOpenProjectManager={onOpenProjectManager} canvasName={dfd.canvases.find((canvas) => canvas.id === activeCanvasId)?.name ?? "DFD canvas"} scale={viewport.scale} onOpenCanvasSelector={() => setCanvasSelectorOpen(true)} onOpenModelPicker={() => setModelPickerOpen(true)} onOpenCrudMatrix={onOpenCrudMatrix} onShareWork={onShareWork} onResetView={() => setViewport({ x: 250, y: 130, scale: 1 })} onUpdateScale={(scale) => updateScale(scale)} /><DfdCanvas canvasRef={canvasRef} nodes={activeNodes} groups={activeGroups} flows={activeFlows} models={models} viewport={viewport} selectedEndpointId={selectedEndpointId} selectedFlowId={selectedFlowId} connectionSourceId={connectionSourceId} connectionDrag={dragState?.type === "connection" ? dragState : undefined} connectionDropTargetId={dragState?.type === "connection" ? dragState.targetId : undefined} tip={tip} displayMode={cardDisplayMode} onCanvasPointerDown={canvasPointerDown} onCanvasPointerMove={canvasPointerMove} onCanvasPointerUp={canvasPointerUp} onNodePointerDown={nodePointerDown} onLinkPointerDown={linkPointerDown} onGroupLinkPointerDown={groupLinkPointerDown} onEditModelFields={(node) => void openModelFields(node)} onUpdateNode={updateSelectedNode} onUpdateModel={updateSelectedModel} onSelectEndpoint={selectEndpoint} onSelectFlow={selectFlow} annotationController={annotationController} annotationUsers={annotationUsers} me={me} remoteUsers={remoteUsers} resolveAnnotationAnchor={resolveDfdAnnotationAnchor} /></section></div>
     {nodeDialog && <DfdNodeDialog mode={nodeDialog.mode} initial={nodeDialog.initial} title={nodeDialog.title} existingExternalDefinitions={externalDefinitions} onSave={saveNodeDialog} onClose={() => setNodeDialog(undefined)} />}
     {modelPickerOpen && <DfdModelPickerDialog models={models} placedModelIds={placedModelIds} onPlace={placeModel} onCreate={createModel} onClose={() => setModelPickerOpen(false)} />}
     {canvasSelectorOpen && <ProjectCanvasSelectorDialog erdCanvases={erdCanvases} dfdCanvases={dfd.canvases} active={{ kind: "dfd", id: activeCanvasId }} onSelect={selectProjectCanvas} onCreate={onCreateProjectCanvas} onRename={onRenameProjectCanvas} onClose={() => setCanvasSelectorOpen(false)} />}

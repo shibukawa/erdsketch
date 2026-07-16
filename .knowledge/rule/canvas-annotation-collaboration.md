@@ -30,8 +30,10 @@ conflict:
   sticky_text:
     policy: single_active_editor
     contention: show_editor_and_keep_readonly
+    commit: rule:collaborative-text-commit
   geometry_and_style:
     policy: latest_accepted_operation
+    commit: rule:collaborative-edit-commit
   delete:
     policy: wins_and_ends_active_edit
 history:
@@ -42,6 +44,9 @@ history:
 constraints:
   - A remote update does not cancel the local active tool.
   - Presence state is transient and is not stored as annotation content.
+  - Annotation typing stays in a local draft and produces one durable update on commit.
+  - Arrow, freehand, boundary, move, and resize gestures stay local until pointerup and send no pointermove operations.
+  - Pointer cancellation discards annotation geometry previews without changing durable state.
   - Reconnection refreshes current annotations from actor:session-host before accepting new local mutations.
   - system:collaboration-relay transports annotation messages but does not decide conflicts.
 ```

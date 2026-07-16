@@ -1,6 +1,7 @@
 import { useCallback, type ChangeEvent } from "react";
 import type { ColumnDefault, DataDomain, ModelField, ValueGeneration } from "../../features/modeling/types";
 import { effectivePrimitiveType } from "../../features/modeling/capacity";
+import { CommittedTextInput } from "../forms/CommittedTextInput";
 
 type FieldDefinitionPanelProps = {
   field?: ModelField;
@@ -28,15 +29,15 @@ export function FieldDefinitionPanel({ field, domains, canEdit, onChange }: Fiel
     const defaultValue: ColumnDefault | undefined = kind === "none" ? undefined : kind === "literal" ? { kind, value: "" } : { kind };
     onChange(field.id, { defaultValue });
   }, [field, onChange]);
-  const handleDefaultLiteralChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    if (field) onChange(field.id, { defaultValue: { kind: "literal", value: event.target.value } });
+  const handleDefaultLiteralCommit = useCallback((value: string) => {
+    if (field) onChange(field.id, { defaultValue: { kind: "literal", value } });
   }, [field, onChange]);
   const handleValueGenerationChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
     if (field) onChange(field.id, { valueGeneration: event.target.value === "auto_increment" ? event.target.value as ValueGeneration : undefined });
   }, [field, onChange]);
-  const handleAverageSizeChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+  const handleAverageSizeCommit = useCallback((draft: string) => {
     if (!field) return;
-    const value = event.target.value === "" ? undefined : Math.max(0, Number(event.target.value));
+    const value = draft === "" ? undefined : Math.max(0, Number(draft));
     onChange(field.id, { estimatedAverageSizeBytes: value });
   }, [field, onChange]);
   if (!field) return <div className="p-4 text-sm text-slate-500">Select a field to edit its SQL and capacity settings.</div>;
@@ -68,7 +69,7 @@ export function FieldDefinitionPanel({ field, domains, canEdit, onChange }: Fiel
             <option value="current_timestamp">CURRENT_TIMESTAMP</option>
           </select>
         </label>
-        {field.defaultValue?.kind === "literal" && <label className="block"><span className="text-xs font-bold text-slate-600">Literal value</span><input className="input input-bordered input-sm mt-1 w-full font-mono" value={field.defaultValue.value} onChange={handleDefaultLiteralChange} /></label>}
+        {field.defaultValue?.kind === "literal" && <label className="block"><span className="text-xs font-bold text-slate-600">Literal value</span><CommittedTextInput className="input input-bordered input-sm mt-1 w-full font-mono" value={field.defaultValue.value} onCommit={handleDefaultLiteralCommit} /></label>}
 
         <label className="block">
           <span className="text-sm font-bold text-slate-700">Value generation</span>
@@ -79,7 +80,7 @@ export function FieldDefinitionPanel({ field, domains, canEdit, onChange }: Fiel
           {!autoIncrementEligible && <span className="mt-1 block text-[11px] text-slate-500">Auto increment requires an integer primary key.</span>}
         </label>
 
-        {variableWidth && <label className="block rounded-lg border border-cyan-200 bg-cyan-50 p-3"><span className="text-sm font-bold text-cyan-950">Estimated average size</span><div className="mt-2 flex items-center gap-2"><input type="number" min={0} step={1} className="input input-bordered input-sm min-w-0 flex-1 bg-white" value={field.estimatedAverageSizeBytes ?? ""} placeholder={primitiveType === "varchar" ? "Optional" : "Required for estimate"} onChange={handleAverageSizeChange} /><span className="text-xs font-bold text-cyan-800">bytes</span></div><span className="mt-1 block text-[11px] text-cyan-800">Capacity estimate only; DDL type is unchanged.</span></label>}
+        {variableWidth && <label className="block rounded-lg border border-cyan-200 bg-cyan-50 p-3"><span className="text-sm font-bold text-cyan-950">Estimated average size</span><div className="mt-2 flex items-center gap-2"><CommittedTextInput type="number" min={0} step={1} className="input input-bordered input-sm min-w-0 flex-1 bg-white" value={String(field.estimatedAverageSizeBytes ?? "")} placeholder={primitiveType === "varchar" ? "Optional" : "Required for estimate"} onCommit={handleAverageSizeCommit} /><span className="text-xs font-bold text-cyan-800">bytes</span></div><span className="mt-1 block text-[11px] text-cyan-800">Capacity estimate only; DDL type is unchanged.</span></label>}
       </fieldset>
     </div>
   );

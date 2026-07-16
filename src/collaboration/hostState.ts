@@ -128,8 +128,10 @@ export function applyEphemeralOperation<T>(state: CollaborationState<T>, operati
   const actor = state.users.find((user) => user.id === actorID);
   if (!actor) throw new OperationError("unknown collaborator");
   if (operation.type === "presence") {
-    const users = state.users.map((user) => user.id === actorID ? { ...user, ...operation.patch } : user);
-    return { ...state, users };
+    const updatedActor = { ...actor, ...operation.patch };
+    const users = state.users.map((user) => user.id === actorID ? updatedActor : user);
+    const locks = Object.fromEntries(Object.entries(state.locks).map(([seedID, owner]) => [seedID, owner.id === actorID ? updatedActor : owner]));
+    return { ...state, users, locks };
   }
   const locks = { ...state.locks };
   if (operation.type === "lock") {

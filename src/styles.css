@@ -177,3 +177,17 @@ div[role="presentation"].fixed.inset-0 {
   line-height: 1.25;
   box-shadow: 0 2px 8px rgb(15 23 42 / 0.18);
 }
+
+.cowork-pencil {
+  animation: cowork-pencil-writing 820ms ease-in-out infinite;
+  transform-origin: 20% 80%;
+}
+
+@keyframes cowork-pencil-writing {
+  0%, 100% { transform: translateX(-1px) rotate(-16deg); }
+  50% { transform: translateX(3px) rotate(8deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cowork-pencil { animation: none; }
+}

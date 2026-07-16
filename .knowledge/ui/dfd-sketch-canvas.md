@@ -40,6 +40,9 @@ ui:
         external: roughjs_closed_pentagon
       overlap_group: dashed_rounded_boundary
     node_editor:
+      placement:
+        preview: gesture_local
+        commit: rule:collaborative-edit-commit
       process_variant:
         options:
           - batch
@@ -53,6 +56,7 @@ ui:
       physical_processes:
         source: data:dfd-logical-process
         interaction: edit_list
+        commit: rule:collaborative-text-commit
       model_fields:
         trigger: hamburger_like_icon_on_selected_model
         interaction: ui:field-list-dialog
@@ -60,6 +64,7 @@ ui:
     flow_editor:
       label: optional_free_text
       protocol: optional_free_text
+      text_commit: rule:collaborative-text-commit
       semantics: rule:dfd-flow-semantics
       model_crud: rule:dfd-model-crud-label
       crud_detail:
@@ -115,4 +120,5 @@ constraints:
   - Model placement uses ui:dfd-model-picker-dialog.
   - A DFD model placement exposes the same field editor and data as its ERD placement.
   - Shared visual annotations follow requirement:collaborative-canvas-annotation.
+  - DFD node movement and continuous inspector controls synchronize only after user confirmation under rule:collaborative-edit-commit.
 ```

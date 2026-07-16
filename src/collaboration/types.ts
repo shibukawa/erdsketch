@@ -12,6 +12,7 @@ export type Collaborator = {
   canvasType?: CanvasType;
   selectionId?: string;
   editingAnnotationId?: string;
+  editingModelId?: string;
 };
 
 export type CollaborationState<T> = {
@@ -48,14 +49,14 @@ export type DurableOperation<T> =
   | { type: "annotation"; annotation: CanvasAnnotation; create: boolean; delete: boolean };
 
 export type EphemeralOperation =
-  | { type: "presence"; patch: Partial<Pick<Collaborator, "name" | "x" | "y" | "canvasId" | "canvasType" | "selectionId" | "editingAnnotationId">> }
+  | { type: "presence"; patch: Partial<Pick<Collaborator, "name" | "x" | "y" | "canvasId" | "canvasType" | "selectionId" | "editingAnnotationId" | "editingModelId">> }
   | { type: "lock"; seedIds: string[] }
   | { type: "unlock"; seedIds: string[] };
 
 export type Operation<T> = DurableOperation<T> | EphemeralOperation;
 
 export type RelayMessage<T> = {
-  kind: "operation_intent" | "operation_accepted" | "operation_rejected" | "state_snapshot" | "participant_joined" | "participant_left";
+  kind: "operation_intent" | "operation_accepted" | "operation_rejected" | "state_snapshot" | "participant_joined" | "participant_left" | "session_closing" | "transport_ping" | "transport_pong";
   messageId?: string;
   senderId: string;
   targetId?: string;
@@ -66,7 +67,7 @@ export type RelayMessage<T> = {
     state?: CollaborationState<T>;
     project?: { projectId: string; displayName: string; kind: "named" | "temporary"; createdAt: string; updatedAt: string };
     error?: string;
-  } | Collaborator | { clientId: string };
+  } | Collaborator | { clientId: string } | { message?: string };
 };
 
 export type RelayJoinResult = {

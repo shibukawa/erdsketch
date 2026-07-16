@@ -9,7 +9,7 @@ Session participant edits a replicated project view through operation intents ac
 ```yaml
 capabilities:
   - receive current project snapshot
-  - submit data:collaboration-message operation intents
+  - submit data:collaboration-message operation intents when permission:collaboration-session-access is edit
   - receive accepted operations and presence
   - keep optimistic UI state that can be rejected or replaced
 restrictions:

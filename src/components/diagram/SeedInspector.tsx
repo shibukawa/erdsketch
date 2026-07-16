@@ -5,6 +5,7 @@ import { dependencyOptions, maturedLevelSteps, roleMeta, roleOptions } from "../
 import type { CanvasModelPlacement, Dependency, EntityRole, ModelSeed } from "../../features/modeling/types";
 import { clampMaturedLevel, getModelStageLabel } from "../../features/modeling/utils";
 import { defaultVolumeEstimate, normalizeTransactionRetention } from "../../features/modeling/capacity";
+import { CommittedRangeInput } from "../forms/CommittedRangeInput";
 
 type SeedInspectorProps = {
   seed: ModelSeed;
@@ -22,12 +23,9 @@ const maturedStepLabels = new Map([
 ]);
 
 export function SeedInspector({ seed, owner, canEdit, placement, onUpdate }: SeedInspectorProps) {
-  const handleMaturedLevelChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      onUpdate(seed.id, { maturedLevel: clampMaturedLevel(Number(event.target.value)) });
-    },
-    [onUpdate, seed.id]
-  );
+  const handleMaturedLevelCommit = useCallback((value: number) => {
+    onUpdate(seed.id, { maturedLevel: clampMaturedLevel(value) });
+  }, [onUpdate, seed.id]);
 
   const handleMaturedLevelClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -79,14 +77,13 @@ export function SeedInspector({ seed, owner, canEdit, placement, onUpdate }: See
             <span>Matured level</span>
             <span className="text-[10px] tracking-wide text-slate-400">{getModelStageLabel(seed.maturedLevel)}</span>
           </span>
-          <input
-            type="range"
+          <CommittedRangeInput
             className="range range-primary range-sm mt-2"
             min={0.5}
             max={6}
             step={0.25}
             value={seed.maturedLevel}
-            onChange={handleMaturedLevelChange}
+            onCommit={handleMaturedLevelCommit}
             style={{ direction: "rtl" }}
           />
         </label>

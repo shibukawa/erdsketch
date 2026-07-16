@@ -7,6 +7,7 @@ import { CodeSetEditor } from "./CodeSetEditor";
 import { NameModeControl } from "./NameModeControl";
 import { getCachedDisplayName, type VocabularyMatchCache } from "../../features/modeling/vocabulary";
 import { VocabularyDisplayName } from "./VocabularyDisplayName";
+import { CommittedTextInput } from "../forms/CommittedTextInput";
 
 type DomainAssignmentTarget = {
   label: string;
@@ -156,19 +157,10 @@ export function DomainDictionaryDialog({ domains, categories, canEdit, initialNa
     setCategoryQuickEntry("");
   }, [canEdit, categoryQuickEntry, onCreateCategory]);
 
-  const handleCategoryNameChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    const category = categories.find((item) => item.id === event.currentTarget.dataset.categoryId);
-    if (category && !category.system) onChangeCategory({ ...category, name: event.target.value });
+  const handleCategoryNameCommit = useCallback((categoryId: string, name: string) => {
+    const category = categories.find((item) => item.id === categoryId);
+    if (category && !category.system && name !== category.name) onChangeCategory({ ...category, name });
   }, [categories, onChangeCategory]);
-
-  const handleCategoryNameKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter" || event.key === "Escape") {
-      event.preventDefault();
-      setEditingCategoryId(null);
-    }
-  }, []);
-
-  const handleCategoryNameBlur = useCallback(() => setEditingCategoryId(null), []);
 
   const handleExportCategory = useCallback(() => {
     if (!selectedCategory) return;
@@ -229,8 +221,8 @@ export function DomainDictionaryDialog({ domains, categories, canEdit, initialNa
 
   const handleDomainDragEnd = useCallback(() => setCategoryDropTargetId(null), []);
 
-  const handleNameChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    if (selectedDomain) updateSelected({ names: updateNameSet(selectedDomain.name, selectedDomain.names, "business", event.target.value), vocabularyBinding: undefined });
+  const handleNameCommit = useCallback((value: string) => {
+    if (selectedDomain) updateSelected({ names: updateNameSet(selectedDomain.name, selectedDomain.names, "business", value), vocabularyBinding: undefined });
   }, [selectedDomain, updateSelected]);
 
   const handleKindChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
@@ -261,9 +253,8 @@ export function DomainDictionaryDialog({ domains, categories, canEdit, initialNa
     updateSelected({ codeSetBaseType, codeSetEntries });
   }, [updateSelected]);
 
-  const handleNumberChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    const key = event.currentTarget.dataset.parameter as "length" | "precision" | "scale";
-    const value = Number(event.target.value);
+  const handleNumberCommit = useCallback((key: "length" | "precision" | "scale", draft: string) => {
+    const value = Number(draft);
     updateSelected({ [key]: Number.isFinite(value) && value >= 0 ? value : undefined });
   }, [updateSelected]);
 
@@ -321,7 +312,9 @@ export function DomainDictionaryDialog({ domains, categories, canEdit, initialNa
   }, [selectedDomain, updateSelected]);
 
   const handleComponentInputKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") event.currentTarget.blur();
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+    if (event.key === "Escape") event.currentTarget.value = event.currentTarget.defaultValue;
+    if (event.key === "Enter" || event.key === "Escape") event.currentTarget.blur();
   }, []);
 
   const handleComponentTypeChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
@@ -391,7 +384,7 @@ export function DomainDictionaryDialog({ domains, categories, canEdit, initialNa
         <div className="grid min-h-0 flex-1 grid-cols-[190px_minmax(300px,0.9fr)_minmax(420px,1.2fr)]">
           <nav className="flex min-h-0 flex-col border-r border-slate-200 bg-slate-50 p-3" aria-label="Domain categories">
             <p className="px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Categories</p>
-            <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">{categories.map((item) => editingCategoryId === item.id ? <input key={item.id} autoFocus data-category-id={item.id} className="input input-bordered input-sm w-full bg-white" value={item.name} onChange={handleCategoryNameChange} onKeyDown={handleCategoryNameKeyDown} onBlur={handleCategoryNameBlur} disabled={!canEdit} aria-label="Edit category name" /> : <button key={item.id} type="button" data-category-id={item.id} className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-semibold ${categoryDropTargetId === item.id ? "bg-emerald-100 text-emerald-900 ring-2 ring-emerald-400" : categoryId === item.id ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-white"}`} onClick={handleCategoryClick} onDragOver={handleCategoryDragOver} onDrop={handleCategoryDrop}>{item.name}<ChevronRight size={14} /></button>)}</div>
+            <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">{categories.map((item) => editingCategoryId === item.id ? <CommittedTextInput key={item.id} autoFocus className="input input-bordered input-sm w-full bg-white" value={item.name} onCommit={(name) => handleCategoryNameCommit(item.id, name)} onEditingEnd={() => setEditingCategoryId(null)} disabled={!canEdit} aria-label="Edit category name" /> : <button key={item.id} type="button" data-category-id={item.id} className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-semibold ${categoryDropTargetId === item.id ? "bg-emerald-100 text-emerald-900 ring-2 ring-emerald-400" : categoryId === item.id ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-white"}`} onClick={handleCategoryClick} onDragOver={handleCategoryDragOver} onDrop={handleCategoryDrop}>{item.name}<ChevronRight size={14} /></button>)}</div>
             <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" className="btn btn-outline btn-xs" onClick={handleExportCategory} disabled={!selectedCategory}><Download size={13} />Export</button><button type="button" className="btn btn-outline btn-xs" onClick={handleImportClick} disabled={!canEdit}><Upload size={13} />Import</button><input ref={categoryImportRef} type="file" className="hidden" accept=".json,application/json" onChange={(event) => void handleImportCategory(event)} /></div>
             <label className="mt-3 block"><span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Add category</span><input className="input input-bordered intent-add input-sm w-full" value={categoryQuickEntry} onChange={handleCategoryQuickEntryChange} onKeyDown={handleCategoryQuickEntryKeyDown} disabled={!canEdit} placeholder="Name + Enter" aria-label="New domain category" /></label>
           </nav>
@@ -405,7 +398,7 @@ export function DomainDictionaryDialog({ domains, categories, canEdit, initialNa
           <section className="min-h-0 overflow-y-auto bg-slate-50 p-6" aria-label="Domain details">
             {!selectedDomain ? <p className="rounded-lg border border-dashed border-slate-300 bg-white p-5 text-sm leading-6 text-slate-500">Choose a domain from the list. New names added from a field list begin here as undefined.</p> : <div className="space-y-5">
               <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{categories.find((category) => category.id === selectedDomain.categoryId)?.name ?? "User Defined"}</p><h3 className="mt-1 font-mono text-lg font-bold"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`domain:${selectedDomain.id}`} legacyName={selectedDomain.name} names={selectedDomain.names} mode={nameDisplayMode} /></h3></div>{assignmentTarget && <button type="button" className="btn btn-primary btn-sm" disabled={!isAssignableDomain(selectedDomain)} onClick={handleAssign}>Assign to {assignmentTarget.label}</button>}</div>
-              {!selectedDomain.system && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Business source name</span><input className="input input-bordered w-full bg-white" value={selectedDomain.names?.business || selectedDomain.name} onChange={handleNameChange} disabled={!canEdit} /></label>}
+              {!selectedDomain.system && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Business source name</span><CommittedTextInput className="input input-bordered w-full bg-white" value={selectedDomain.names?.business || selectedDomain.name} onCommit={handleNameCommit} disabled={!canEdit} /></label>}
               {!selectedDomain.system && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Definition</span><select className="select select-bordered w-full bg-white" value={selectedDomain.shape} onChange={handleKindChange} disabled={!canEdit}><option value="unresolved">Undefined</option><option value="scalar">Single field</option><option value="composite">Multi-field</option></select></label>}
               {selectedDomain.shape === "unresolved" && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Define as primitive type</span><select className="select select-bordered w-full bg-white" value="" onChange={handlePrimitiveChange} disabled={!canEdit}><option value="">Choose a type…</option>{primitiveTypes.map((primitive) => <option key={primitive} value={primitive}>{primitiveLabels[primitive]}</option>)}</select><span className="mt-2 text-xs text-slate-500">Undefined keeps the domain identity while its physical type is still undecided.</span></label>}
               {selectedDomain.shape === "composite" && (
@@ -422,7 +415,7 @@ export function DomainDictionaryDialog({ domains, categories, canEdit, initialNa
                   {selectedDomain.components.length === 0 && <p className="rounded-md border border-dashed border-slate-300 bg-white px-3 py-4 text-center text-xs text-slate-500">No components yet. Add names above; types can stay undefined.</p>}
                 </div>
               )}
-              {(selectedDomain.shape === "primitive" || selectedDomain.shape === "scalar") && <div className="space-y-4"><label className="flex cursor-pointer items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm font-semibold text-cyan-900"><input type="checkbox" className="checkbox checkbox-info" checked={selectedDomain.partitionKey ?? false} onChange={handlePartitionKeyChange} disabled={!canEdit || selectedDomain.system} />Partition key</label><label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Primitive type</span><select className="select select-bordered w-full bg-white" value={selectedDomain.primitiveType ?? "varchar"} onChange={handlePrimitiveChange} disabled={!canEdit || selectedDomain.system}>{primitiveTypes.map((primitive) => <option key={primitive} value={primitive}>{primitiveLabels[primitive]}</option>)}</select></label>{(selectedDomain.primitiveType === "integer" || selectedDomain.primitiveType === "floating_point") && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Bits</span><select className="select select-bordered w-full bg-white" value={selectedDomain.bits ?? 32} onChange={handleBitsChange} disabled={!canEdit || selectedDomain.system}><option value={8}>8 bit</option><option value={16}>16 bit</option><option value={32}>32 bit</option><option value={64}>64 bit / bigint</option></select></label>}{selectedDomain.primitiveType === "integer" && <label className="label cursor-pointer justify-start gap-2"><input type="checkbox" className="checkbox" checked={selectedDomain.unsigned ?? false} onChange={handleUnsignedChange} disabled={!canEdit || selectedDomain.system} /><span className="label-text">Unsigned</span></label>}{selectedDomain.primitiveType === "varchar" && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Length</span><input className="input input-bordered w-full bg-white" type="number" min="1" data-parameter="length" value={selectedDomain.length ?? ""} onChange={handleNumberChange} disabled={!canEdit || selectedDomain.system} /></label>}{selectedDomain.primitiveType === "decimal" && <div className="grid grid-cols-2 gap-3"><label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Precision</span><input className="input input-bordered w-full bg-white" type="number" min="1" data-parameter="precision" value={selectedDomain.precision ?? ""} onChange={handleNumberChange} disabled={!canEdit || selectedDomain.system} /></label><label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Scale</span><input className="input input-bordered w-full bg-white" type="number" min="0" data-parameter="scale" value={selectedDomain.scale ?? 0} onChange={handleNumberChange} disabled={!canEdit || selectedDomain.system} /></label></div>}{selectedDomain.primitiveType === "code_set" && <CodeSetEditor baseType={selectedDomain.codeSetBaseType ?? "varchar"} entries={selectedDomain.codeSetEntries ?? []} canEdit={canEdit && !selectedDomain.system} onChange={handleCodeSetChange} />}</div>}
+              {(selectedDomain.shape === "primitive" || selectedDomain.shape === "scalar") && <div className="space-y-4"><label className="flex cursor-pointer items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm font-semibold text-cyan-900"><input type="checkbox" className="checkbox checkbox-info" checked={selectedDomain.partitionKey ?? false} onChange={handlePartitionKeyChange} disabled={!canEdit || selectedDomain.system} />Partition key</label><label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Primitive type</span><select className="select select-bordered w-full bg-white" value={selectedDomain.primitiveType ?? "varchar"} onChange={handlePrimitiveChange} disabled={!canEdit || selectedDomain.system}>{primitiveTypes.map((primitive) => <option key={primitive} value={primitive}>{primitiveLabels[primitive]}</option>)}</select></label>{(selectedDomain.primitiveType === "integer" || selectedDomain.primitiveType === "floating_point") && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Bits</span><select className="select select-bordered w-full bg-white" value={selectedDomain.bits ?? 32} onChange={handleBitsChange} disabled={!canEdit || selectedDomain.system}><option value={8}>8 bit</option><option value={16}>16 bit</option><option value={32}>32 bit</option><option value={64}>64 bit / bigint</option></select></label>}{selectedDomain.primitiveType === "integer" && <label className="label cursor-pointer justify-start gap-2"><input type="checkbox" className="checkbox" checked={selectedDomain.unsigned ?? false} onChange={handleUnsignedChange} disabled={!canEdit || selectedDomain.system} /><span className="label-text">Unsigned</span></label>}{selectedDomain.primitiveType === "varchar" && <label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Length</span><CommittedTextInput className="input input-bordered w-full bg-white" type="number" min="1" value={String(selectedDomain.length ?? "")} onCommit={(value) => handleNumberCommit("length", value)} disabled={!canEdit || selectedDomain.system} /></label>}{selectedDomain.primitiveType === "decimal" && <div className="grid grid-cols-2 gap-3"><label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Precision</span><CommittedTextInput className="input input-bordered w-full bg-white" type="number" min="1" value={String(selectedDomain.precision ?? "")} onCommit={(value) => handleNumberCommit("precision", value)} disabled={!canEdit || selectedDomain.system} /></label><label className="flex flex-col"><span className="mb-1 text-xs font-bold text-slate-600">Scale</span><CommittedTextInput className="input input-bordered w-full bg-white" type="number" min="0" value={String(selectedDomain.scale ?? 0)} onCommit={(value) => handleNumberCommit("scale", value)} disabled={!canEdit || selectedDomain.system} /></label></div>}{selectedDomain.primitiveType === "code_set" && <CodeSetEditor baseType={selectedDomain.codeSetBaseType ?? "varchar"} entries={selectedDomain.codeSetEntries ?? []} canEdit={canEdit && !selectedDomain.system} onChange={handleCodeSetChange} />}</div>}
               {!selectedDomain.system && <button type="button" className="btn btn-ghost gap-2 text-red-600" onClick={handleDelete} disabled={!canEdit}><Trash2 size={16} />Delete domain</button>}
             </div>}
           </section>

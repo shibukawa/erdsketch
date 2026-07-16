@@ -24,7 +24,25 @@ kinds:
   - operation_rejected
   - state_snapshot
   - presence
-  - control
+  - session_closing
+  - transport_ping
+  - transport_pong
+session_closing:
+  sender: actor:session-host
+  payload:
+    message: optional_human_text_up_to_120_Unicode_characters
+  handling: display_reason_then_close_transport
+heartbeat:
+  request: transport_ping
+  response: transport_pong
+  participant_interval_ms: 5000
+  visible_timeout_ms: 15000
+  resume_rule: reset_timeout_then_probe_when_document_becomes_visible
+presence:
+  text_edit_targets:
+    annotation: editing_annotation_id
+    model: editing_model_id
+  persistence: transient
 constraints:
   - Operation order is defined by host sequence, not transport arrival order at replicas.
   - Duplicate message_id handling is idempotent.

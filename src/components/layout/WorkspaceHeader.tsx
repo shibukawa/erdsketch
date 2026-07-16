@@ -2,6 +2,7 @@ import { Grid3X3, LocateFixed, Search, ZoomIn, ZoomOut } from "lucide-react";
 import { startTransition, useCallback, useState, type ChangeEvent, type FocusEvent, type FormEvent } from "react";
 import type { Collaborator } from "../../collaboration";
 import { WorkspaceProjectNavigation } from "./WorkspaceProjectNavigation";
+import { CoworkParticipantSummary } from "../collaboration/CoworkParticipantSummary";
 
 type WorkspaceHeaderProps = {
   me: Collaborator;
@@ -15,6 +16,7 @@ type WorkspaceHeaderProps = {
   onOpenCanvasSelector: () => void;
   onOpenModelCatalog: () => void;
   onOpenCrudMatrix: () => void;
+  onShareWork: () => void;
   isHost: boolean;
   recoveryReady: boolean;
   persistentStorage: boolean;
@@ -23,11 +25,9 @@ type WorkspaceHeaderProps = {
   onOpenProjectManager: () => void;
 };
 
-export function WorkspaceHeader({ me, users, connected, scale, canvasName, onRename, onResetView, onUpdateScale, onOpenCanvasSelector, onOpenModelCatalog, onOpenCrudMatrix, isHost, recoveryReady, persistentStorage, recoveryError, activeProject, onOpenProjectManager }: WorkspaceHeaderProps) {
+export function WorkspaceHeader({ me, users, connected, scale, canvasName, onRename, onResetView, onUpdateScale, onOpenCanvasSelector, onOpenModelCatalog, onOpenCrudMatrix, onShareWork, isHost, recoveryReady, persistentStorage, recoveryError, activeProject, onOpenProjectManager }: WorkspaceHeaderProps) {
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(me.name);
-  const otherUsers = users.filter((user) => user.id !== me.id);
-
   const saveName = useCallback(async () => {
     if (await onRename(nameDraft)) {
       startTransition(() => {
@@ -74,18 +74,7 @@ export function WorkspaceHeader({ me, users, connected, scale, canvasName, onRen
       <div className="flex items-center gap-2">
         <button type="button" className="btn btn-outline btn-sm gap-2" onClick={onOpenModelCatalog}><Search size={16} />Models</button>
         <button type="button" className="btn btn-outline btn-sm gap-2" onClick={onOpenCrudMatrix}><Grid3X3 size={16} />CRUD Matrix</button>
-        <div className="mr-1 flex -space-x-2" aria-label={`${users.length} collaborators online`}>
-          {otherUsers.slice(0, 4).map((user) => (
-            <span
-              key={user.id}
-              className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-xs font-bold text-white"
-              style={{ backgroundColor: user.color }}
-              title={user.name}
-            >
-              {user.name.slice(0, 1).toUpperCase()}
-            </span>
-          ))}
-        </div>
+        <CoworkParticipantSummary me={me} users={users} connected={connected} isHost={isHost} onOpenCowork={onShareWork} />
         <span
           className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-amber-500"}`}
           title={connected ? "Connected" : "Connecting"}

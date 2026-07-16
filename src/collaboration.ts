@@ -7,6 +7,8 @@ import { durableState, isDurableOperation, type CollaborationState, type Collabo
 import { chooseProjectDirectory } from "./persistence/projectDocument";
 import { loadNativeSeedOverrides } from "./persistence/nativeSeeds";
 import { PersistenceClient, type CatalogView, type OpfsProject, type PersistenceSession } from "./persistence/persistenceClient";
+import { useWebRtcSharing } from "./collaboration/webrtc/useWebRtcSharing";
+import { clearParticipantCheckpoint, saveParticipantCheckpoint, type ParticipantRecoveryCandidate } from "./collaboration/webrtc/participantCheckpoint";
 
 export type { Collaborator } from "./collaboration/types";
 
@@ -76,11 +78,21 @@ function initialState<T extends { id: string; x?: number; y?: number }>(me: Coll
 
 type RecoveryStatus = Pick<PersistenceSession<unknown>, "recoveredOperations" | "ignoredTailRecords" | "persistentStorage"> & { ready: boolean; error?: string };
 
-export function useCollaboration<T extends { id: string; x?: number; y?: number }>(initialSeeds: T[], initialRelationships: Relationship[] = [], initialReferences: RelationshipReference[] = [], initialDomains: DataDomain[] = [], initialDomainCategories: DomainCategory[] = []) {
+type CollaborationOptions<T> = {
+  initialInvitationToken?: string;
+  initialParticipantRecovery?: ParticipantRecoveryCandidate<T>;
+};
+
+export function useCollaboration<T extends { id: string; x?: number; y?: number }>(initialSeeds: T[], initialRelationships: Relationship[] = [], initialReferences: RelationshipReference[] = [], initialDomains: DataDomain[] = [], initialDomainCategories: DomainCategory[] = [], options: CollaborationOptions<T> = {}) {
   const [me, setMe] = useState<Collaborator>(getIdentity);
-  const [state, setState] = useState(() => initialState(me, initialSeeds, initialRelationships, initialReferences, initialDomains, initialDomainCategories));
+  const [state, setState] = useState(() => options.initialParticipantRecovery?.checkpoint?.state
+    ? structuredClone(options.initialParticipantRecovery.checkpoint.state)
+    : initialState(me, initialSeeds, initialRelationships, initialReferences, initialDomains, initialDomainCategories));
   const [connected, setConnected] = useState(false);
   const [isHost, setIsHost] = useState(false);
+  const [hasParticipantSnapshot, setHasParticipantSnapshot] = useState(Boolean(options.initialParticipantRecovery?.checkpoint));
+  const [participantRecoveryResolved, setParticipantRecoveryResolved] = useState(false);
+  const [participantSnapshotReadOnly, setParticipantSnapshotReadOnly] = useState(false);
   const [nativeFileSystemAvailable, setNativeFileSystemAvailable] = useState(false);
   const [projects, setProjects] = useState<OpfsProject[]>([]);
   const [activeProject, setActiveProject] = useState<OpfsProject | null>(null);
@@ -93,6 +105,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   const activeProjectRef = useRef<OpfsProject | null>(null);
   const initialProjectStateRef = useRef(durableState(state));
   const durableWritesBlockedRef = useRef(false);
+  const participantSnapshotReadOnlyRef = useRef(false);
   const projectDirectoryRef = useRef<FileSystemDirectoryHandle | null>(null);
   const sequenceRef = useRef(0);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -100,6 +113,8 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   const pendingRequestsRef = useRef(new Map<string, (accepted: boolean) => void>());
   const cursorFrameRef = useRef<number | undefined>(undefined);
   const pendingCursorRef = useRef<{ x: number; y: number } | undefined>(undefined);
+  const webRtcAvailableRef = useRef(false);
+  const webRtcSendRef = useRef<(message: Omit<RelayMessage<T>, "senderId">) => Promise<boolean>>(async () => false);
 
   const replaceVisibleState = useCallback((next: CollaborationState<T>) => {
     stateRef.current = next;
@@ -130,9 +145,13 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   }, [replaceProjectCatalogView, replaceVisibleState]);
 
   const sendRelay = useCallback(async (message: Omit<RelayMessage<T>, "senderId">) => {
-    if (!relayAvailableRef.current) return true;
-    const response = await post("/api/relay/message", { clientId: me.id, message });
-    return response.ok;
+    const webRtcSent = await webRtcSendRef.current(message).catch(() => false);
+    let relaySent = false;
+    if (relayAvailableRef.current) {
+      const response = await post("/api/relay/message", { clientId: me.id, message }).catch(() => undefined);
+      relaySent = response?.ok ?? false;
+    }
+    return webRtcSent || relaySent || roleRef.current === "host";
   }, [me.id]);
 
   const publishState = useCallback(async (kind: "operation_accepted" | "state_snapshot", requestId?: string, targetId?: string) => {
@@ -199,9 +218,10 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   }, [commitHostNow]);
 
   const dispatch = useCallback(async (operation: Operation<T>) => {
+    if (participantSnapshotReadOnlyRef.current) return false;
     const requestId = crypto.randomUUID();
     if (roleRef.current === "host") return commitHost(operation, requestId, me.id);
-    if (!connected || !relayAvailableRef.current) return false;
+    if (!connected || (!relayAvailableRef.current && !webRtcAvailableRef.current)) return false;
     const accepted = new Promise<boolean>((resolve) => {
       const timer = window.setTimeout(() => {
         pendingRequestsRef.current.delete(requestId);
@@ -248,6 +268,10 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
         confirmedStateRef.current = payload.state;
         sequenceRef.current = payload.sequence ?? sequenceRef.current;
         replaceVisibleState(payload.state);
+        if (roleRef.current === "participant") {
+          setHasParticipantSnapshot(true);
+          saveParticipantCheckpoint(payload.state, sequenceRef.current, payload.project);
+        }
       }
       if (payload?.project) {
         activeProjectRef.current = payload.project;
@@ -267,7 +291,20 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     }
   });
 
-  const initializeHost = useEffectEvent(async (users: Collaborator[]) => {
+  const handleParticipantConnectionChange = useCallback((nextConnected: boolean) => {
+    setConnected(nextConnected);
+  }, []);
+
+  const sharing = useWebRtcSharing<T>({
+    me,
+    initialInvitationToken: options.initialInvitationToken,
+    onMessage: handleRelayMessage,
+    onParticipantConnectionChange: handleParticipantConnectionChange,
+    sendRef: webRtcSendRef,
+    availableRef: webRtcAvailableRef
+  });
+
+  const initializeHost = useCallback(async (users: Collaborator[]) => {
     let current = confirmedStateRef.current;
     if (relayAvailableRef.current) {
       try {
@@ -290,11 +327,19 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     const recovered = await persistence.initialize(durableState(current));
     durableWritesBlockedRef.current = false;
     installPersistenceSession(recovered, users);
-  });
+  }, [installPersistenceSession]);
 
   useEffect(() => {
     let cancelled = false;
     const join = async () => {
+      if (options.initialInvitationToken || options.initialParticipantRecovery) {
+        relayAvailableRef.current = false;
+        setNativeFileSystemAvailable(false);
+        roleRef.current = "participant";
+        setIsHost(false);
+        setConnected(false);
+        return;
+      }
       try {
         const response = await post("/api/relay/join", { clientId: me.id, user: me });
         if (!response.ok) throw new Error("relay unavailable");
@@ -341,7 +386,48 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
       persistenceRef.current = null;
       if (cursorFrameRef.current !== undefined) cancelAnimationFrame(cursorFrameRef.current);
     };
-  }, [me.id]);
+  }, [initializeHost, me.id, options.initialInvitationToken, options.initialParticipantRecovery, publishState, replaceVisibleState, sendRelay]);
+
+  const participantRecovery = !participantRecoveryResolved
+    ? options.initialParticipantRecovery
+      ? {
+          reason: "This participant tab was reloaded after its Co-work connection was lost.",
+          hasSnapshot: Boolean(options.initialParticipantRecovery.checkpoint),
+          updatedAt: options.initialParticipantRecovery.checkpoint?.updatedAt ?? options.initialParticipantRecovery.marker.updatedAt
+        }
+      : sharing.participantDisconnectReason
+        ? {
+            reason: sharing.participantDisconnectReason,
+            hasSnapshot: hasParticipantSnapshot,
+            updatedAt: sharing.participantDisconnectedAt ?? Date.now()
+          }
+        : undefined
+    : undefined;
+
+  const viewParticipantSnapshot = useCallback(() => {
+    if (!hasParticipantSnapshot && !options.initialParticipantRecovery?.checkpoint) return false;
+    sharing.detachParticipant();
+    eventSourceRef.current?.close();
+    eventSourceRef.current = null;
+    relayAvailableRef.current = false;
+    webRtcAvailableRef.current = false;
+    participantSnapshotReadOnlyRef.current = true;
+    for (const resolve of pendingRequestsRef.current.values()) resolve(false);
+    pendingRequestsRef.current.clear();
+    startTransition(() => {
+      setConnected(false);
+      setIsHost(false);
+      setParticipantSnapshotReadOnly(true);
+      setParticipantRecoveryResolved(true);
+    });
+    return true;
+  }, [hasParticipantSnapshot, options.initialParticipantRecovery, sharing.detachParticipant]);
+
+  const abandonParticipantRecovery = useCallback(() => {
+    sharing.detachParticipant();
+    clearParticipantCheckpoint();
+    setParticipantRecoveryResolved(true);
+  }, [sharing.detachParticipant]);
 
   const rename = useCallback(async (name: string) => {
     const normalized = name.trim();
@@ -368,6 +454,11 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   const updateAnnotationPresence = useCallback(async (selectionId = "", editingAnnotationId = "") => {
     setMe((current) => ({ ...current, selectionId, editingAnnotationId }));
     return dispatch({ type: "presence", patch: { selectionId, editingAnnotationId } });
+  }, [dispatch]);
+
+  const updateModelEditingPresence = useCallback(async (editingModelId = "") => {
+    setMe((current) => ({ ...current, editingModelId }));
+    return dispatch({ type: "presence", patch: { editingModelId } });
   }, [dispatch]);
 
   const lockAll = useCallback((seedIds: string[]) => dispatch({ type: "lock", seedIds: [...new Set(seedIds)] }), [dispatch]);
@@ -548,6 +639,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   }, [dispatch]);
 
   const setLocal = useCallback((update: (current: CollaborationState<T>) => CollaborationState<T>) => {
+    if (participantSnapshotReadOnlyRef.current) return;
     const next = update(stateRef.current);
     stateRef.current = next;
     setState(next);
@@ -571,6 +663,11 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     projects,
     activeProject,
     recoveryStatus,
+    sharing,
+    participantRecovery,
+    participantSnapshotReadOnly,
+    viewParticipantSnapshot,
+    abandonParticipantRecovery,
     loadOpfsProject,
     createOpfsProject,
     saveOpfsProjectAs,
@@ -583,6 +680,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     rename,
     changeCanvas,
     updateAnnotationPresence,
+    updateModelEditingPresence,
     moveCursor,
     lock,
     unlock,

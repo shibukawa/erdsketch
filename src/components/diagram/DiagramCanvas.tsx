@@ -45,6 +45,7 @@ type DiagramCanvasProps = {
   onPointerUp: PointerEventHandler<HTMLDivElement>;
   onSeedPointerDown: (event: PointerEvent<HTMLElement>, seed: ModelSeed) => void;
   onUpdateSeed: (seedId: string, patch: Partial<ModelSeed>) => void;
+  onModelEditingChange: (seedId: string, editing: boolean) => void;
   onTitleFocusHandled: (seedId: string) => void;
   onUnlockSeed: (seedId: string) => void;
   onRelationshipPointerDown: (event: PointerEvent<HTMLButtonElement>, seed: ModelSeed) => void;
@@ -87,6 +88,7 @@ export function DiagramCanvas({
   onPointerUp,
   onSeedPointerDown,
   onUpdateSeed,
+  onModelEditingChange,
   onTitleFocusHandled,
   onUnlockSeed,
   onRelationshipPointerDown,
@@ -155,6 +157,8 @@ export function DiagramCanvas({
             onTitleFocusHandled={onTitleFocusHandled}
             onPointerDown={onSeedPointerDown}
             onUpdate={onUpdateSeed}
+            onEditingChange={onModelEditingChange}
+            remoteEditor={annotationUsers.find((user) => user.id !== me.id && user.editingModelId === seed.id)}
             onUnlock={onUnlockSeed}
             onRelationshipPointerDown={onRelationshipPointerDown}
             relationships={relationships}

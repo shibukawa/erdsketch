@@ -391,6 +391,7 @@ export type DragState =
       offsetY: number;
       seedIds: string[];
       origins: Record<string, { x: number; y: number }>;
+      previewPositions: Record<string, { x: number; y: number }>;
       groupLocked: boolean;
       ready: boolean;
     }
