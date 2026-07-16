@@ -1,3 +1,5 @@
+import { wailsApp } from "./wailsBridge";
+
 type NativeSeedDocument = { path: string; text: string };
 
 export type NativeSeedOverride = {
@@ -39,8 +41,14 @@ function parseDocument(document: NativeSeedDocument): NativeSeedOverride | undef
 }
 
 export async function loadNativeSeedOverrides() {
-  const response = await fetch("/api/seeds");
-  if (!response.ok) throw new Error(await response.text());
-  const documents = await response.json() as NativeSeedDocument[];
+  const desktop = wailsApp();
+  let documents: NativeSeedDocument[];
+  if (desktop) {
+    documents = await desktop.ListSeeds();
+  } else {
+    const response = await fetch("/api/seeds");
+    if (!response.ok) throw new Error(await response.text());
+    documents = await response.json() as NativeSeedDocument[];
+  }
   return documents.map(parseDocument).filter((seed): seed is NativeSeedOverride => seed !== undefined);
 }

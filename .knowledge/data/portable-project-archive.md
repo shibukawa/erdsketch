@@ -4,7 +4,7 @@ type: data
 title: Portable Project Archive
 ---
 
-Portable project archive carries data:project-document-set across browsers and runtime modes.
+Portable project archive carries data:project-document-set across browsers, desktop applications, and runtime modes.
 
 ```yaml
 encoding:
@@ -21,7 +21,7 @@ security:
   - Enforce limits for compressed bytes, expanded bytes, document count, and document size.
   - Validate the manifest and all documents before import commit.
 interoperability:
-  - Native and static modes read and write the same archive bytes.
+  - Server-web, static-web, and Wails-desktop modes read and write the same archive bytes.
   - Archive export is available regardless of the selected primary storage adapter.
 open_decisions:
   - file_extension

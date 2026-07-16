@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc && vite build",
+    "build": "npm run build:static",
+    "build:static": "tsc && vite build --mode static",
+    "build:server": "tsc && vite build --mode server",
+    "build:desktop": "tsc && vite build --mode desktop",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },

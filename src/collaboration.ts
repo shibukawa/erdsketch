@@ -5,6 +5,8 @@ import type { CanvasModelPlacement, DataDomain, DfdState, DomainCategory, ErdCan
 import { applyDurableOperation, applyEphemeralOperation } from "./collaboration/hostState";
 import { durableState, isDurableOperation, type CollaborationState, type Collaborator, type DurableOperation, type DurableState, type Operation, type RelayJoinResult, type RelayMessage } from "./collaboration/types";
 import { chooseProjectDirectory } from "./persistence/projectDocument";
+import { hasWailsBridge } from "./persistence/wailsBridge";
+import { usesGoServer, usesWailsDesktop } from "./runtime";
 import { loadNativeSeedOverrides } from "./persistence/nativeSeeds";
 import { PersistenceClient, type CatalogView, type OpfsProject, type PersistenceSession } from "./persistence/persistenceClient";
 import { useWebRtcSharing } from "./collaboration/webrtc/useWebRtcSharing";
@@ -306,7 +308,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
 
   const initializeHost = useCallback(async (users: Collaborator[]) => {
     let current = confirmedStateRef.current;
-    if (relayAvailableRef.current) {
+    if (relayAvailableRef.current || usesWailsDesktop()) {
       try {
         const overrides = await loadNativeSeedOverrides();
         const byID = new Map(overrides.map((seed) => [seed.id, seed]));
@@ -341,6 +343,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
         return;
       }
       try {
+        if (!usesGoServer()) throw new Error("server runtime disabled");
         const response = await post("/api/relay/join", { clientId: me.id, user: me });
         if (!response.ok) throw new Error("relay unavailable");
         const joined = await response.json() as RelayJoinResult;
@@ -366,7 +369,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
       } catch {
         if (cancelled) return;
         relayAvailableRef.current = false;
-        setNativeFileSystemAvailable(false);
+        setNativeFileSystemAvailable(hasWailsBridge());
         roleRef.current = "host";
         setIsHost(true);
         try {
@@ -578,7 +581,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
       await persistence.checkpoint(current);
       const projectId = activeProjectRef.current?.projectId;
       if (!projectId) throw new Error("Active OPFS project is not ready");
-      if (relayAvailableRef.current) await persistence.saveNative(me.id, projectId, current);
+      if (relayAvailableRef.current || usesWailsDesktop()) await persistence.saveNative(me.id, projectId, current);
       else if (projectDirectoryRef.current) await persistence.saveDirectory(projectDirectoryRef.current, projectId, current);
       else await persistence.downloadArchive(projectId, current);
       replaceProjectCatalogView(await persistence.touchProject(projectId));
@@ -597,7 +600,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
       let loaded: DurableState<T> | undefined;
       const projectId = activeProjectRef.current?.projectId;
       if (!projectId) throw new Error("Active OPFS project is not ready");
-      if (relayAvailableRef.current) loaded = await persistence.loadNative(me.id, projectId);
+      if (relayAvailableRef.current || usesWailsDesktop()) loaded = await persistence.loadNative(me.id, projectId);
       else if (window.showDirectoryPicker) {
         projectDirectoryRef.current = await chooseProjectDirectory() ?? null;
         if (projectDirectoryRef.current) loaded = await persistence.loadDirectory(projectDirectoryRef.current, projectId);

@@ -9,6 +9,16 @@ npm install
 npm run dev
 ```
 
+Production build targets are explicit:
+
+```bash
+npm run build:static   # dist/static, no Go API dependency
+npm run build:server   # server/webassets/dist, embedded by the Go binary
+npm run build:desktop  # desktop/frontend/dist, embedded by Wails
+```
+
+The `Deploy static site to Pages` GitHub Actions workflow publishes the static target from `main` and can also be run manually.
+
 The first screen is a Concept Seeds brainstorm canvas built with React, Tailwind CSS, and daisyUI.
 
 ## Backend
@@ -16,6 +26,36 @@ The first screen is a Concept Seeds brainstorm canvas built with React, Tailwind
 ```bash
 go run ./server/cmd/erdsketch
 ```
+
+Build the production frontend before compiling the server so it is embedded in the executable:
+
+```bash
+npm run build:server
+go build -tags production -o erdsketch ./server/cmd/erdsketch
+```
+
+The server accepts `ERDSKETCH_ADDR`, `ERDSKETCH_MODEL_ROOT`, and `ERDSKETCH_PROJECT_ROOT` environment variables.
+
+## Desktop
+
+ERDSketch uses Wails v2 for native desktop builds:
+
+```bash
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+cd desktop
+wails build -tags desktop
+```
+
+The `Build desktop applications` workflow creates Linux amd64, Windows amd64, and macOS universal artifacts.
+
+## Container
+
+```bash
+docker build -t erdsketch .
+docker run --rm -p 8080:8080 -v erdsketch-projects:/data/projects erdsketch
+```
+
+The container workflow builds amd64 and arm64 images and pushes branch, tag, commit, and `latest` tags to GitHub Container Registry outside pull requests.
 
 The Go runtime loads the plain-text seed files under `model/seeds/`, relays collaboration messages, and reads or writes project document sets. The first browser joining a runtime session is the session host; canonical editing state, locks, operation ordering, and commit decisions live in that host's frontend memory.
 

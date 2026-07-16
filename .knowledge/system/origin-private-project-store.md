@@ -11,6 +11,7 @@ availability:
   runtime:
     - go_backend_mode
     - static_content_mode
+    - wails_desktop_mode
   API: navigator.storage.getDirectory
 visibility: origin_private
 execution:
@@ -27,6 +28,7 @@ operations:
 role:
   all_modes: continuous_recovery_store
   static_without_external_handle: primary_working_store
+  wails_desktop: continuous_recovery_store
   user_visible_backup: data:portable-project-archive
 project_catalog:
   key: immutable_project_id

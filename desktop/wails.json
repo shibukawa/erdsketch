@@ -1,0 +1,21 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "ERDSketch",
+  "outputfilename": "erdsketch",
+  "frontend:dir": "..",
+  "frontend:install": "npm ci",
+  "frontend:build": "npm run build:desktop",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "assetdir": "frontend/dist",
+  "wailsjsdir": "../src",
+  "author": {
+    "name": "ERDSketch contributors"
+  },
+  "info": {
+    "companyName": "ERDSketch",
+    "productName": "ERDSketch",
+    "productVersion": "0.1.0",
+    "comments": "ERDSketch desktop application"
+  }
+}

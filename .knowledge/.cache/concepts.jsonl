@@ -125,6 +125,7 @@
 {"category": "objective", "id": "requirement:model-refinement-patterns", "path": ".knowledge/requirement/model-refinement-patterns.md", "role": "primary", "title": "Model Refinement Patterns", "type": "requirement"}
 {"category": "objective", "id": "requirement:model-state-management", "path": ".knowledge/requirement/model-state-management.md", "role": "primary", "title": "Model State Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:multi-canvas-modeling", "path": ".knowledge/requirement/multi-canvas-modeling.md", "role": "primary", "title": "Multi-Canvas Modeling", "type": "requirement"}
+{"category": "objective", "id": "requirement:multi-target-distribution", "path": ".knowledge/requirement/multi-target-distribution.md", "role": "primary", "title": "Multi-Target Distribution", "type": "requirement"}
 {"category": "objective", "id": "requirement:name-display-switching", "path": ".knowledge/requirement/name-display-switching.md", "role": "primary", "title": "Name Display Switching", "type": "requirement"}
 {"category": "objective", "id": "requirement:named-opfs-project-management", "path": ".knowledge/requirement/named-opfs-project-management.md", "role": "primary", "title": "Named OPFS Project Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:normalization-support", "path": ".knowledge/requirement/normalization-support.md", "role": "primary", "title": "Normalization Support", "type": "requirement"}
@@ -133,13 +134,16 @@
 {"category": "objective", "id": "requirement:portable-project-persistence", "path": ".knowledge/requirement/portable-project-persistence.md", "role": "primary", "title": "Portable Project Persistence", "type": "requirement"}
 {"category": "objective", "id": "requirement:relationship-management", "path": ".knowledge/requirement/relationship-management.md", "role": "primary", "title": "Relationship Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:relationship-validation", "path": ".knowledge/requirement/relationship-validation.md", "role": "primary", "title": "Relationship Validation Inventory", "type": "requirement"}
+{"category": "objective", "id": "requirement:server-web-distribution", "path": ".knowledge/requirement/server-web-distribution.md", "role": "primary", "title": "Server Web Distribution", "type": "requirement"}
 {"category": "objective", "id": "requirement:sql-table-definition", "path": ".knowledge/requirement/sql-table-definition.md", "role": "primary", "title": "SQL Table Definition", "type": "requirement"}
+{"category": "objective", "id": "requirement:static-web-distribution", "path": ".knowledge/requirement/static-web-distribution.md", "role": "primary", "title": "Static Web Distribution", "type": "requirement"}
 {"category": "objective", "id": "requirement:unmatched-name-presentation", "path": ".knowledge/requirement/unmatched-name-presentation.md", "role": "primary", "title": "Unmatched Name Presentation", "type": "requirement"}
 {"category": "objective", "id": "requirement:vocabulary-alias-correction", "path": ".knowledge/requirement/vocabulary-alias-correction.md", "role": "primary", "title": "Vocabulary Alias Correction", "type": "requirement"}
 {"category": "objective", "id": "requirement:vocabulary-cache-maintenance", "path": ".knowledge/requirement/vocabulary-cache-maintenance.md", "role": "primary", "title": "Vocabulary Cache Maintenance", "type": "requirement"}
 {"category": "objective", "id": "requirement:vocabulary-management", "path": ".knowledge/requirement/vocabulary-management.md", "role": "primary", "title": "Vocabulary Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:vocabulary-segmentation-registration", "path": ".knowledge/requirement/vocabulary-segmentation-registration.md", "role": "primary", "title": "Vocabulary Segmentation Registration", "type": "requirement"}
 {"category": "objective", "id": "requirement:vocabulary-usage-inspection", "path": ".knowledge/requirement/vocabulary-usage-inspection.md", "role": "primary", "title": "Vocabulary Usage Inspection", "type": "requirement"}
+{"category": "objective", "id": "requirement:wails-desktop-distribution", "path": ".knowledge/requirement/wails-desktop-distribution.md", "role": "primary", "title": "Wails Desktop Distribution", "type": "requirement"}
 {"category": "objective", "id": "requirement:webrtc-share-work", "path": ".knowledge/requirement/webrtc-share-work.md", "role": "primary", "title": "WebRTC Co-work", "type": "requirement"}
 {"category": "constraint", "id": "rule:canvas-annotation-collaboration", "path": ".knowledge/rule/canvas-annotation-collaboration.md", "role": "supporting", "title": "Canvas Annotation Collaboration", "type": "rule"}
 {"category": "constraint", "id": "rule:canvas-annotation-semantics", "path": ".knowledge/rule/canvas-annotation-semantics.md", "role": "supporting", "title": "Canvas Annotation Semantics", "type": "rule"}
@@ -176,6 +180,7 @@
 {"category": "external", "id": "system:origin-private-project-store", "path": ".knowledge/system/origin-private-project-store.md", "role": "supporting", "title": "Origin-Private Project Store", "type": "system"}
 {"category": "external", "id": "system:persistence-worker", "path": ".knowledge/system/persistence-worker.md", "role": "supporting", "title": "Persistence Worker", "type": "system"}
 {"category": "external", "id": "system:storage-target", "path": ".knowledge/system/storage-target.md", "role": "supporting", "title": "Storage Target", "type": "system"}
+{"category": "external", "id": "system:wails-project-file-adapter", "path": ".knowledge/system/wails-project-file-adapter.md", "role": "supporting", "title": "Wails Project File Adapter", "type": "system"}
 {"category": "external", "id": "system:webrtc-collaboration-transport", "path": ".knowledge/system/webrtc-collaboration-transport.md", "role": "supporting", "title": "WebRTC Collaboration Transport", "type": "system"}
 {"category": "vocabulary", "id": "term:relationship-vocabulary", "path": ".knowledge/term/relationship-vocabulary.md", "role": "supporting", "title": "Relationship Vocabulary", "type": "term"}
 {"category": "vocabulary", "id": "term:vocabulary", "path": ".knowledge/term/vocabulary.md", "role": "supporting", "title": "Vocabulary", "type": "term"}

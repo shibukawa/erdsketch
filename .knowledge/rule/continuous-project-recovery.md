@@ -4,7 +4,7 @@ type: rule
 title: Continuous Project Recovery
 ---
 
-Every accepted durable mutation survives browser restart on the same device and origin before it is acknowledged or published.
+Every accepted durable mutation survives runtime restart within the same storage scope before it is acknowledged or published.
 
 ```yaml
 commit_protocol:
@@ -31,11 +31,17 @@ checkpoints:
   commit: write_new_checkpoint_then_commit_marker
   cleanup: only_after_checkpoint_validation
 storage_policy:
-  request_persistence: navigator.storage.persist
-  monitor_quota: navigator.storage.estimate
+  browser:
+    request_persistence: navigator.storage.persist
+    monitor_quota: navigator.storage.estimate
+  wails_desktop:
+    storage: system:origin-private-project-store
+    scope: application_webview_origin
   persistence_denied: warn_and_continue_with_export_recommendation
 limits:
-  recovery_boundary: same_device_and_same_origin
+  recovery_boundary:
+    browser: same_device_and_same_origin
+    wails_desktop: same_device_and_same_application_webview_origin
   not_a_backup_against:
     - site_data_deletion
     - device_loss

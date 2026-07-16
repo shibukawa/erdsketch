@@ -4,7 +4,7 @@ type: requirement
 title: Portable Project Persistence
 ---
 
-Users load and save the same project content in native-server and static-content deployments.
+Users load and save the same project content in server-web, static-web, and Wails-desktop deployments.
 
 ```yaml
 authority: actor:session-host
@@ -20,6 +20,9 @@ operations:
 acceptance:
   - Go backend mode loads initial seeds and reads and writes local project files.
   - Static mode works without a Go process.
+  - Wails desktop mode works without an external Go process or HTTP server.
+  - Wails desktop mode uses system:wails-project-file-adapter for user-selected native files.
+  - Wails WebView mode records accepted durable mutations in system:origin-private-project-store before acknowledgement.
   - Static mode can use a user-selected local location when system:browser-local-file-adapter is available.
   - Every browser mode records accepted durable mutations in system:origin-private-project-store before acknowledgement.
   - Restart on the same device and origin restores the latest checkpoint plus valid journal tail.

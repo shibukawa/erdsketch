@@ -31,6 +31,13 @@ func (s *Service) Load(ctx context.Context, projectID string) (DocumentSet, erro
 }
 
 func (s *Service) Save(ctx context.Context, documents DocumentSet) error {
+	if err := Validate(documents); err != nil {
+		return err
+	}
+	return s.store.Save(ctx, documents)
+}
+
+func Validate(documents DocumentSet) error {
 	if documents.FormatVersion != 1 || !validName(documents.ProjectID) || len(documents.Documents) == 0 {
 		return errors.New("invalid project document set")
 	}
@@ -39,7 +46,7 @@ func (s *Service) Save(ctx context.Context, documents DocumentSet) error {
 			return errors.New("invalid project document path")
 		}
 	}
-	return s.store.Save(ctx, documents)
+	return nil
 }
 
 func validName(value string) bool {

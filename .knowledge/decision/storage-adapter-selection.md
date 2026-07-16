@@ -17,6 +17,10 @@ selection:
     default: system:origin-private-project-store
     continuous_recovery: system:origin-private-project-store
     portable_exchange: data:portable-project-archive
+  wails_desktop_mode:
+    primary: system:wails-project-file-adapter
+    continuous_recovery: system:origin-private-project-store
+    portable_exchange: data:portable-project-archive
 rules:
   - Detect capabilities at runtime.
   - Keep adapter selection outside modeling and collaboration logic.
@@ -40,4 +44,5 @@ browser_policy:
 initial_seeds:
   go_backend_mode: system:native-project-file-adapter
   static_content_mode: bundled_static_seed_documents
+  wails_desktop_mode: bundled_or_native_seed_documents
 ```

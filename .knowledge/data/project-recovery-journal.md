@@ -7,11 +7,13 @@ title: Project Recovery Journal
 Project recovery journal durably records host-accepted project mutations between complete checkpoints.
 
 ```yaml
-location: system:origin-private-project-store
+location:
+  browser: system:origin-private-project-store
+  wails_desktop: system:origin-private-project-store
 scope:
   owner: actor:session-host
   key:
-    - origin
+    - runtime_storage_scope
     - project_id
 records:
   ordered_by: host_sequence

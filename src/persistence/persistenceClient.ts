@@ -2,6 +2,8 @@ import type { DurableOperation, DurableState } from "../collaboration/types";
 import type { OpfsProject } from "./projectCatalog";
 import { PersistenceService, type CatalogView, type PersistenceSession } from "./persistenceService";
 import { PERSISTENCE_PROTOCOL_VERSION, type PersistenceOperation, type PersistenceRequest, type PersistenceResponse } from "./persistenceProtocol";
+import { createProjectDocumentSet, readProjectDocumentSet } from "./projectDocument";
+import { wailsApp } from "./wailsBridge";
 
 type PersistedModel = { id: string; x?: number; y?: number };
 
@@ -176,8 +178,18 @@ export class PersistenceClient<T extends PersistedModel> {
   renameProject(projectId: string, displayName: string) { return this.call<CatalogView>("rename_project", { projectId, displayName }); }
   deleteProject(projectId: string, currentState: DurableState<T>, initialState: DurableState<T>) { return this.call<PersistenceSession<T>>("delete_project", { projectId, currentState, initialState }); }
   touchProject(projectId: string) { return this.call<CatalogView>("touch_project", { projectId }); }
-  loadNative(clientId: string, projectId: string) { return this.call<DurableState<T> | undefined>("load_native", { clientId, projectId }); }
-  saveNative(clientId: string, projectId: string, state: DurableState<T>) { return this.call<void>("save_native", { clientId, projectId, state }); }
+  async loadNative(clientId: string, projectId: string) {
+    const desktop = wailsApp();
+    if (!desktop) return this.call<DurableState<T> | undefined>("load_native", { clientId, projectId });
+    const documents = await desktop.OpenProject();
+    return documents ? readProjectDocumentSet<T>(documents) : undefined;
+  }
+
+  async saveNative(clientId: string, projectId: string, state: DurableState<T>) {
+    const desktop = wailsApp();
+    if (!desktop) return this.call<void>("save_native", { clientId, projectId, state });
+    await desktop.SaveProject(createProjectDocumentSet(projectId, state));
+  }
   loadDirectory(directory: FileSystemDirectoryHandle, projectId: string) { return this.call<DurableState<T>>("load_directory", { directory, projectId }); }
   saveDirectory(directory: FileSystemDirectoryHandle, projectId: string, state: DurableState<T>) { return this.call<void>("save_directory", { directory, projectId, state }); }
   encodeArchive(projectId: string, state: DurableState<T>) { return this.call<ArrayBuffer>("encode_archive", { projectId, state }); }

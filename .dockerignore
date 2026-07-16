@@ -1,0 +1,10 @@
+.git
+.github
+.knowledge
+desktop
+dist
+node_modules
+memo.md
+model/projects
+server/webassets/dist
+*.log
