@@ -1,5 +1,5 @@
 import type { DataDomain, ExpandedDomainField, ModelField, ModelSeed, Multiplicity, NameDisplayMode, NameSet, Relationship, RelationshipDirection, RelationshipReference } from "./types";
-import { cardHeight, cardWidth } from "./constants";
+import { cardHeight, cardWidth } from "./constants.ts";
 
 export const clampScale = (scale: number) => Math.min(2.4, Math.max(0.35, scale));
 
@@ -43,7 +43,15 @@ export function flattenLabels(seed: ModelSeed) {
 
 export const isMany = (multiplicity: Multiplicity) => multiplicity === "0..*" || multiplicity === "1..*";
 
+export function normalizeRelationshipSemantics(relationship: Relationship): Relationship {
+  const name = relationship.name.trim();
+  if (relationship.kind === "composition") return { ...relationship, name, onDelete: "cascade" };
+  if (relationship.kind === "foreign-key") return { ...relationship, name, onDelete: relationship.onDelete ?? "no_action" };
+  return { ...relationship, name, onDelete: undefined };
+}
+
 export function relationshipDisplaySeedIDs(relationship: Relationship) {
+  if (relationship.kind === "composition") return [relationship.sourceId];
   if (relationship.kind === "inherit" || relationship.kind === "label") return [relationship.sourceId, relationship.targetId];
   const sourceMany = isMany(relationship.sourceMultiplicity);
   const targetMany = isMany(relationship.targetMultiplicity);
@@ -185,10 +193,30 @@ export function getRelationshipGeometry(relationship: Relationship, seeds: Model
   return {
     path: `M${start.x} ${start.y} C${control1.x} ${control1.y}, ${control2.x} ${control2.y}, ${end.x} ${end.y}`,
     arrowPath: arrowHeadPath(arrowTip, arrowTangent),
+    sourcePoint: start,
+    sourceTangent: { x: control1.x - start.x, y: control1.y - start.y },
     sourceLabel: offsetMultiplicityLabel(start, sourceIntersection.edge),
     targetLabel: offsetMultiplicityLabel(end, targetIntersection.edge),
     namePosition: cubicPoint(start, control1, control2, end, 0.5)
   };
+}
+
+export function getCompositionDiamondPath(relationship: Relationship, seeds: ModelSeed[]) {
+  if (relationship.kind !== "composition") return undefined;
+  const geometry = getRelationshipGeometry(relationship, seeds);
+  if (!geometry) return undefined;
+  const length = Math.hypot(geometry.sourceTangent.x, geometry.sourceTangent.y);
+  if (length < 0.001) return undefined;
+  const unitX = geometry.sourceTangent.x / length;
+  const unitY = geometry.sourceTangent.y / length;
+  const perpendicularX = -unitY;
+  const perpendicularY = unitX;
+  const tip = geometry.sourcePoint;
+  const middle = { x: tip.x + unitX * 9, y: tip.y + unitY * 9 };
+  const far = { x: tip.x + unitX * 18, y: tip.y + unitY * 18 };
+  const sideA = { x: middle.x + perpendicularX * 6.5, y: middle.y + perpendicularY * 6.5 };
+  const sideB = { x: middle.x - perpendicularX * 6.5, y: middle.y - perpendicularY * 6.5 };
+  return `M${tip.x} ${tip.y} L${sideA.x} ${sideA.y} L${far.x} ${far.y} L${sideB.x} ${sideB.y} Z`;
 }
 
 export function getRelationshipRoughness(relationship: Relationship, seeds: ModelSeed[]) {

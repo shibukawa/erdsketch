@@ -1,5 +1,37 @@
 import type { DataDomain, IndexKey, ModelField, PartitionBound, RangePartitionScheme, Relationship, RelationshipReference } from "./types";
-import { expandDomainField, getFieldEffectiveName } from "./utils";
+import { expandDomainField, getFieldEffectiveName } from "./utils.ts";
+
+export type CompositionProjection = {
+  relationshipId: string;
+  ownerModelId: string;
+  childModelId: string;
+  fieldName: string;
+  relational: {
+    foreignKeyFromModelId: string;
+    foreignKeyToModelId: string;
+    onDelete: "cascade";
+  };
+  document: { fieldName: string; value: "child-object" | "child-object-array" };
+  searchIndex: { fieldName: string; value: "child-object" | "child-object-array" };
+};
+
+export function compositionProjection(relationship: Relationship): CompositionProjection | undefined {
+  if (relationship.kind !== "composition") return undefined;
+  const value = relationship.targetMultiplicity === "0..*" || relationship.targetMultiplicity === "1..*" ? "child-object-array" : "child-object";
+  return {
+    relationshipId: relationship.id,
+    ownerModelId: relationship.sourceId,
+    childModelId: relationship.targetId,
+    fieldName: relationship.name,
+    relational: {
+      foreignKeyFromModelId: relationship.targetId,
+      foreignKeyToModelId: relationship.sourceId,
+      onDelete: "cascade"
+    },
+    document: { fieldName: relationship.name, value },
+    searchIndex: { fieldName: relationship.name, value }
+  };
+}
 
 export type PhysicalColumnCandidate = {
   id: string;

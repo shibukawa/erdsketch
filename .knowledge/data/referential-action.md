@@ -16,6 +16,7 @@ values:
 default: no_action
 validation:
   - Action applies only when data:relationship exports a foreign key.
+  - data:composition-relationship fixes the action to cascade and does not allow editing it.
   - set_null requires every local foreign-key column to be nullable.
   - cascade is reviewed against policy:deletion-policy and data:data-lifecycle.
 deferred:

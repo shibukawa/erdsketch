@@ -5,9 +5,10 @@ type RoughLinkProps = {
   path: string;
   roughness: number;
   arrowPath?: string;
+  diamondPath?: string;
 };
 
-export function RoughLink({ path, roughness, arrowPath }: RoughLinkProps) {
+export function RoughLink({ path, roughness, arrowPath, diamondPath }: RoughLinkProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
@@ -32,7 +33,15 @@ export function RoughLink({ path, roughness, arrowPath }: RoughLinkProps) {
         fill: "none"
       }));
     }
-  }, [arrowPath, path, roughness]);
+    if (diamondPath) {
+      const diamond = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      diamond.setAttribute("d", diamondPath);
+      diamond.setAttribute("fill", "#0f172a");
+      diamond.setAttribute("stroke", "#0f172a");
+      diamond.setAttribute("stroke-width", "1.5");
+      svg.appendChild(diamond);
+    }
+  }, [arrowPath, diamondPath, path, roughness]);
 
   return <svg ref={svgRef} className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" aria-hidden="true" />;
 }

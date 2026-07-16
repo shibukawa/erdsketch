@@ -581,6 +581,36 @@ func TestRelationshipReferentialActionValidationAndPersistence(t *testing.T) {
 	}
 }
 
+func TestCompositionForcesCascadeAndRejectsMultipleOwners(t *testing.T) {
+	hub := NewHub()
+	seeds := []ModelSeed{{ID: "order", Title: "Order"}, {ID: "line", Title: "OrderLine"}, {ID: "cart", Title: "Cart"}}
+	hub.Join(Collaborator{ID: "lion", Name: "Lion"}, seeds, nil, nil)
+	if _, err := hub.ChangeLocks("lion", []string{"order", "line", "cart"}, "lock"); err != nil {
+		t.Fatalf("lock endpoints: %v", err)
+	}
+	composition := Relationship{
+		ID: "order-lines", Name: " lines ", SourceID: "order", TargetID: "line",
+		SourceMultiplicity: "1", TargetMultiplicity: "1..*", Direction: "source-to-target",
+		Kind: "composition", OnDelete: "restrict",
+	}
+	reference := RelationshipReference{ID: "order-lines-reference", RelationshipID: composition.ID}
+	if _, err := hub.UpdateRelationship("lion", composition, reference, true, false); err != nil {
+		t.Fatalf("create composition: %v", err)
+	}
+	stored := hub.snapshotLocked().Relationships[0]
+	if stored.Name != "lines" || stored.OnDelete != "cascade" || stored.Kind != "composition" {
+		t.Fatalf("normalized composition: %+v", stored)
+	}
+	second := composition
+	second.ID = "cart-lines"
+	second.SourceID = "cart"
+	second.Name = "items"
+	secondReference := RelationshipReference{ID: "cart-lines-reference", RelationshipID: second.ID}
+	if _, err := hub.UpdateRelationship("lion", second, secondReference, true, false); !errors.Is(err, ErrRelationshipInvalid) {
+		t.Fatalf("second composition owner: got %v, want %v", err, ErrRelationshipInvalid)
+	}
+}
+
 func TestRelationshipUpdateRejectsInvalidKindAndVisibilityModel(t *testing.T) {
 	hub := NewHub()
 	seeds := []ModelSeed{{ID: "child"}, {ID: "parent"}, {ID: "other"}}

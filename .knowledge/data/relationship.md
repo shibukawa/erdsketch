@@ -14,7 +14,7 @@ relationship_types:
   - has-a
   - is-a
   - Aggregation
-  - Composition
+  - composition
   - dependent
 common_fields:
   - name
@@ -69,6 +69,7 @@ reference_projection:
     many_to_one: many_endpoint
     one_to_one: arrow_origin_endpoint
     many_to_many: both_endpoints
+    composition: owner_endpoint
   model_ownership: none
   cardinality_flip_effect: presentation_only
   persisted_as: data:relationship-reference
@@ -90,6 +91,12 @@ has_a_fields:
   - lifecycle
   - ownership
   - data:referential-action
+composition:
+  semantics: data:composition-relationship
+  owner_endpoint: source_entity
+  child_endpoint: target_entity
+  name_becomes: owner_field_name
+  reference_projection: owner_endpoint
 dependent_fields:
   - parent_entity
   - child_entity
@@ -130,8 +137,9 @@ examples:
     target: Order
     name: history
   - source: Order
-    type: Composition
+    type: composition
     target: OrderLine
+    name: lines
   - source: Order
     type: dependent
     target: OrderItem
