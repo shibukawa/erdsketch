@@ -53,6 +53,8 @@ ui:
                   - unavailable_with_explanation
 entry_point: ui:workspace-data-navigation
 behavior:
+  initial_open:
+    language_selection_precedes_contextual_guidance: true
   default_tab: origin-private-storage
   file_system_capability: runtime_feature_detection
   unsupported_file_system:

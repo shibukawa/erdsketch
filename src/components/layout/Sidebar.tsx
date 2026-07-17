@@ -71,7 +71,7 @@ export function Sidebar({
   }, [onOpenDomainDictionary]);
 
   return (
-    <aside className="z-20 flex w-[330px] shrink-0 flex-col overflow-y-auto border-r border-slate-200 bg-white px-5 py-5 shadow-sm">
+    <aside data-tour="erd-sidebar" className="z-20 flex w-[330px] shrink-0 flex-col overflow-y-auto border-r border-slate-200 bg-white px-5 py-5 shadow-sm">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-950 text-white">
           <Braces size={20} />
@@ -82,7 +82,7 @@ export function Sidebar({
         </div>
       </div>
 
-      <form className="mt-6" onSubmit={handleAddSeed}><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Quick create</p><div className="mt-2 join intent-add w-full rounded-lg"><input ref={newModelInputRef} className="input input-sm input-bordered join-item min-w-0 flex-1 bg-transparent" value={newModelName} disabled={creatingModel} onChange={(event) => setNewModelName(event.target.value)} placeholder="New model name" aria-label="New model name" /><button className="btn btn-primary btn-sm join-item" disabled={!newModelName.trim() || creatingModel}>Add</button></div><p className="mt-1 text-[11px] text-slate-500">Enter creates a model and keeps this input ready.</p></form>
+      <form data-tour="erd-quick-create" className="mt-6" onSubmit={handleAddSeed}><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Quick create</p><div className="mt-2 join intent-add w-full rounded-lg"><input ref={newModelInputRef} className="input input-sm input-bordered join-item min-w-0 flex-1 bg-transparent" value={newModelName} disabled={creatingModel} onChange={(event) => setNewModelName(event.target.value)} placeholder="New model name" aria-label="New model name" /><button className="btn btn-primary btn-sm join-item" disabled={!newModelName.trim() || creatingModel}>Add</button></div><p className="mt-1 text-[11px] text-slate-500">Enter creates a model and keeps this input ready.</p></form>
 
       <label className="input input-bordered intent-search mt-4 flex h-11 items-center gap-2 rounded-lg">
         <Search size={16} className="text-slate-400" />
@@ -133,7 +133,7 @@ export function Sidebar({
       )}
 
       <div className="mt-auto pt-6">
-        <button type="button" className="btn btn-outline mb-2 w-full justify-start gap-2" onClick={onOpenVocabulary}>
+        <button data-tour="erd-vocabulary" type="button" className="btn btn-outline mb-2 w-full justify-start gap-2" onClick={onOpenVocabulary}>
           <Languages size={17} />Vocabulary
         </button>
         <button type="button" className="btn btn-outline w-full justify-start gap-2" onClick={handleOpenDomainDictionary}>

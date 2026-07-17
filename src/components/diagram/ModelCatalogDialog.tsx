@@ -1,6 +1,8 @@
 import { ArrowRightLeft, ExternalLink, MapPin, Plus, Search, X } from "lucide-react";
 import { useCallback, useMemo, useState, type ChangeEvent, type MouseEvent } from "react";
 import type { CanvasModelPlacement, ErdCanvas, ModelSeed } from "../../features/modeling/types";
+import { GuidedTourButton } from "../guidedTour/GuidedTourButton";
+import { GuidedTourTrigger } from "../guidedTour/GuidedTourTrigger";
 
 type ModelCatalogDialogProps = {
   seeds: ModelSeed[];
@@ -27,10 +29,11 @@ export function ModelCatalogDialog({ seeds, canvases, placements, activeCanvasId
   const handleTransfer = useCallback((event: MouseEvent<HTMLButtonElement>) => onTransfer(event.currentTarget.dataset.seedId!), [onTransfer]);
   const handleOpen = useCallback((event: MouseEvent<HTMLButtonElement>) => onOpenPlacement(event.currentTarget.dataset.canvasId!, event.currentTarget.dataset.seedId!), [onOpenPlacement]);
 
-  return <div className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="model-catalog-title">
+  return <div data-tour="model-catalog" className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="model-catalog-title">
+    <GuidedTourTrigger tour="models" />
     <div className="modal-box h-[78vh] max-w-6xl rounded-xl bg-white p-0">
-      <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4"><div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Project inventory</p><h2 id="model-catalog-title" className="text-xl font-bold">Models</h2></div><button type="button" className="btn btn-ghost btn-sm btn-square" onClick={onClose}><X size={18} /></button></header>
-      <div className="flex gap-3 border-b border-slate-200 px-6 py-3"><label className="input input-bordered input-sm flex flex-1 items-center gap-2"><Search size={15} /><input className="grow" placeholder="Search models" value={query} onChange={handleQueryChange} /></label><select className="select select-bordered select-sm" value={canvasFilter} onChange={handleCanvasFilterChange}><option value="">All canvases</option>{canvases.map((canvas) => <option key={canvas.id} value={canvas.id}>{canvas.name}</option>)}</select></div>
+      <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4"><div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Project inventory</p><h2 id="model-catalog-title" className="text-xl font-bold">Models</h2></div><div className="flex items-center gap-1"><GuidedTourButton tour="models" label="Models" compact /><button type="button" className="btn btn-ghost btn-sm btn-square" aria-label="Close model catalog" onClick={onClose}><X size={18} /></button></div></header>
+      <div data-tour="model-filters" className="flex gap-3 border-b border-slate-200 px-6 py-3"><label className="input input-bordered input-sm flex flex-1 items-center gap-2"><Search size={15} /><input className="grow" placeholder="Search models" value={query} onChange={handleQueryChange} /></label><select className="select select-bordered select-sm" value={canvasFilter} onChange={handleCanvasFilterChange}><option value="">All canvases</option>{canvases.map((canvas) => <option key={canvas.id} value={canvas.id}>{canvas.name}</option>)}</select></div>
       <div className="h-[calc(78vh-126px)] overflow-auto px-6 py-4"><table className="table table-pin-rows"><thead><tr><th>Model</th><th>Role</th><th>Owner canvas</th><th>Placed canvases</th><th className="text-right">Actions</th></tr></thead><tbody>{visibleSeeds.map((seed) => {
         const modelPlacements = placements.filter((placement) => placement.seedId === seed.id);
         const owner = modelPlacements.find((placement) => placement.accessMode === "owner");

@@ -27,6 +27,8 @@ import { VocabularyNavigationProvider, useVocabularyNavigation } from "./Vocabul
 import { FieldDefinitionPanel } from "./FieldDefinitionPanel";
 import { IndexDefinitionDialog } from "./IndexDefinitionDialog";
 import { PartitionDefinitionDialog } from "./PartitionDefinitionDialog";
+import { GuidedTourButton } from "../guidedTour/GuidedTourButton";
+import { GuidedTourTrigger } from "../guidedTour/GuidedTourTrigger";
 
 type FieldListDialogProps = {
   modelId: string;
@@ -336,6 +338,7 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
 
   return createPortal(
     <VocabularyNavigationProvider onOpen={handleOpenVocabulary}><dialog
+      data-tour="field-dialog"
       ref={dialogRef}
       className="field-list-dialog m-auto h-[min(90vh,860px)] w-[min(98vw,1460px)] overflow-hidden rounded-xl border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl"
       aria-labelledby="field-list-title"
@@ -345,6 +348,8 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
       onPointerDown={handleDialogPointerDown}
       onWheel={handleDialogWheel}
     >
+      <div data-guided-tour-portal="fields" />
+      <GuidedTourTrigger tour="fields" />
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <header className="shrink-0 border-b border-slate-200 px-5 py-4">
           <div className="flex items-start justify-between gap-5">
@@ -353,15 +358,16 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
               <p className="truncate text-xs font-bold uppercase tracking-[0.14em] text-blue-600"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`table:${modelId}`} legacyName={modelTitle} names={modelNames} mode={nameDisplayMode} /></p>
               <span className="text-xs font-semibold text-slate-400">{fields.length + relationshipReferences.length} items</span>
             </div>
-            <button type="button" className="btn btn-ghost btn-sm btn-square -mr-1 -mt-1" aria-label="Close field list" onClick={onClose}>
+            <div className="flex items-center gap-1"><GuidedTourButton tour="fields" label="Fields" compact /><button type="button" className="btn btn-ghost btn-sm btn-square -mr-1 -mt-1" aria-label="Close field list" onClick={onClose}>
               <X size={18} />
-            </button>
+            </button></div>
           </div>
 
           <div className="mt-3 w-72"><NameModeControl value={nameDisplayMode} onChange={setNameDisplayMode} compact /></div>
 
           <div className="mt-3 flex items-center gap-3">
             <label
+              data-tour="field-quick-entry"
               className={`input input-bordered intent-add flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg ${quickEntryDomainDropTarget ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200" : ""}`}
               onDragOver={handleQuickEntryDragOver}
               onDragLeave={handleQuickEntryDragLeave}

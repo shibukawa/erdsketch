@@ -3,6 +3,7 @@ import { startTransition, useCallback, useState, type ChangeEvent, type FocusEve
 import type { Collaborator } from "../../collaboration";
 import { WorkspaceProjectNavigation } from "./WorkspaceProjectNavigation";
 import { CoworkParticipantSummary } from "../collaboration/CoworkParticipantSummary";
+import { GuidedTourButton } from "../guidedTour/GuidedTourButton";
 
 type WorkspaceHeaderProps = {
   me: Collaborator;
@@ -62,8 +63,9 @@ export function WorkspaceHeader({ me, users, connected, canvasName, onRename, on
     <header className="z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-7 py-4 shadow-sm">
       <WorkspaceProjectNavigation isHost={isHost} recoveryReady={recoveryReady} persistentStorage={persistentStorage} recoveryError={recoveryError} activeProject={activeProject} canvasName={canvasName} onOpenProjectManager={onOpenProjectManager} onOpenCanvasSelector={onOpenCanvasSelector} />
       <div className="flex items-center gap-2">
-        <button type="button" className="btn btn-outline btn-sm gap-2" onClick={onOpenModelCatalog}><Search size={16} />Models</button>
+        <button data-tour="erd-models" type="button" className="btn btn-outline btn-sm gap-2" onClick={onOpenModelCatalog}><Search size={16} />Models</button>
         <button type="button" className="btn btn-outline btn-sm gap-2" onClick={onOpenCrudMatrix}><Grid3X3 size={16} />CRUD Matrix</button>
+        <GuidedTourButton tour="erd" label="ERD" />
         <CoworkParticipantSummary me={me} users={users} connected={connected} isHost={isHost} onOpenCowork={onShareWork} />
         <span
           className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-amber-500"}`}

@@ -112,6 +112,7 @@ export function DiagramCanvas({
 
   return (
     <div
+      data-tour="erd-canvas"
       ref={canvasRef}
       className={`erd-canvas relative min-h-0 flex-1 overflow-hidden ${dragState?.type === "pan" ? "cursor-grabbing" : "cursor-grab"}`}
       style={{

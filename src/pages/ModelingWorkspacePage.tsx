@@ -39,6 +39,7 @@ import { CoworkDisconnectionDialog } from "../components/collaboration/CoworkDis
 import { CoworkClosedScreen } from "../components/collaboration/CoworkClosedScreen";
 import { CoworkReadOnlySnapshotNotice } from "../components/collaboration/CoworkReadOnlySnapshotNotice";
 import { ExportDialog } from "../components/layout/ExportDialog";
+import { GuidedTourTrigger } from "../components/guidedTour/GuidedTourTrigger";
 
 type ModelingWorkspacePageProps = { initialInvitationToken?: string; initialParticipantRecovery?: ParticipantRecoveryCandidate<ModelSeed> };
 
@@ -1091,6 +1092,7 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
 
   if (workspaceMode === "dfd") {
     return <>
+      {workspaceStarted && !startDialogOpen && !canvasSelectionRequired && <GuidedTourTrigger tour="dfd" />}
       <DfdWorkspace dfd={dfd} erdCanvases={canvases} activeCanvasId={activeDfdCanvasId} models={seeds} me={me} users={users} connected={connected} isHost={isHost} recoveryReady={recoveryStatus.ready} persistentStorage={recoveryStatus.persistentStorage} recoveryError={recoveryStatus.error} activeProject={activeProject ?? undefined} onOpenProjectManager={openProjectManager} onOpenExport={openExportDialog} onSetLocalDfd={setLocalDfd} onSaveDfd={saveDfd} onSaveCatalogModel={saveCatalogSeed} onSetLocalModels={setLocalSeeds} relationships={relationships} relationshipReferences={relationshipReferences} domains={domains} domainCategories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} onLockModel={lock} onUnlockModel={unlock} onUpdateRelationshipReference={(relationshipId, patch) => void updateRelationshipReference(relationshipId, patch)} onDeleteRelationship={(relationshipId) => { const relationship = relationships.find((item) => item.id === relationshipId); if (relationship) void deleteRelationship(relationship); }} onCreateDomain={(name) => void createDomain(name)} onOpenDomainDictionary={openDomainDictionary} onApplyRefinement={applyRefinement} onActiveCanvasChange={setActiveDfdCanvasId} onSelectErdCanvas={selectErdCanvas} onCreateProjectCanvas={createProjectCanvas} onRenameProjectCanvas={renameProjectCanvas} onOpenCrudMatrix={openCrudMatrix} onShareWork={sharing.openHostDialog} annotations={annotations} onSetLocalAnnotations={setLocalAnnotations} onSaveAnnotation={saveAnnotation} onUpdateAnnotationPresence={updateAnnotationPresence} onMoveCursor={moveCursor} onChangeCanvasPresence={changeCanvas} />
       {projectManagerOpen && <ProjectManagerDialog projects={projects} activeProjectId={activeProject?.projectId} isHost={isHost} recoveryReady={recoveryStatus.ready} recoveryError={recoveryStatus.error} fileSystemAvailable={fileSystemAvailable} starters={starterProjects} onCreateStarter={startFromTemplate} onCreate={createOpfsProject} onSaveAs={saveOpfsProjectAs} onLoad={loadOpfsProject} onRename={renameOpfsProject} onDelete={deleteOpfsProject} onOpenFileSystem={openProject} onSaveFileSystem={saveProject} onExport={exportProject} onImport={importProject} onClose={closeProjectManager} />}
       {crudMatrixOpen && <CrudMatrixDialog dfd={dfd} models={seeds} onChange={updateProjectDfd} onClose={closeCrudMatrix} />}
@@ -1105,6 +1107,7 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
 
   return (
     <VocabularyNavigationProvider onOpen={openVocabularyAt}><main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
+      {workspaceStarted && !startDialogOpen && !canvasSelectionRequired && <GuidedTourTrigger tour="erd" />}
       <div className="flex h-full">
         <Sidebar
           query={query}

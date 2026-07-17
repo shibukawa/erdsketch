@@ -605,6 +605,7 @@ const japanese: Record<string, string> = {
   "A blank project with one empty ERD and DFD canvas.": "空の ERD と DFD キャンバスを一つずつ持つプロジェクトです。",
   "The project could not be opened. Your current recovery data was not changed.": "プロジェクトを開けませんでした。現在のリカバリデータは変更されていません。",
   "Choose a workspace": "ワークスペースを選択",
+  "Guide": "ガイド",
   "The project is ready. Select the diagram you want to open.": "プロジェクトの準備ができました。開く図を選択してください。",
 };
 
