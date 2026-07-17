@@ -24,11 +24,19 @@ tools:
       - attached_canvas_item
     label: optional
   pen:
-    output: freehand_stroke
+    output: one freehand_stroke annotation containing one or more strokes
+    creation: flow:multi-stroke-annotation-drawing
     closed_stroke_action: convert_to_background_boundary
   boundary:
     purpose: visually_label_subsystem_or_discussion_scope
     label: optional
+geometry_editing:
+  flow: flow:annotation-geometry-editing
+  arrow: direct_endpoint_drag_on_selection
+  freehand_stroke: explicit_edit_mode_with_node_and_stroke_deletion
+  background_boundary: explicit_edit_mode_with_node_movement_and_deletion
+geometry_efficiency:
+  requirement: requirement:annotation-point-simplification
 collaboration:
   rule: rule:canvas-annotation-collaboration
 semantics:
@@ -38,6 +46,13 @@ acceptance:
   - Users see live collaborator cursors, selections, and text-edit ownership on the active canvas.
   - Annotation text follows rule:collaborative-text-commit so host snapshots cannot overwrite unfinished typing.
   - Attached arrow endpoints follow moved canvas items.
+  - Releasing the pointer ends one pen stroke but keeps the drawing session active for more strokes.
+  - Done commits all strokes from the active pen session as one annotation.
+  - Normal deletion removes the complete multi-stroke annotation.
+  - Geometry edit can remove one stroke without removing its sibling strokes.
+  - Freehand and boundary geometry changes commit only when Confirm is pressed.
+  - Selected arrow endpoints can be dragged without entering geometry edit.
+  - Completed pen strokes and boundaries discard redundant points without visible shape loss.
   - A closed pen stroke can become a background boundary without moving enclosed items.
   - Annotations persist with their canvas and reopen at the same geometry and layer.
   - Annotation operations participate in per-user undo and redo.

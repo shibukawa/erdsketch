@@ -85,6 +85,37 @@ func TestCanvasAnnotationValidationIncludesDFDCanvas(t *testing.T) {
 	}
 }
 
+func TestCanvasAnnotationAcceptsAndClonesGroupedFreehandStrokes(t *testing.T) {
+	hub := NewHub()
+	hub.Join(Collaborator{ID: "lion", Name: "Lion", CanvasID: DefaultCanvasID}, nil, nil, nil)
+	pen := CanvasAnnotation{
+		ID: "pen", CanvasType: "erd", CanvasID: DefaultCanvasID, Kind: "freehand_stroke", Color: "#334155", StrokeWidth: 3, Layer: "annotation",
+		Strokes: []AnnotationStroke{
+			{Points: []CanvasPoint{{X: 1, Y: 1}, {X: 2, Y: 2}}},
+			{Points: []CanvasPoint{{X: 10, Y: 10}, {X: 20, Y: 20}}},
+		},
+	}
+	if _, err := hub.UpdateAnnotation("lion", pen, true, false); err != nil {
+		t.Fatalf("create grouped freehand annotation: %v", err)
+	}
+	pen.Strokes[0].Points[0].X = 999
+	if got := hub.snapshotLocked().Annotations[0].Strokes[0].Points[0].X; got != 1 {
+		t.Fatalf("stored stroke was aliased: got %v, want 1", got)
+	}
+	if _, err := hub.UpdateAnnotation("lion", pen, false, true); err != nil {
+		t.Fatalf("delete grouped freehand annotation: %v", err)
+	}
+	if got := len(hub.snapshotLocked().Annotations); got != 0 {
+		t.Fatalf("group deletion retained annotations: got %d, want 0", got)
+	}
+	invalid := pen
+	invalid.ID = "invalid-pen"
+	invalid.Strokes = []AnnotationStroke{{Points: []CanvasPoint{{X: 1, Y: 1}}}}
+	if _, err := hub.UpdateAnnotation("lion", invalid, true, false); !errors.Is(err, ErrAnnotationInvalid) {
+		t.Fatalf("single-point stroke: got %v, want %v", err, ErrAnnotationInvalid)
+	}
+}
+
 func TestNamingPolicyDefaultsToSingularAndSynchronizes(t *testing.T) {
 	hub := NewHub()
 	joined := hub.Join(Collaborator{ID: "lion", Name: "Lion"}, nil, nil, nil)

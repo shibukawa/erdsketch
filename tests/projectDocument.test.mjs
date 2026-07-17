@@ -17,7 +17,14 @@ function projectState() {
     namingPolicy: { tablePluralization: "singular", tableJoinMode: "separator", tableSeparator: "_", fieldJoinMode: "separator", fieldSeparator: "_", domainJoinMode: "concatenate", domainSeparator: "_" },
     vocabularyEntries: [],
     dfd: { canvases: [{ id: "dfd-id", name: "Flow" }], nodes: [], flows: [], groups: [], crudMatrix: { orientation: "processes_rows", processOrder: [], modelOrder: [] } },
-    annotations: []
+    annotations: [{
+      id: "pen-id", canvasType: "erd", canvasId: "canvas-id", kind: "freehand_stroke",
+      strokes: [
+        { points: [{ x: 10, y: 20 }, { x: 30, y: 40 }] },
+        { points: [{ x: 50, y: 60 }, { x: 70, y: 80 }] }
+      ],
+      color: "#334155", fill: "transparent", strokeWidth: 3, layer: "annotation", createdBy: "client", updatedBy: "client"
+    }]
   };
 }
 

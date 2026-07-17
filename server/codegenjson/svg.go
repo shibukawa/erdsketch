@@ -776,8 +776,10 @@ func addAnnotationBounds(bounds *svgBounds, annotations []SourceCanvasAnnotation
 			bounds.addPoint(annotation.Start.X, annotation.Start.Y)
 			bounds.addPoint(annotation.End.X, annotation.End.Y)
 		default:
-			for _, point := range annotation.Points {
-				bounds.addPoint(point.X, point.Y)
+			for _, points := range annotationPointSequences(annotation) {
+				for _, point := range points {
+					bounds.addPoint(point.X, point.Y)
+				}
 			}
 		}
 	}
@@ -809,17 +811,23 @@ func renderAnnotations(out *strings.Builder, annotations []SourceCanvasAnnotatio
 			}
 			out.WriteString(`</g>`)
 		default:
-			if len(annotation.Points) == 0 {
+			sequences := annotationPointSequences(annotation)
+			if len(sequences) == 0 {
 				continue
 			}
 			var path strings.Builder
-			for index, point := range annotation.Points {
-				if index == 0 {
-					path.WriteString("M")
-				} else {
-					path.WriteString(" L")
+			for _, points := range sequences {
+				for index, point := range points {
+					if index == 0 {
+						if path.Len() > 0 {
+							path.WriteString(" ")
+						}
+						path.WriteString("M")
+					} else {
+						path.WriteString(" L")
+					}
+					path.WriteString(number(point.X) + " " + number(point.Y))
 				}
-				path.WriteString(number(point.X) + " " + number(point.Y))
 			}
 			dash := ""
 			if annotation.Kind == "background_boundary" {
@@ -829,6 +837,22 @@ func renderAnnotations(out *strings.Builder, annotations []SourceCanvasAnnotatio
 			fmt.Fprintf(out, `<path id="annotation-%s" d="%s" fill="%s" stroke="%s" stroke-width="%s" stroke-linecap="round" stroke-linejoin="round"%s/>`, xmlAttr(annotation.ID), path.String(), fill, color, number(strokeWidth), dash)
 		}
 	}
+}
+
+func annotationPointSequences(annotation SourceCanvasAnnotation) [][]SourceCanvasPoint {
+	if annotation.Kind == "freehand_stroke" && len(annotation.Strokes) > 0 {
+		result := make([][]SourceCanvasPoint, 0, len(annotation.Strokes))
+		for _, stroke := range annotation.Strokes {
+			if len(stroke.Points) > 0 {
+				result = append(result, stroke.Points)
+			}
+		}
+		return result
+	}
+	if len(annotation.Points) > 0 {
+		return [][]SourceCanvasPoint{annotation.Points}
+	}
+	return nil
 }
 
 func wrapSVG(title string, bounds svgBounds, body string) string {

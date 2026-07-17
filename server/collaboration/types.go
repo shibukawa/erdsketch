@@ -347,6 +347,10 @@ type CanvasPoint struct {
 	Y float64 `json:"y"`
 }
 
+type AnnotationStroke struct {
+	Points []CanvasPoint `json:"points"`
+}
+
 type AnnotationAnchor struct {
 	X        float64 `json:"x"`
 	Y        float64 `json:"y"`
@@ -355,25 +359,26 @@ type AnnotationAnchor struct {
 }
 
 type CanvasAnnotation struct {
-	ID          string            `json:"id"`
-	CanvasType  string            `json:"canvasType"`
-	CanvasID    string            `json:"canvasId"`
-	Kind        string            `json:"kind"`
-	X           float64           `json:"x,omitempty"`
-	Y           float64           `json:"y,omitempty"`
-	Width       float64           `json:"width,omitempty"`
-	Height      float64           `json:"height,omitempty"`
-	Points      []CanvasPoint     `json:"points,omitempty"`
-	Start       *AnnotationAnchor `json:"start,omitempty"`
-	End         *AnnotationAnchor `json:"end,omitempty"`
-	Text        string            `json:"text,omitempty"`
-	Color       string            `json:"color"`
-	Fill        string            `json:"fill,omitempty"`
-	StrokeWidth float64           `json:"strokeWidth"`
-	Layer       string            `json:"layer"`
-	ZIndex      int               `json:"zIndex,omitempty"`
-	CreatedBy   string            `json:"createdBy"`
-	UpdatedBy   string            `json:"updatedBy"`
+	ID          string             `json:"id"`
+	CanvasType  string             `json:"canvasType"`
+	CanvasID    string             `json:"canvasId"`
+	Kind        string             `json:"kind"`
+	X           float64            `json:"x,omitempty"`
+	Y           float64            `json:"y,omitempty"`
+	Width       float64            `json:"width,omitempty"`
+	Height      float64            `json:"height,omitempty"`
+	Points      []CanvasPoint      `json:"points,omitempty"`
+	Strokes     []AnnotationStroke `json:"strokes,omitempty"`
+	Start       *AnnotationAnchor  `json:"start,omitempty"`
+	End         *AnnotationAnchor  `json:"end,omitempty"`
+	Text        string             `json:"text,omitempty"`
+	Color       string             `json:"color"`
+	Fill        string             `json:"fill,omitempty"`
+	StrokeWidth float64            `json:"strokeWidth"`
+	Layer       string             `json:"layer"`
+	ZIndex      int                `json:"zIndex,omitempty"`
+	CreatedBy   string             `json:"createdBy"`
+	UpdatedBy   string             `json:"updatedBy"`
 }
 
 type State struct {

@@ -4,6 +4,7 @@ export type AnnotationLayer = "background" | "annotation" | "foreground";
 export type AnnotationTool = "select" | "sticky_note" | "arrow" | "pen" | "boundary";
 
 export type CanvasPoint = { x: number; y: number };
+export type AnnotationStroke = { points: CanvasPoint[] };
 
 export type AnnotationAnchor = CanvasPoint & {
   itemId?: string;
@@ -21,6 +22,7 @@ export type CanvasAnnotation = {
   width?: number;
   height?: number;
   points?: CanvasPoint[];
+  strokes?: AnnotationStroke[];
   start?: AnnotationAnchor;
   end?: AnnotationAnchor;
   text?: string;

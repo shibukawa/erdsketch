@@ -281,6 +281,10 @@ type SourceCanvasPoint struct {
 	Y float64 `json:"y"`
 }
 
+type SourceAnnotationStroke struct {
+	Points []SourceCanvasPoint `json:"points"`
+}
+
 type SourceAnnotationAnchor struct {
 	X        float64 `json:"x"`
 	Y        float64 `json:"y"`
@@ -289,23 +293,24 @@ type SourceAnnotationAnchor struct {
 }
 
 type SourceCanvasAnnotation struct {
-	ID          string                 `json:"id"`
-	CanvasType  string                 `json:"canvasType"`
-	CanvasID    string                 `json:"canvasId"`
-	Kind        string                 `json:"kind"`
-	X           float64                `json:"x"`
-	Y           float64                `json:"y"`
-	Width       float64                `json:"width"`
-	Height      float64                `json:"height"`
-	Points      []SourceCanvasPoint    `json:"points"`
-	Start       SourceAnnotationAnchor `json:"start"`
-	End         SourceAnnotationAnchor `json:"end"`
-	Text        string                 `json:"text"`
-	Color       string                 `json:"color"`
-	Fill        string                 `json:"fill"`
-	StrokeWidth float64                `json:"strokeWidth"`
-	Layer       string                 `json:"layer"`
-	ZIndex      int                    `json:"zIndex"`
+	ID          string                   `json:"id"`
+	CanvasType  string                   `json:"canvasType"`
+	CanvasID    string                   `json:"canvasId"`
+	Kind        string                   `json:"kind"`
+	X           float64                  `json:"x"`
+	Y           float64                  `json:"y"`
+	Width       float64                  `json:"width"`
+	Height      float64                  `json:"height"`
+	Points      []SourceCanvasPoint      `json:"points"`
+	Strokes     []SourceAnnotationStroke `json:"strokes"`
+	Start       SourceAnnotationAnchor   `json:"start"`
+	End         SourceAnnotationAnchor   `json:"end"`
+	Text        string                   `json:"text"`
+	Color       string                   `json:"color"`
+	Fill        string                   `json:"fill"`
+	StrokeWidth float64                  `json:"strokeWidth"`
+	Layer       string                   `json:"layer"`
+	ZIndex      int                      `json:"zIndex"`
 }
 
 type ExchangeDocument struct {
