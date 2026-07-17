@@ -58,12 +58,13 @@ accessibility:
   document_language_matches_selection: true
   selector_has_accessible_name: true
 acceptance:
-  - Japanese and English can be selected from ui:workspace-start-panel.
+  - Japanese and English can be selected from ui:workspace-start-panel and later from ui:project-management-dialog.
   - ERD and DFD workspace headers do not show a language selector.
   - Selection applies immediately and survives reload.
   - First visit follows Japanese browser preference; other languages use English.
   - Invitation and participant-recovery routes that bypass the panel use the saved preference, then browser language, then English.
   - Changing locale never mutates or persists project data.
   - Known UI text, dialog text, alerts, and accessibility labels use the selected locale.
+  - Contextual guidance starts only after initial locale resolution and uses the selected locale.
   - Missing Japanese text remains usable through English fallback.
 ```

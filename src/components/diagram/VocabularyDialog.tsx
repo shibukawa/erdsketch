@@ -7,6 +7,8 @@ import { vocabularyTermConflict, type VocabularyMatch, type VocabularyMatchCache
 import { ProjectSettingsDialog } from "./ProjectSettingsDialog";
 import { VocabularyRegistrationDialog } from "./VocabularyRegistrationDialog";
 import { VocabularyDisplayName } from "./VocabularyDisplayName";
+import { GuidedTourButton } from "../guidedTour/GuidedTourButton";
+import { GuidedTourTrigger } from "../guidedTour/GuidedTourTrigger";
 
 type VocabularyDialogProps = {
   seeds: ModelSeed[];
@@ -119,22 +121,24 @@ export function VocabularyDialog({ seeds, domains, entries, cache, indexing, nam
 
   return createPortal(
     <div className="dialog-overlay fixed inset-0 z-[90]">
-      <div role="dialog" aria-modal="true" aria-labelledby="vocabulary-title" className="fixed inset-x-[1.5vw] inset-y-[4vh] z-[90] m-auto h-[min(92vh,900px)] w-[min(97vw,1280px)] rounded-xl border border-slate-200 bg-white p-0 shadow-2xl">
+      <div data-tour="vocabulary-dialog" role="dialog" aria-modal="true" aria-labelledby="vocabulary-title" className="fixed inset-x-[1.5vw] inset-y-[4vh] z-[90] m-auto h-[min(92vh,900px)] w-[min(97vw,1280px)] rounded-xl border border-slate-200 bg-white p-0 shadow-2xl">
+        <GuidedTourTrigger tour="vocabulary" />
         <div className="flex h-full flex-col">
           <header className="flex items-center gap-4 border-b border-slate-200 px-6 py-4">
             <div><h2 id="vocabulary-title" className="text-xl font-bold">Vocabulary</h2><p className="text-sm text-slate-500">Project dictionary and read-only usage coverage</p></div>
             {indexing && <span className="badge badge-info ml-auto">Indexing names…</span>}
             <button type="button" className={`${indexing ? "" : "ml-auto "}btn btn-outline btn-sm gap-1`} onClick={openSettings}><Settings size={15} />Project settings</button>
+            <GuidedTourButton tour="vocabulary" label="Vocabulary" compact />
             <button type="button" className="btn btn-ghost btn-square" aria-label="Close vocabulary" onClick={onClose}><X size={20} /></button>
           </header>
-          <div role="tablist" className="tabs tabs-border border-b border-slate-200 px-6">
+          <div data-tour="vocabulary-tabs" role="tablist" className="tabs tabs-border border-b border-slate-200 px-6">
             <button type="button" role="tab" data-tab="words" className={`tab ${tab === "words" ? "tab-active" : ""}`} onClick={handleTabClick}>Word list</button>
             <button type="button" role="tab" data-tab="usage" className={`tab ${tab === "usage" ? "tab-active" : ""}`} onClick={handleTabClick}>Usage</button>
           </div>
           {tab === "words" ? (
             <div className="flex min-h-0 flex-1 flex-col px-6 py-4">
               <div className="flex gap-3">
-                <label className="input input-bordered intent-add flex flex-1 items-center gap-2"><Plus size={15} /><input value={quickEntry} onChange={handleQuickEntryChange} onKeyDown={handleQuickEntryKeyDown} placeholder="Type business name and press Enter" /><kbd className="kbd kbd-sm">Enter</kbd></label>
+                <label data-tour="vocabulary-quick-entry" className="input input-bordered intent-add flex flex-1 items-center gap-2"><Plus size={15} /><input value={quickEntry} onChange={handleQuickEntryChange} onKeyDown={handleQuickEntryKeyDown} placeholder="Type business name and press Enter" /><kbd className="kbd kbd-sm">Enter</kbd></label>
                 <input className="input input-bordered w-72" placeholder="Search word list" value={query} onChange={handleQuery} />
               </div>
               <div className="mt-4 min-h-0 flex-1 overflow-auto">
