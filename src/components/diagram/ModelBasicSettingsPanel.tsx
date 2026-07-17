@@ -1,8 +1,8 @@
 import { useCallback, type ChangeEvent, type MouseEvent } from "react";
-import { dependencyLabels, dependencyOptions, maturedLevelSteps, maturedStepLabels, roleMeta, roleOptions } from "../../features/modeling/constants";
+import { dependencyLabels, dependencyOptions, roleMeta, roleOptions } from "../../features/modeling/constants";
 import { defaultVolumeEstimate, normalizeTransactionRetention } from "../../features/modeling/capacity";
 import type { Dependency, EntityRole, ModelSeed } from "../../features/modeling/types";
-import { clampMaturedLevel, getModelStageLabel, updateNameSet } from "../../features/modeling/utils";
+import { getModelStageLabel, updateNameSet } from "../../features/modeling/utils";
 
 type ModelBasicSettingsPanelProps = {
   model: ModelSeed;
@@ -18,12 +18,6 @@ export function ModelBasicSettingsPanel({ model, canEdit, onChange }: ModelBasic
   }, [model.names, model.title, onChange]);
   const handleNoteChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
     onChange({ description: event.target.value });
-  }, [onChange]);
-  const handleMaturedLevelChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    onChange({ maturedLevel: clampMaturedLevel(Number(event.target.value)) });
-  }, [onChange]);
-  const handleMaturedLevelClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
-    onChange({ maturedLevel: Number(event.currentTarget.dataset.maturedLevel) });
   }, [onChange]);
   const handleRoleClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
     const role = event.currentTarget.dataset.role as EntityRole;
@@ -49,20 +43,7 @@ export function ModelBasicSettingsPanel({ model, canEdit, onChange }: ModelBasic
             <span className="text-sm font-bold text-slate-700">Note</span>
             <textarea className="textarea textarea-bordered mt-1 h-32 w-full resize-none bg-white" value={model.description} onChange={handleNoteChange} />
           </label>
-          <div>
-            <span className="flex items-center justify-between gap-3 text-sm font-bold text-slate-700">
-              <span>Model stage</span>
-              <span className="text-[10px] uppercase tracking-wide text-slate-400">{getModelStageLabel(model.maturedLevel)}</span>
-            </span>
-            <input type="range" className="range range-primary range-sm mt-3" min={0.5} max={6} step={0.25} value={model.maturedLevel} onChange={handleMaturedLevelChange} style={{ direction: "rtl" }} />
-            <div className="mt-2 grid grid-cols-4 gap-1.5">
-              {[...maturedLevelSteps].reverse().map((step) => (
-                <button key={step} type="button" data-matured-level={step} className={`btn btn-xs min-h-8 rounded-md px-1 text-[9px] ${model.maturedLevel === step ? "btn-neutral" : "btn-outline"}`} onClick={handleMaturedLevelClick}>
-                  {maturedStepLabels.get(step)}
-                </button>
-              ))}
-            </div>
-          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><span className="text-xs font-semibold text-slate-500">Automatic maturity</span><p className="mt-1 text-sm font-bold text-slate-700">{getModelStageLabel(model.maturedLevel)}</p></div>
         </div>
 
         <div className="grid gap-5 border-t border-slate-200 pt-5 md:grid-cols-2">

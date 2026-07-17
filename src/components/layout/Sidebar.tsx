@@ -1,46 +1,51 @@
-import { AlignLeft, BookOpen, Braces, KeyRound, Languages, Search } from "lucide-react";
-import { useCallback, useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from "react";
+import { BookOpen, Braces, Languages, Search } from "lucide-react";
+import { useCallback, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import type { Collaborator } from "../../collaboration";
-import type { CanvasModelPlacement, CardDisplayMode, ModelSeed, NameDisplayMode } from "../../features/modeling/types";
+import { assessModelMaturity, type ModelMaturityIssue } from "../../features/modeling/maturity";
+import type { CanvasModelPlacement, DataDomain, ModelSeed, VocabularyEntry } from "../../features/modeling/types";
+import { MaturityValidation } from "../diagram/MaturityValidation";
+import { ModelRemovalDialog } from "../diagram/ModelRemovalDialog";
 import { SeedInspector } from "../diagram/SeedInspector";
-import { NameModeControl } from "../diagram/NameModeControl";
 
 type SidebarProps = {
   query: string;
-  cardDisplayMode: CardDisplayMode;
-  nameDisplayMode: NameDisplayMode;
   selectedSeed?: ModelSeed;
   selectedOwner?: Collaborator;
   canEditSelected: boolean;
   selectedPlacement?: CanvasModelPlacement;
+  domains: DataDomain[];
+  vocabularyEntries: VocabularyEntry[];
+  canDeleteSelected: boolean;
   onQueryChange: (query: string) => void;
-  onCardDisplayModeChange: (mode: CardDisplayMode) => void;
-  onNameDisplayModeChange: (mode: NameDisplayMode) => void;
   onAddSeed: (name: string) => Promise<void>;
   onUpdateSeed: (seedId: string, patch: Partial<ModelSeed>) => void;
-  onOpenDomainDictionary: () => void;
-  onOpenVocabulary: () => void;
+  onRemoveSelected: (seedId: string) => Promise<boolean>;
+  onOpenDomainDictionary: (seedId?: string, fieldId?: string) => void;
+  onOpenVocabulary: (matchKey?: string) => void;
 };
 
 export function Sidebar({
   query,
-  cardDisplayMode,
-  nameDisplayMode,
   selectedSeed,
   selectedOwner,
   canEditSelected,
   selectedPlacement,
+  domains,
+  vocabularyEntries,
+  canDeleteSelected,
   onQueryChange,
-  onCardDisplayModeChange,
-  onNameDisplayModeChange,
   onAddSeed,
   onUpdateSeed,
+  onRemoveSelected,
   onOpenDomainDictionary,
   onOpenVocabulary
 }: SidebarProps) {
   const [newModelName, setNewModelName] = useState("");
   const [creatingModel, setCreatingModel] = useState(false);
+  const [removalTarget, setRemovalTarget] = useState<ModelSeed | null>(null);
+  const [removingModel, setRemovingModel] = useState(false);
   const newModelInputRef = useRef<HTMLInputElement | null>(null);
+  const maturity = useMemo(() => selectedSeed ? assessModelMaturity(selectedSeed, domains, vocabularyEntries) : undefined, [domains, selectedSeed, vocabularyEntries]);
   const handleAddSeed = useCallback(async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = newModelName.trim();
@@ -59,16 +64,30 @@ export function Sidebar({
     [onQueryChange]
   );
 
-  const handleCardDisplayModeClick = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      onCardDisplayModeChange(event.currentTarget.dataset.mode as CardDisplayMode);
-    },
-    [onCardDisplayModeChange]
-  );
-
   const handleOpenDomainDictionary = useCallback(() => {
     onOpenDomainDictionary();
   }, [onOpenDomainDictionary]);
+  const handleOpenVocabulary = useCallback(() => { onOpenVocabulary(); }, [onOpenVocabulary]);
+
+  const removeSelected = useCallback(async (model: ModelSeed) => {
+    setRemovingModel(true);
+    const removed = await onRemoveSelected(model.id);
+    setRemovingModel(false);
+    if (removed) setRemovalTarget(null);
+  }, [onRemoveSelected]);
+
+  const handleDeleteRequest = useCallback(() => {
+    if (!selectedSeed) return;
+    if (selectedPlacement?.accessMode === "owner") setRemovalTarget(selectedSeed);
+    else void removeSelected(selectedSeed);
+  }, [removeSelected, selectedPlacement?.accessMode, selectedSeed]);
+  const handleDeleteConfirm = useCallback(() => { if (removalTarget) void removeSelected(removalTarget); }, [removalTarget, removeSelected]);
+  const handleDeleteClose = useCallback(() => setRemovalTarget(null), []);
+  const handleResolveMaturityIssue = useCallback((issue: ModelMaturityIssue) => {
+    if (!selectedSeed) return;
+    if (issue.kind === "missing-domain") onOpenDomainDictionary(selectedSeed.id, issue.fieldId);
+    if (issue.kind === "missing-vocabulary-name") onOpenVocabulary(issue.actionKey);
+  }, [onOpenDomainDictionary, onOpenVocabulary, selectedSeed]);
 
   return (
     <aside data-tour="erd-sidebar" className="z-20 flex w-[330px] shrink-0 flex-col overflow-y-auto border-r border-slate-200 bg-white px-5 py-5 shadow-sm">
@@ -95,51 +114,22 @@ export function Sidebar({
         />
       </label>
 
-      <section className="mt-4">
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Card content</p>
-        <div className="mt-2 grid grid-cols-2 rounded-lg bg-slate-100 p-1" role="group" aria-label="Model card content">
-          <button
-            type="button"
-            data-mode="description"
-            className={`flex items-center justify-center gap-2 rounded-md px-2 py-2 text-xs font-bold transition-colors ${
-              cardDisplayMode === "description" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"
-            }`}
-            aria-pressed={cardDisplayMode === "description"}
-            onClick={handleCardDisplayModeClick}
-          >
-            <AlignLeft size={14} /> Description
-          </button>
-          <button
-            type="button"
-            data-mode="key-fields"
-            className={`flex items-center justify-center gap-2 rounded-md px-2 py-2 text-xs font-bold transition-colors ${
-              cardDisplayMode === "key-fields" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"
-            }`}
-            aria-pressed={cardDisplayMode === "key-fields"}
-            onClick={handleCardDisplayModeClick}
-          >
-            <KeyRound size={14} /> Key fields
-          </button>
-        </div>
-      </section>
-
-      <section className="mt-4">
-        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Names</p>
-        <NameModeControl value={nameDisplayMode} onChange={onNameDisplayModeChange} />
-      </section>
-
       {selectedSeed && (
-        <SeedInspector seed={selectedSeed} owner={selectedOwner} canEdit={canEditSelected} placement={selectedPlacement} onUpdate={onUpdateSeed} />
+        <>
+          <section className="mt-5 border-t border-slate-200 pt-4"><h2 className="mb-3 text-sm font-bold text-slate-800">Edit</h2><SeedInspector seed={selectedSeed} owner={selectedOwner} canEdit={canEditSelected} placement={selectedPlacement} onUpdate={onUpdateSeed} onDelete={handleDeleteRequest} canDelete={canDeleteSelected} deleting={removingModel}/></section>
+          {maturity && <section className="mt-5 border-t border-slate-200 pt-4"><h2 className="mb-3 text-sm font-bold text-slate-800">Validation</h2><MaturityValidation assessment={maturity} onResolve={handleResolveMaturityIssue}/></section>}
+        </>
       )}
 
       <div className="mt-auto pt-6">
-        <button data-tour="erd-vocabulary" type="button" className="btn btn-outline mb-2 w-full justify-start gap-2" onClick={onOpenVocabulary}>
+        <button data-tour="erd-vocabulary" type="button" className="btn btn-outline mb-2 w-full justify-start gap-2" onClick={handleOpenVocabulary}>
           <Languages size={17} />Vocabulary
         </button>
         <button type="button" className="btn btn-outline w-full justify-start gap-2" onClick={handleOpenDomainDictionary}>
           <BookOpen size={17} />Domain dictionary
         </button>
       </div>
+      {removalTarget && <ModelRemovalDialog model={removalTarget} pending={removingModel} onConfirm={handleDeleteConfirm} onClose={handleDeleteClose}/>}
     </aside>
   );
 }

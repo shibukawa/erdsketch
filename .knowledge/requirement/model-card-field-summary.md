@@ -4,7 +4,7 @@ type: requirement
 title: Model Card Field Summary
 ---
 
-Users switch all model cards between description and key-field summaries from the sidebar.
+Users switch all model cards between description and key-field summaries from a bottom-left canvas speed dial.
 
 ```yaml
 display_modes:
@@ -31,7 +31,7 @@ display_modes:
         requirement: preserve_all_favorite_rows
         viewport_scroll_allowed: true
 control:
-  surface: sidebar
+  surface: ui:model-card-display-mode content_speed_dial
   scope: canvas_view
   interaction: explicit_mode_switch
   default: description
@@ -54,6 +54,8 @@ accessibility:
   - Respect reduced-motion preference.
   - Do not rely on color alone for field flags.
 acceptance:
+  - Content and identifier controls are adjacent FAB speed dials at the canvas bottom-left.
+  - Each speed dial opens labeled choices upward and closes after selection.
   - Switching to key-fields replaces descriptions on every visible model card.
   - A composite primary key appears once as one line such as `(id, name)`.
   - Primary-key attributes are not repeated in the remaining favorite rows.

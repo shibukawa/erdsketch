@@ -2,7 +2,7 @@ import { startTransition, useCallback, useEffect, useEffectEvent, useRef, useSta
 import { normalizeFlowCrud } from "./features/dfd/dfd";
 import type { CanvasAnnotation, CanvasType, SaveAnnotation } from "./features/annotations/types";
 import type { CanvasModelPlacement, DataDomain, DfdState, DomainCategory, ErdCanvas, NamingPolicy, RefinementResult, Relationship, RelationshipReference, VocabularyEntry } from "./features/modeling/types";
-import { applyDurableOperation, applyEphemeralOperation } from "./collaboration/hostState";
+import { applyAutomaticMaturityToState, applyDurableOperation, applyEphemeralOperation } from "./collaboration/hostState";
 import { durableState, isDurableOperation, type CollaborationState, type Collaborator, type DurableOperation, type DurableState, type Operation, type RelayJoinResult, type RelayMessage } from "./collaboration/types";
 import { chooseProjectDirectory } from "./persistence/projectDocument";
 import { hasWailsBridge } from "./persistence/wailsBridge";
@@ -134,7 +134,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   }, []);
 
   const installPersistenceSession = useCallback((session: PersistenceSession<T>, users: Collaborator[]) => {
-    const next: CollaborationState<T> = { ...session.state, users, locks: {} };
+    const next = applyAutomaticMaturityToState<T>({ ...session.state, users, locks: {} });
     sequenceRef.current = session.sequence;
     confirmedStateRef.current = next;
     replaceVisibleState(next);
@@ -484,6 +484,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   const saveSeed = useCallback((seed: T, create = false, canvasId = "main") => dispatch({ type: "seed", seed, create, canvasId }), [dispatch]);
   const saveCatalogSeed = useCallback((seed: T, create = false) => dispatch({ type: "seed", seed, create, canvasId: "main", catalog: true }), [dispatch]);
   const savePlacement = useCallback((placement: CanvasModelPlacement, create = false) => dispatch({ type: "placement", placement, create }), [dispatch]);
+  const removeModel = useCallback((seedId: string, canvasId: string) => dispatch({ type: "remove_model", seedId, canvasId }), [dispatch]);
   const saveCanvas = useCallback((canvas: ErdCanvas, create = false) => dispatch({ type: "canvas", canvas, create }), [dispatch]);
   const saveDfd = useCallback((dfd: DfdState) => dispatch({ type: "dfd", dfd }), [dispatch]);
   const transferOwnership = useCallback((seedId: string, expectedOwnerId: string, targetCanvasId: string) => dispatch({ type: "ownership", seedId, expectedOwnerId, targetCanvasId }), [dispatch]);
@@ -756,6 +757,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     saveDfd,
     saveCatalogSeed,
     savePlacement,
+    removeModel,
     transferOwnership,
     saveRelationship,
     saveRefinement,

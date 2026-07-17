@@ -7,7 +7,7 @@ type I18nContextValue = {
 };
 
 const I18nContext = createContext<I18nContextValue | undefined>(undefined);
-const translatedAttributes = ["aria-label", "placeholder", "title"] as const;
+const translatedAttributes = ["aria-label", "placeholder", "title", "data-tip"] as const;
 const textState = new WeakMap<Text, { source: string; rendered: string }>();
 const attributeState = new WeakMap<Element, Map<string, { source: string; rendered: string }>>();
 

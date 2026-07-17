@@ -39,6 +39,7 @@ export type DurableOperation<T> =
   | { type: "replace_project"; state: DurableState<T> }
   | { type: "seed"; seed: T; create: boolean; canvasId: string; catalog?: boolean; placementTimestamp?: string }
   | { type: "placement"; placement: CanvasModelPlacement; create: boolean }
+  | { type: "remove_model"; seedId: string; canvasId: string }
   | { type: "canvas"; canvas: ErdCanvas; create: boolean }
   | { type: "dfd"; dfd: DfdState }
   | { type: "ownership"; seedId: string; expectedOwnerId: string; targetCanvasId: string; placementTimestamp?: string }

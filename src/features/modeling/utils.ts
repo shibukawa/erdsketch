@@ -3,8 +3,6 @@ import { cardHeight, cardWidth } from "./constants.ts";
 
 export const clampScale = (scale: number) => Math.min(2.4, Math.max(0.35, scale));
 
-export const clampMaturedLevel = (maturedLevel: number) => Math.min(6, Math.max(0.5, maturedLevel));
-
 export function toSnakeCase(value: string) {
   return value
     .normalize("NFKC")
@@ -33,7 +31,7 @@ export function updateNameSet(legacyName: string, names: Partial<NameSet> | unde
 export const getModelStageLabel = (maturedLevel: number) => {
   if (maturedLevel <= 0.5) return "Matured model";
   if (maturedLevel <= 1.25) return "Logical model";
-  if (maturedLevel <= 3.5) return "Conceptual model";
+  if (maturedLevel <= 3.5) return "Concept model";
   return "Model seed";
 };
 

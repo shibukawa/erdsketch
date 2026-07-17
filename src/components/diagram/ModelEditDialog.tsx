@@ -27,7 +27,7 @@ export function ModelEditDialog({ model, domains, canEdit, onSave, onClose }: Mo
   const handleTabClick = useCallback((event: MouseEvent<HTMLButtonElement>) => setTab(event.currentTarget.dataset.tab as ModelEditTab), []);
   const handleSubmit = useCallback((event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onSave({ names: draft.names, vocabularyBinding: draft.vocabularyBinding, description: draft.description, maturedLevel: draft.maturedLevel, role: draft.role, dependency: draft.dependency, hasPrivacy: draft.hasPrivacy, volumeEstimate: draft.volumeEstimate, additionalSql: draft.additionalSql });
+    onSave({ names: draft.names, vocabularyBinding: draft.vocabularyBinding, description: draft.description, role: draft.role, dependency: draft.dependency, hasPrivacy: draft.hasPrivacy, volumeEstimate: draft.volumeEstimate, additionalSql: draft.additionalSql });
   }, [draft, onSave]);
   const handleCancel = useCallback((event: SyntheticEvent<HTMLDialogElement>) => { event.preventDefault(); onClose(); }, [onClose]);
   const handleBackdropClick = useCallback((event: MouseEvent<HTMLDialogElement>) => { if (event.target === event.currentTarget) onClose(); }, [onClose]);

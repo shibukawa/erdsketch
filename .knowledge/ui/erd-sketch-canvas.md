@@ -22,13 +22,11 @@ ui:
       - click_title_to_edit
       - click_description_to_edit
       - open_field_list_from_card_menu
-      - switch_card_content_from_sidebar
+      - switch_card_content_from_bottom_left_speed_dials
       - inline_rename
       - single_select
       - pan_canvas
       - zoom_canvas
-      - adjust_roughness_slider
-      - choose_model_state
       - choose_seed_role
       - choose_seed_dependency
       - toggle_seed_privacy
@@ -102,14 +100,13 @@ ui:
       fields:
         interaction: ui:field-list-dialog
       model_state:
-        interaction: manual_select
-        source: data:model-state
-        automatic_update: deferred
-      maturity_slider:
-        preview: component_local
-        commit: rule:collaborative-edit-commit
+        interaction: read_only
+        source: rule:model-maturity-assessment
+        automatic_update: true
+      sidebar: ui:erd-model-sidebar
     card_content:
       control: ui:model-card-display-mode
+      location: canvas_bottom_left
       modes:
         - description
         - primary_and_important_fields
@@ -136,7 +133,8 @@ constraints:
   - The app should not mechanically grid seeds.
   - Roughness expresses maturity and sketch state.
   - State and roughness use the exact mapping in data:model-state.
-  - State changes are manual; readiness criteria are advisory.
+  - State and roughness update automatically through rule:model-maturity-assessment.
+  - The sidebar exposes no manual state or maturity control.
   - New seeds start at maximum roughness.
   - Roughness labels are not displayed on cards.
   - Role, dependency, and privacy are not multi-tag fields.
@@ -167,4 +165,8 @@ related:
   - rule:relationship-move-lock
   - rule:relationship-roughness
   - requirement:collaborative-canvas-annotation
+  - ui:erd-model-sidebar
+  - requirement:erd-maturity-validation
+  - requirement:model-removal
+  - rule:model-maturity-assessment
 ```

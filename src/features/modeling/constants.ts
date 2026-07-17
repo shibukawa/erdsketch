@@ -40,13 +40,6 @@ export const roleMeta: Record<EntityRole, { label: string; fill: string; stroke:
   }
 };
 
-export const maturedLevelSteps = [0.5, 1.25, 3.5, 6];
-export const maturedStepLabels = new Map([
-  [6, "seed"],
-  [3.5, "concept"],
-  [1.25, "logical"],
-  [0.5, "matured"]
-]);
 export const cardWidth = 300;
 export const cardHeight = 194;
 

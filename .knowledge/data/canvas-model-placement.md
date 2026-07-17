@@ -28,5 +28,6 @@ constraints:
   - Placement stores view state, not a copied model definition.
   - The same model may have placements on multiple canvases.
   - Removing a placement does not remove the model from data:model-catalog.
+  - An owner placement may initiate requirement:model-removal project deletion; a readonly placement may remove only itself.
   - readonly is visible on the model card.
 ```

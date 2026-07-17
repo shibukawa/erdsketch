@@ -32,7 +32,8 @@ state:
   type: reference
   target: data:model-state
   default: seed_model
-  manual_change: true
+  assessment: rule:model-maturity-assessment
+  manual_change: false
 position:
   x: number
   y: number
@@ -42,7 +43,8 @@ visual_style:
     min: 0.5
     max: 6.0
     default_on_create: 6.0
-    control: slider
+    source: rule:model-maturity-assessment
+    manual_control: none
     suggested_steps:
       - 0.5
       - 1.25
@@ -102,6 +104,7 @@ constraints:
   - Relationship semantics are expressed by lines between model seeds, not seed tags.
   - Linked state is shown visually through lines or model references, not a "Linked" text label.
   - Every DFD placement of this model uses the same roughness and data:model-state as its ERD placement.
+  - State and roughness are recalculated automatically and have no manual override.
 related:
   - ui:erd-sketch-canvas
   - data:model-state

@@ -34,13 +34,22 @@ test("table type and model stage terminology use canonical display labels", () =
   assert.equal(translateText(dependencyLabels.independent, "ja"), "親テーブル");
   assert.equal(translateText(dependencyLabels.dependent, "ja"), "従属テーブル");
   assert.equal(getModelStageLabel(6), "Model seed");
-  assert.equal(getModelStageLabel(3.5), "Conceptual model");
+  assert.equal(getModelStageLabel(3.5), "Concept model");
   assert.equal(getModelStageLabel(1.25), "Logical model");
   assert.equal(getModelStageLabel(0.5), "Matured model");
   assert.equal(translateText(getModelStageLabel(6), "ja"), "ラフモデル");
   assert.equal(translateText(getModelStageLabel(3.5), "ja"), "概念モデル");
   assert.equal(translateText(getModelStageLabel(1.25), "ja"), "論理モデル");
   assert.equal(translateText(getModelStageLabel(0.5), "ja"), "完成モデル");
+});
+
+test("ERD sidebar sections and maturity guidance use Japanese product labels", () => {
+  assert.equal(translateText("Edit", "ja"), "編集");
+  assert.equal(translateText("Validation", "ja"), "バリデーション");
+  assert.equal(translateText("Model content", "ja"), "モデル内表示");
+  assert.equal(translateText("Identifier display", "ja"), "識別子表示");
+  assert.equal(translateText("Change the default model description.", "ja"), "デフォルトのモデル説明を変更してください。");
+  assert.equal(translateText("Select at least one primary-key field.", "ja"), "主キーフィールドを1つ以上選択してください。");
 });
 
 test("model roles use familiar Japanese loanwords", () => {

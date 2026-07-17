@@ -1,5 +1,7 @@
 import type { CanvasAnnotation } from "../features/annotations/types";
 import type { CanvasModelPlacement, DataDomain, DomainCategory, Relationship, VocabularyEntry } from "../features/modeling/types";
+import type { ModelSeed } from "../features/modeling/types";
+import { applyAutomaticMaturity } from "../features/modeling/maturity.ts";
 import { normalizeRelationshipSemantics } from "../features/modeling/utils.ts";
 import type { CollaborationState, DurableOperation, EphemeralOperation } from "./types";
 
@@ -72,7 +74,46 @@ function applyAnnotation(annotations: CanvasAnnotation[], annotation: CanvasAnno
   return replaceByID(annotations, annotation, create);
 }
 
-export function applyDurableOperation<T extends { id: string; x?: number; y?: number }>(state: CollaborationState<T>, operation: DurableOperation<T>, actorID: string, validate = true): CollaborationState<T> {
+function removeModel<T extends { id: string }>(state: CollaborationState<T>, seedId: string, canvasId: string, actorID: string, validate: boolean): CollaborationState<T> {
+  const placement = state.placements.find((item) => item.seedId === seedId && item.canvasId === canvasId);
+  if (!placement) throw new OperationError("model placement not found");
+  if (placement.accessMode === "readonly") {
+    return {
+      ...state,
+      placements: state.placements.filter((item) => item !== placement),
+      annotations: state.annotations.filter((annotation) => annotation.canvasType !== "erd" || annotation.canvasId !== canvasId || (annotation.start?.itemId !== seedId && annotation.end?.itemId !== seedId))
+    };
+  }
+  if (validate) requireLocks(state, actorID, [seedId]);
+  const removedRelationships = new Set(state.relationships.filter((item) => item.sourceId === seedId || item.targetId === seedId).map((item) => item.id));
+  const removedDfdNodes = new Set(state.dfd.nodes.filter((node) => node.modelId === seedId).map((node) => node.id));
+  const nextGroups = state.dfd.groups.map((group) => ({ ...group, memberIds: group.memberIds.filter((id) => !removedDfdNodes.has(id)) })).filter((group) => group.memberIds.length > 0);
+  const removedGroups = new Set(state.dfd.groups.filter((group) => !nextGroups.some((next) => next.id === group.id)).map((group) => group.id));
+  const removedDfdEndpoints = new Set([...removedDfdNodes, ...removedGroups]);
+  const locks = { ...state.locks };
+  delete locks[seedId];
+  return {
+    ...state,
+    seeds: state.seeds.filter((seed) => seed.id !== seedId),
+    placements: state.placements.filter((item) => item.seedId !== seedId),
+    relationships: state.relationships.filter((item) => !removedRelationships.has(item.id)),
+    relationshipReferences: state.relationshipReferences.filter((item) => !removedRelationships.has(item.relationshipId)),
+    dfd: {
+      ...state.dfd,
+      nodes: state.dfd.nodes.filter((node) => !removedDfdNodes.has(node.id)),
+      flows: state.dfd.flows.filter((flow) => !removedDfdEndpoints.has(flow.sourceId) && !removedDfdEndpoints.has(flow.destinationId)).map((flow) => ({
+        ...flow,
+        crudAssignments: flow.crudAssignments?.filter((assignment) => assignment.modelId !== seedId)
+      })),
+      groups: nextGroups,
+      crudMatrix: state.dfd.crudMatrix ? { ...state.dfd.crudMatrix, modelOrder: state.dfd.crudMatrix.modelOrder.filter((id) => id !== seedId) } : undefined
+    },
+    annotations: state.annotations.filter((annotation) => annotation.start?.itemId !== seedId && annotation.end?.itemId !== seedId && !removedDfdEndpoints.has(annotation.start?.itemId ?? "") && !removedDfdEndpoints.has(annotation.end?.itemId ?? "")),
+    locks
+  };
+}
+
+function applyDurableOperationCore<T extends { id: string; x?: number; y?: number }>(state: CollaborationState<T>, operation: DurableOperation<T>, actorID: string, validate = true): CollaborationState<T> {
   switch (operation.type) {
     case "replace_project":
       return { ...structuredClone(operation.state), users: state.users, locks: {} };
@@ -93,6 +134,8 @@ export function applyDurableOperation<T extends { id: string; x?: number; y?: nu
       const placements = index < 0 ? [...state.placements, operation.placement] : state.placements.map((item, itemIndex) => itemIndex === index ? { ...operation.placement, accessMode: item.accessMode } : item);
       return { ...state, placements };
     }
+    case "remove_model":
+      return removeModel(state, operation.seedId, operation.canvasId, actorID, validate);
     case "canvas":
       return { ...state, canvases: replaceByID(state.canvases, operation.canvas, operation.create) };
     case "dfd":
@@ -140,6 +183,21 @@ export function applyDurableOperation<T extends { id: string; x?: number; y?: nu
     case "annotation":
       return { ...state, annotations: applyAnnotation(state.annotations, operation.annotation, operation.create, operation.delete) };
   }
+}
+
+function isModelSeed(value: { id: string }): value is ModelSeed {
+  const candidate = value as Partial<ModelSeed>;
+  return typeof candidate.title === "string" && typeof candidate.description === "string" && Array.isArray(candidate.fields);
+}
+
+export function applyAutomaticMaturityToState<T extends { id: string }>(state: CollaborationState<T>): CollaborationState<T> {
+  if (!state.seeds.every(isModelSeed)) return state;
+  return { ...state, seeds: applyAutomaticMaturity(state.seeds as unknown as ModelSeed[], state.domains, state.vocabularyEntries) as unknown as T[] };
+}
+
+export function applyDurableOperation<T extends { id: string; x?: number; y?: number }>(state: CollaborationState<T>, operation: DurableOperation<T>, actorID: string, validate = true): CollaborationState<T> {
+  const next = applyDurableOperationCore(state, operation, actorID, validate);
+  return applyAutomaticMaturityToState(next);
 }
 
 export function applyEphemeralOperation<T>(state: CollaborationState<T>, operation: EphemeralOperation, actorID: string): CollaborationState<T> {

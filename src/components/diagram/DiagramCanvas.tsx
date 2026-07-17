@@ -16,6 +16,7 @@ import type { AnnotationAnchor, CanvasPoint } from "../../features/annotations/t
 import type { CanvasAnnotationController } from "../../features/annotations/useCanvasAnnotations";
 import { CanvasAnnotationLayer } from "../annotations/CanvasAnnotationLayer";
 import { AnnotationToolbar } from "../annotations/AnnotationToolbar";
+import { CanvasDisplayControls } from "./CanvasDisplayControls";
 
 type DiagramCanvasProps = {
   canvasRef: RefObject<HTMLDivElement | null>;
@@ -34,6 +35,8 @@ type DiagramCanvasProps = {
   selectedId: string;
   displayMode: CardDisplayMode;
   nameDisplayMode: NameDisplayMode;
+  onDisplayModeChange: (mode: CardDisplayMode) => void;
+  onNameDisplayModeChange: (mode: NameDisplayMode) => void;
   vocabularyCache: VocabularyMatchCache;
   locks: Record<string, Collaborator>;
   me: Collaborator;
@@ -79,6 +82,8 @@ export function DiagramCanvas({
   selectedId,
   displayMode,
   nameDisplayMode,
+  onDisplayModeChange,
+  onNameDisplayModeChange,
   vocabularyCache,
   locks,
   me,
@@ -185,6 +190,7 @@ export function DiagramCanvas({
         <CanvasAnnotationLayer layer="foreground" controller={annotationController} users={annotationUsers} me={me} resolveAnchor={resolveAnnotationAnchor} />
       </div>
       <AnnotationToolbar controller={annotationController} />
+      <CanvasDisplayControls displayMode={displayMode} nameDisplayMode={nameDisplayMode} onDisplayModeChange={onDisplayModeChange} onNameDisplayModeChange={onNameDisplayModeChange} />
       <CanvasTips scale={viewport.scale} onResetView={onResetView} onUpdateScale={onUpdateScale} />
     </div>
   );

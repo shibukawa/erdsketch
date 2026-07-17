@@ -61,6 +61,7 @@ acceptance:
   - External-entity diagonal edges and file-fold edges are complete and use the same apparent stroke weight as other edges.
   - Selecting a DFD model exposes the ERD hamburger field action and opens ui:field-list-dialog.
   - Field edits made from DFD update the shared model definition and appear in ERD.
+  - DFD card-content mode uses ui:model-card-display-mode on the canvas and is absent from the sidebar.
   - Direct process-to-process and data-entity-to-data-entity flows cannot remain on the diagram.
   - Users can compress repeated process-to-data-entity lines with data:dfd-overlap-group.
   - Separating a group restores its pre-grouping arrows when no flow was added or removed while grouped.
