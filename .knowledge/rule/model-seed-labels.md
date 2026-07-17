@@ -21,8 +21,10 @@ controls:
   dependency:
     selection: single
     values:
-      - independent
-      - dependent
+      - value: independent
+        display_label: Parent table
+      - value: dependent
+        display_label: Dependent table
   privacy:
     selection: boolean
     value_when_true: privacy
@@ -33,7 +35,7 @@ ui:
   interaction: segmented_buttons_and_toggle
   constraints:
     - Do not show "Linked" as text.
-    - Do not show roughness labels such as Rough Sketch or Clarified.
+    - Show data:model-state display labels; do not expose numeric roughness as the state name.
     - Do not use relationship tags such as 1:N, N:M, reference, or snapshot on seed cards.
     - Use role, dependency, and privacy to capture modeling hints before promotion.
 related:

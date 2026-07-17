@@ -38,7 +38,6 @@
 {"category": "structure", "id": "data:dfd-process", "path": ".knowledge/data/dfd-process.md", "role": "supporting", "title": "DFD Process", "type": "data"}
 {"category": "structure", "id": "data:domain-component", "path": ".knowledge/data/domain-component.md", "role": "supporting", "title": "Domain Component", "type": "data"}
 {"category": "structure", "id": "data:entity", "path": ".knowledge/data/entity.md", "role": "supporting", "title": "Entity", "type": "data"}
-{"category": "structure", "id": "data:export-diagnostic", "path": ".knowledge/data/export-diagnostic.md", "role": "supporting", "title": "Export Diagnostic", "type": "data"}
 {"category": "structure", "id": "data:extract-domain-pattern", "path": ".knowledge/data/extract-domain-pattern.md", "role": "supporting", "title": "Extract New Domain Pattern", "type": "data"}
 {"category": "structure", "id": "data:extract-master-pattern", "path": ".knowledge/data/extract-master-pattern.md", "role": "supporting", "title": "Extract New Master Pattern", "type": "data"}
 {"category": "structure", "id": "data:extract-one-to-one-pattern", "path": ".knowledge/data/extract-one-to-one-pattern.md", "role": "supporting", "title": "Extract Model One-to-One Pattern", "type": "data"}
@@ -94,7 +93,6 @@
 {"category": "behavior", "id": "flow:create-share-work-invitation", "path": ".knowledge/flow/create-share-work-invitation.md", "role": "primary", "title": "Create Co-work Invitation", "type": "flow"}
 {"category": "behavior", "id": "flow:dfd-first-modeling", "path": ".knowledge/flow/dfd-first-modeling.md", "role": "primary", "title": "DFD First Modeling", "type": "flow"}
 {"category": "behavior", "id": "flow:disconnect-cowork-session", "path": ".knowledge/flow/disconnect-cowork-session.md", "role": "primary", "title": "Disconnect Co-work Session", "type": "flow"}
-{"category": "behavior", "id": "flow:export-project-artifacts", "path": ".knowledge/flow/export-project-artifacts.md", "role": "primary", "title": "Export Project Artifacts", "type": "flow"}
 {"category": "behavior", "id": "flow:host-authoritative-collaboration", "path": ".knowledge/flow/host-authoritative-collaboration.md", "role": "primary", "title": "Host-Authoritative Collaboration", "type": "flow"}
 {"category": "behavior", "id": "flow:join-shared-work", "path": ".knowledge/flow/join-shared-work.md", "role": "primary", "title": "Join Co-work", "type": "flow"}
 {"category": "behavior", "id": "flow:modeling-lifecycle", "path": ".knowledge/flow/modeling-lifecycle.md", "role": "primary", "title": "Modeling Lifecycle", "type": "flow"}
@@ -118,8 +116,6 @@
 {"category": "objective", "id": "requirement:design-decision-history", "path": ".knowledge/requirement/design-decision-history.md", "role": "primary", "title": "Design Decision History", "type": "requirement"}
 {"category": "objective", "id": "requirement:dfd-modeling-experience", "path": ".knowledge/requirement/dfd-modeling-experience.md", "role": "primary", "title": "Compact DFD Modeling Experience", "type": "requirement"}
 {"category": "objective", "id": "requirement:dfd-validation", "path": ".knowledge/requirement/dfd-validation.md", "role": "primary", "title": "DFD Validation", "type": "requirement"}
-{"category": "objective", "id": "requirement:diagram-export", "path": ".knowledge/requirement/diagram-export.md", "role": "primary", "title": "Editable Diagram Export", "type": "requirement"}
-{"category": "objective", "id": "requirement:document-bundle-export", "path": ".knowledge/requirement/document-bundle-export.md", "role": "primary", "title": "Document Bundle Export", "type": "requirement"}
 {"category": "objective", "id": "requirement:domain-dictionary-management", "path": ".knowledge/requirement/domain-dictionary-management.md", "role": "primary", "title": "Domain Dictionary Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:domain-name-field-naming", "path": ".knowledge/requirement/domain-name-field-naming.md", "role": "primary", "title": "Domain Name Field Naming", "type": "requirement"}
 {"category": "objective", "id": "requirement:domain-partition-key-marking", "path": ".knowledge/requirement/domain-partition-key-marking.md", "role": "primary", "title": "Domain Partition Key Marking", "type": "requirement"}
@@ -140,10 +136,10 @@
 {"category": "objective", "id": "requirement:relationship-management", "path": ".knowledge/requirement/relationship-management.md", "role": "primary", "title": "Relationship Management", "type": "requirement"}
 {"category": "objective", "id": "requirement:relationship-validation", "path": ".knowledge/requirement/relationship-validation.md", "role": "primary", "title": "Relationship Validation Inventory", "type": "requirement"}
 {"category": "objective", "id": "requirement:server-web-distribution", "path": ".knowledge/requirement/server-web-distribution.md", "role": "primary", "title": "Server Web Distribution", "type": "requirement"}
-{"category": "objective", "id": "requirement:sql-ddl-export", "path": ".knowledge/requirement/sql-ddl-export.md", "role": "primary", "title": "Multi-Dialect SQL DDL Export", "type": "requirement"}
 {"category": "objective", "id": "requirement:sql-table-definition", "path": ".knowledge/requirement/sql-table-definition.md", "role": "primary", "title": "SQL Table Definition", "type": "requirement"}
 {"category": "objective", "id": "requirement:static-web-distribution", "path": ".knowledge/requirement/static-web-distribution.md", "role": "primary", "title": "Static Web Distribution", "type": "requirement"}
 {"category": "objective", "id": "requirement:unmatched-name-presentation", "path": ".knowledge/requirement/unmatched-name-presentation.md", "role": "primary", "title": "Unmatched Name Presentation", "type": "requirement"}
+{"category": "objective", "id": "requirement:user-interface-localization", "path": ".knowledge/requirement/user-interface-localization.md", "role": "primary", "title": "User Interface Localization", "type": "requirement"}
 {"category": "objective", "id": "requirement:vocabulary-alias-correction", "path": ".knowledge/requirement/vocabulary-alias-correction.md", "role": "primary", "title": "Vocabulary Alias Correction", "type": "requirement"}
 {"category": "objective", "id": "requirement:vocabulary-cache-maintenance", "path": ".knowledge/requirement/vocabulary-cache-maintenance.md", "role": "primary", "title": "Vocabulary Cache Maintenance", "type": "requirement"}
 {"category": "objective", "id": "requirement:vocabulary-management", "path": ".knowledge/requirement/vocabulary-management.md", "role": "primary", "title": "Vocabulary Management", "type": "requirement"}
@@ -177,7 +173,6 @@
 {"category": "constraint", "id": "rule:relationship-move-lock", "path": ".knowledge/rule/relationship-move-lock.md", "role": "supporting", "title": "Relationship Move Lock", "type": "rule"}
 {"category": "constraint", "id": "rule:relationship-operation-history", "path": ".knowledge/rule/relationship-operation-history.md", "role": "supporting", "title": "Relationship Operation History", "type": "rule"}
 {"category": "constraint", "id": "rule:relationship-roughness", "path": ".knowledge/rule/relationship-roughness.md", "role": "supporting", "title": "Relationship Roughness", "type": "rule"}
-{"category": "constraint", "id": "rule:sql-export-readiness", "path": ".knowledge/rule/sql-export-readiness.md", "role": "supporting", "title": "SQL Export Readiness", "type": "rule"}
 {"category": "constraint", "id": "rule:sql-naming-policy", "path": ".knowledge/rule/sql-naming-policy.md", "role": "supporting", "title": "SQL Naming Policy", "type": "rule"}
 {"category": "constraint", "id": "rule:storage-size-estimation", "path": ".knowledge/rule/storage-size-estimation.md", "role": "supporting", "title": "Storage Size Estimation", "type": "rule"}
 {"category": "constraint", "id": "rule:vocabulary-resolution", "path": ".knowledge/rule/vocabulary-resolution.md", "role": "supporting", "title": "Vocabulary Resolution", "type": "rule"}
@@ -205,10 +200,10 @@
 {"category": "interface", "id": "ui:entity-candidate-view", "path": ".knowledge/ui/entity-candidate-view.md", "role": "primary", "title": "Entity Candidate View", "type": "ui"}
 {"category": "interface", "id": "ui:erd-canvas-selector-dialog", "path": ".knowledge/ui/erd-canvas-selector-dialog.md", "role": "primary", "title": "ERD Canvas Selector Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:erd-sketch-canvas", "path": ".knowledge/ui/erd-sketch-canvas.md", "role": "primary", "title": "ERD Sketch Canvas", "type": "ui"}
-{"category": "interface", "id": "ui:export-dialog", "path": ".knowledge/ui/export-dialog.md", "role": "primary", "title": "Export Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:field-list-dialog", "path": ".knowledge/ui/field-list-dialog.md", "role": "primary", "title": "Field List Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:index-definition-dialog", "path": ".knowledge/ui/index-definition-dialog.md", "role": "primary", "title": "Index Definition Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:join-shared-work-dialog", "path": ".knowledge/ui/join-shared-work-dialog.md", "role": "primary", "title": "Join Co-work Dialog", "type": "ui"}
+{"category": "interface", "id": "ui:language-selector", "path": ".knowledge/ui/language-selector.md", "role": "primary", "title": "Language Selector", "type": "ui"}
 {"category": "interface", "id": "ui:lifecycle-view", "path": ".knowledge/ui/lifecycle-view.md", "role": "primary", "title": "Lifecycle View", "type": "ui"}
 {"category": "interface", "id": "ui:model-card-display-mode", "path": ".knowledge/ui/model-card-display-mode.md", "role": "primary", "title": "Model Card Display Mode", "type": "ui"}
 {"category": "interface", "id": "ui:model-catalog-view", "path": ".knowledge/ui/model-catalog-view.md", "role": "primary", "title": "Project Model Catalog View", "type": "ui"}

@@ -76,8 +76,10 @@ role:
 dependency:
   selection: single
   values:
-    - independent
-    - dependent
+    - value: independent
+      display_label: Parent table
+    - value: dependent
+      display_label: Dependent table
 privacy:
   type: boolean
   meaning: contains_personal_information

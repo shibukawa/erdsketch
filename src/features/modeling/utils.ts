@@ -31,10 +31,10 @@ export function updateNameSet(legacyName: string, names: Partial<NameSet> | unde
 }
 
 export const getModelStageLabel = (maturedLevel: number) => {
-  if (maturedLevel <= 0.5) return "MATURED MODEL";
-  if (maturedLevel <= 1.25) return "LOGICAL MODEL";
-  if (maturedLevel <= 3.5) return "CONCEPTUAL MODEL";
-  return "MODEL SEED";
+  if (maturedLevel <= 0.5) return "Matured model";
+  if (maturedLevel <= 1.25) return "Logical model";
+  if (maturedLevel <= 3.5) return "Conceptual model";
+  return "Model seed";
 };
 
 export function flattenLabels(seed: ModelSeed) {

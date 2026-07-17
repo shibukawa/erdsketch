@@ -1,5 +1,6 @@
 import { ArrowRight, Check, GitBranch, Info, Sparkles, X } from "lucide-react";
 import { useCallback, useMemo, useState, type ChangeEvent } from "react";
+import { dependencyLabels } from "../../features/modeling/constants";
 import type { DataDomain, ModelSeed, RefinementInput, RefinementPatternId, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
 import { buildRefinement, findSimilarFieldGroups, getFieldCodeSet, refinementPatterns, refinementUnavailableReason } from "../../features/modeling/refinement";
 import { getFieldEffectiveName } from "../../features/modeling/utils";
@@ -34,7 +35,7 @@ function PreviewCard({ seed, original }: { seed: ModelSeed; original?: ModelSeed
   return <article className="min-w-[190px] rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
     <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">{original ? "Changed model" : "New model"}</p>
     <h4 className="mt-1 font-bold text-slate-900">{seed.title}</h4>
-    <p className="text-[10px] text-slate-500">{seed.role} · {seed.dependency}</p>
+    <p className="text-[10px] text-slate-500">{seed.role} · {dependencyLabels[seed.dependency]}</p>
     <ul className="mt-2 space-y-1">{seed.fields.map((field) => {
       const inherited = field.id.startsWith("inherited:");
       return <li key={field.id} className={`flex items-center justify-between gap-2 rounded px-2 py-1 font-mono text-[11px] ${inherited ? "border border-dashed border-violet-200 bg-violet-50 text-violet-800" : added.has(field.id) ? "bg-emerald-50 text-emerald-800" : "bg-slate-50 text-slate-700"}`}><span>{field.primaryKey ? "🔑 " : ""}{field.name}</span><span className="shrink-0 font-sans text-[8px] font-bold uppercase tracking-wide opacity-70">{inherited ? "Inherited" : "Owned"}</span></li>;

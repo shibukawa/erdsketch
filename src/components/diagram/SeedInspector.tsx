@@ -1,7 +1,7 @@
 import { Lock } from "lucide-react";
 import { useCallback, type ChangeEvent, type MouseEvent } from "react";
 import type { Collaborator } from "../../collaboration";
-import { dependencyOptions, maturedLevelSteps, roleMeta, roleOptions } from "../../features/modeling/constants";
+import { dependencyLabels, dependencyOptions, maturedLevelSteps, maturedStepLabels, roleMeta, roleOptions } from "../../features/modeling/constants";
 import type { CanvasModelPlacement, Dependency, EntityRole, ModelSeed } from "../../features/modeling/types";
 import { clampMaturedLevel, getModelStageLabel } from "../../features/modeling/utils";
 import { defaultVolumeEstimate, normalizeTransactionRetention } from "../../features/modeling/capacity";
@@ -14,13 +14,6 @@ type SeedInspectorProps = {
   placement?: CanvasModelPlacement;
   onUpdate: (seedId: string, patch: Partial<ModelSeed>) => void;
 };
-
-const maturedStepLabels = new Map([
-  [6, "seed"],
-  [3.5, "concept"],
-  [1.25, "logical"],
-  [0.5, "matured"]
-]);
 
 export function SeedInspector({ seed, owner, canEdit, placement, onUpdate }: SeedInspectorProps) {
   const handleMaturedLevelCommit = useCallback((value: number) => {
@@ -74,7 +67,7 @@ export function SeedInspector({ seed, owner, canEdit, placement, onUpdate }: See
       <fieldset disabled={!canEdit} className="disabled-controls">
         <label className="mt-4 block">
           <span className="flex items-center justify-between gap-3 text-sm font-bold text-slate-600">
-            <span>Matured level</span>
+            <span>Model stage</span>
             <span className="text-[10px] tracking-wide text-slate-400">{getModelStageLabel(seed.maturedLevel)}</span>
           </span>
           <CommittedRangeInput
@@ -120,7 +113,7 @@ export function SeedInspector({ seed, owner, canEdit, placement, onUpdate }: See
           </div>
 
           <div>
-            <p className="text-sm font-bold text-slate-600">Dependency</p>
+            <p className="text-sm font-bold text-slate-600">Table type</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {dependencyOptions.map((dependency) => (
                 <button
@@ -133,7 +126,7 @@ export function SeedInspector({ seed, owner, canEdit, placement, onUpdate }: See
                   }`}
                   onClick={handleDependencyClick}
                 >
-                  {dependency}
+                  {dependencyLabels[dependency]}
                 </button>
               ))}
             </div>

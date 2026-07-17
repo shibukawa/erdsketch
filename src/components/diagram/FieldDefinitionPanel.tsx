@@ -1,6 +1,7 @@
 import { useCallback, type ChangeEvent } from "react";
 import type { ColumnDefault, DataDomain, ModelField, ValueGeneration } from "../../features/modeling/types";
 import { effectivePrimitiveType } from "../../features/modeling/capacity";
+import { columnDefaultKindsForPrimitiveType, type ColumnDefaultKind } from "../../features/modeling/columnDefaults";
 import { CommittedTextInput } from "../forms/CommittedTextInput";
 
 type FieldDefinitionPanelProps = {
@@ -10,10 +11,9 @@ type FieldDefinitionPanelProps = {
   onChange: (fieldId: string, patch: Partial<ModelField>) => void;
 };
 
-type DefaultKind = "none" | ColumnDefault["kind"];
-
 export function FieldDefinitionPanel({ field, domains, canEdit, onChange }: FieldDefinitionPanelProps) {
   const primitiveType = field ? effectivePrimitiveType(field, domains) : undefined;
+  const defaultKinds = columnDefaultKindsForPrimitiveType(primitiveType);
   const variableWidth = primitiveType === "varchar" || primitiveType === "text" || primitiveType === "blob";
   const autoIncrementEligible = !!field?.primaryKey && primitiveType === "integer";
 
@@ -25,7 +25,7 @@ export function FieldDefinitionPanel({ field, domains, canEdit, onChange }: Fiel
   }, [field, onChange]);
   const handleDefaultKindChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
     if (!field) return;
-    const kind = event.target.value as DefaultKind;
+    const kind = event.target.value as ColumnDefaultKind;
     const defaultValue: ColumnDefault | undefined = kind === "none" ? undefined : kind === "literal" ? { kind, value: "" } : { kind };
     onChange(field.id, { defaultValue });
   }, [field, onChange]);
@@ -40,10 +40,10 @@ export function FieldDefinitionPanel({ field, domains, canEdit, onChange }: Fiel
     const value = draft === "" ? undefined : Math.max(0, Number(draft));
     onChange(field.id, { estimatedAverageSizeBytes: value });
   }, [field, onChange]);
-  if (!field) return <div className="p-4 text-sm text-slate-500">Select a field to edit its SQL and capacity settings.</div>;
+  if (!field) return <div className="h-full p-4 text-sm text-slate-500">Select a field to edit its SQL and capacity settings.</div>;
 
   return (
-    <div className="space-y-4 overflow-y-auto p-4">
+    <div className="h-full min-h-0 space-y-4 overflow-y-auto p-4">
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-blue-600">Field definition</p>
         <h3 className="mt-1 break-words font-mono text-sm font-bold text-slate-900">{field.name || "Untitled field"}</h3>
@@ -65,8 +65,8 @@ export function FieldDefinitionPanel({ field, domains, canEdit, onChange }: Fiel
           <select className="select select-bordered select-sm mt-1 w-full" value={field.defaultValue?.kind ?? "none"} onChange={handleDefaultKindChange}>
             <option value="none">None</option>
             <option value="literal">Literal</option>
-            <option value="current_date">CURRENT_DATE</option>
-            <option value="current_timestamp">CURRENT_TIMESTAMP</option>
+            {defaultKinds.includes("current_date") && <option value="current_date">CURRENT_DATE</option>}
+            {defaultKinds.includes("current_timestamp") && <option value="current_timestamp">CURRENT_TIMESTAMP</option>}
           </select>
         </label>
         {field.defaultValue?.kind === "literal" && <label className="block"><span className="text-xs font-bold text-slate-600">Literal value</span><CommittedTextInput className="input input-bordered input-sm mt-1 w-full font-mono" value={field.defaultValue.value} onCommit={handleDefaultLiteralCommit} /></label>}
