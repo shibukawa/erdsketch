@@ -69,6 +69,16 @@ test("dictionary, navigation, and DFD terminology are localized", () => {
   assert.equal(translateText("Key fields", "ja"), "主要項目");
 });
 
+test("workspace start panel terminology is localized", () => {
+  assert.equal(translateText("Start or open a project", "ja"), "プロジェクトを開始または開く");
+  assert.equal(translateText("Create new", "ja"), "新規作成");
+  assert.equal(translateText("Recent projects", "ja"), "最近のプロジェクト");
+  assert.equal(translateText("View all projects", "ja"), "すべてのプロジェクトを表示");
+  assert.equal(translateText("Upload project file", "ja"), "プロジェクトファイルをアップロード");
+  assert.equal(translateText("5 models", "ja"), "5 モデル");
+  assert.equal(translateText("Resume", "ja"), "再開");
+});
+
 test("capacity inputs, projections, and estimate details are localized", () => {
   assert.equal(translateText("Expected inserts", "ja"), "想定追加件数");
   assert.equal(translateText("Expected net increase", "ja"), "想定純増件数");

@@ -1,5 +1,5 @@
 import type { DataDomain, ModelSeed, NameDisplayMode, NameSet, NamingPolicy, VocabularyBinding, VocabularyEntry, VocabularySegment } from "./types";
-import { getDisplayName, toSnakeCase } from "./utils";
+import { getDisplayName, toSnakeCase } from "./utils.ts";
 
 export type VocabularyTarget = "table" | "field" | "domain";
 export type VocabularyStatus = "unmatched" | "correction_required" | "incomplete" | "complete";

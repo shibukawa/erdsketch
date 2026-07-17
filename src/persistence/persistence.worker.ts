@@ -30,6 +30,8 @@ async function execute(request: PersistenceRequest) {
       return service.activateProject(String(payload.projectId), state(payload, "currentState"), state(payload, "initialState"), payload.checkpointCurrent !== false);
     case "create_project":
       return service.createProject(String(payload.displayName), state(payload, "currentState"), state(payload, "initialState"));
+    case "create_project_from_state":
+      return service.createProjectFromState(String(payload.displayName), state(payload, "currentState"), state(payload, "state"));
     case "save_as":
       return service.saveAs(String(payload.displayName), state(payload, "currentState"));
     case "rename_project":

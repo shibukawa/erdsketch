@@ -14,6 +14,7 @@ selection: explicit_user_gesture
 surface:
   dialog: ui:project-management-dialog
   tab: file-system
+  launch_panel: ui:workspace-start-panel
 execution:
   window: show picker and initiate download
   worker: system:persistence-worker reads, writes, compresses, and validates after selection

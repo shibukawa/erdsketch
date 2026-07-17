@@ -55,6 +55,7 @@ authority:
 surface:
   dialog: ui:project-management-dialog
   tab: origin-private-storage
+  launch_panel: ui:workspace-start-panel
 acceptance:
   - Users can assign a name when creating or saving a project in OPFS.
   - Users can load a named OPFS project from an origin-local project list.

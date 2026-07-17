@@ -105,6 +105,19 @@ export class PersistenceService<T extends PersistedModel> {
     }
   }
 
+  async createProjectFromState(displayName: string, currentState: DurableState<T>, state: DurableState<T>) {
+    await this.checkpoint(currentState);
+    const created = await this.mutateCatalog((catalog) => catalog.createTemporary(displayName));
+    try {
+      const session = await this.switchProject(created.projectId, state);
+      await this.checkpoint(state);
+      return session;
+    } catch (error) {
+      if (this.activeProjectId !== created.projectId) await this.mutateCatalog((catalog) => catalog.delete(created.projectId)).catch(() => undefined);
+      throw error;
+    }
+  }
+
   async saveAs(displayName: string, currentState: DurableState<T>) {
     await this.checkpoint(currentState);
     const created = await this.mutateCatalog((catalog) => catalog.createNamed(displayName));
