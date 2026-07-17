@@ -9,6 +9,9 @@ test("known interface text switches between Japanese and English", () => {
   assert.equal(translateText("Models", "en"), "Models");
   assert.equal(translateText("Locked by you — editing enabled", "ja"), "自分がロック中 — 編集できます");
   assert.equal(translateText("Choose how the collaborator can connect.", "ja"), "共同作業者の接続方法を選択してください。");
+  assert.equal(translateText("Done", "ja"), "完了");
+  assert.equal(translateText("Edit annotation geometry", "ja"), "注釈の形状を編集");
+  assert.equal(translateText("Delete selected stroke", "ja"), "選択したストロークを削除");
 });
 
 test("unknown interface text falls back to its English source", () => {

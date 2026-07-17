@@ -115,6 +115,26 @@ func TestGenerateMarkdownSVGUsesOriginalLayoutAndEscapesXML(t *testing.T) {
 	}
 }
 
+func TestGenerateMarkdownSVGPreservesGroupedFreehandStrokes(t *testing.T) {
+	state := validExportState()
+	state["annotations"] = []any{map[string]any{
+		"id": "pen-1", "canvasType": "erd", "canvasId": "main", "kind": "freehand_stroke",
+		"strokes": []any{
+			map[string]any{"points": []any{map[string]any{"x": 10.0, "y": 20.0}, map[string]any{"x": 30.0, "y": 40.0}}},
+			map[string]any{"points": []any{map[string]any{"x": 50.0, "y": 60.0}, map[string]any{"x": 70.0, "y": 80.0}}},
+		},
+		"color": "#334155", "strokeWidth": 3.0, "layer": "annotation",
+	}}
+	result, err := GenerateMarkdown(canonicalExportFixture(t, state), MarkdownOptions{NameMode: "business", ModelCardContent: "description"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	erd := artifactsByPath(result.Artifacts)["diagrams/erd/main.svg"].Content
+	if !strings.Contains(erd, `d="M10.000 20.000 L30.000 40.000 M50.000 60.000 L70.000 80.000"`) {
+		t.Fatalf("grouped freehand strokes were not preserved:\n%s", erd)
+	}
+}
+
 func TestGenerateSQLBlocksMissingPhysicalNamesAndDomains(t *testing.T) {
 	state := validExportState()
 	state["seeds"].([]any)[0].(map[string]any)["names"] = map[string]any{"business": "Order", "system": "Order", "physical": ""}

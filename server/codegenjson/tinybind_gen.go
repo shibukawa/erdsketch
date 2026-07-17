@@ -2027,6 +2027,34 @@ func decodeSourceCanvasPointJSON(raw json.RawMessage) (SourceCanvasPoint, error)
 	return out, nil
 }
 
+func decodeSourceAnnotationStrokeBytes(data []byte) (SourceAnnotationStroke, error) {
+	return decodeSourceAnnotationStrokeJSON(json.RawMessage(data))
+}
+
+func decodeSourceAnnotationStrokeJSON(raw json.RawMessage) (SourceAnnotationStroke, error) {
+	var out SourceAnnotationStroke
+	m, err := jsonbind.RawJSONMap(raw)
+	if err != nil {
+		return out, err
+	}
+	if raw, ok := m["points"]; ok {
+		arr, err := jsonbind.RawJSONArray(raw)
+		if err != nil {
+			return out, err
+		}
+		slice := make([]SourceCanvasPoint, 0, len(arr))
+		for _, el := range arr {
+			item, err := decodeSourceCanvasPointJSON(el)
+			if err != nil {
+				return out, err
+			}
+			slice = append(slice, item)
+		}
+		out.Points = slice
+	}
+	return out, nil
+}
+
 func decodeSourceAnnotationAnchorBytes(data []byte) (SourceAnnotationAnchor, error) {
 	return decodeSourceAnnotationAnchorJSON(json.RawMessage(data))
 }
@@ -2148,6 +2176,21 @@ func decodeSourceCanvasAnnotationJSON(raw json.RawMessage) (SourceCanvasAnnotati
 			slice = append(slice, item)
 		}
 		out.Points = slice
+	}
+	if raw, ok := m["strokes"]; ok {
+		arr, err := jsonbind.RawJSONArray(raw)
+		if err != nil {
+			return out, err
+		}
+		slice := make([]SourceAnnotationStroke, 0, len(arr))
+		for _, el := range arr {
+			item, err := decodeSourceAnnotationStrokeJSON(el)
+			if err != nil {
+				return out, err
+			}
+			slice = append(slice, item)
+		}
+		out.Strokes = slice
 	}
 	if raw, ok := m["start"]; ok {
 		v, err := decodeSourceAnnotationAnchorJSON(raw)

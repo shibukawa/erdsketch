@@ -1,6 +1,7 @@
 import { Pencil } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FocusEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { Collaborator } from "../../collaboration";
+import { annotationStrokes } from "../../features/annotations/geometry";
 import type { AnnotationAnchor, CanvasAnnotation, CanvasPoint } from "../../features/annotations/types";
 import type { CanvasAnnotationController } from "../../features/annotations/useCanvasAnnotations";
 
@@ -63,12 +64,39 @@ function useAnnotationTextDraft(annotation: CanvasAnnotation, controller: Canvas
   return { text, begin, change, finish, cancel };
 }
 
+function GeometryNode({ annotation, controller, point, pointIndex, strokeIndex }: { annotation: CanvasAnnotation; controller: CanvasAnnotationController; point: CanvasPoint; pointIndex: number; strokeIndex?: number }) {
+  const selected = strokeIndex === undefined
+    ? controller.selectedGeometryPointIndex === pointIndex
+    : controller.selectedGeometryStrokeIndex === strokeIndex && controller.selectedGeometryPointIndex === pointIndex;
+  const handlePointerDown = useCallback((event: ReactPointerEvent<SVGCircleElement>) => controller.handleGeometryNodePointerDown(event, annotation, pointIndex, strokeIndex), [annotation, controller, pointIndex, strokeIndex]);
+  return <circle cx={point.x} cy={point.y} r={selected ? 6 : 4.5} fill={selected ? "#dc2626" : "white"} stroke={selected ? "white" : "#2563eb"} strokeWidth={2.5} className="cursor-move" pointerEvents="all" onPointerDown={handlePointerDown} />;
+}
+
+function FreehandStrokePath({ annotation, controller, stroke, strokeIndex, selectedStroke }: { annotation: CanvasAnnotation; controller: CanvasAnnotationController; stroke: CanvasPoint[]; strokeIndex: number; selectedStroke?: string }) {
+  const path = pointsPath(stroke, false);
+  const editing = controller.geometryEditing && controller.selectedId === annotation.id;
+  const activeStroke = editing && controller.selectedGeometryStrokeIndex === strokeIndex;
+  const handlePointerDown = useCallback((event: ReactPointerEvent<SVGPathElement>) => {
+    if (editing) controller.selectGeometryStroke(event, annotation, strokeIndex);
+    else controller.handleAnnotationPointerDown(event, annotation);
+  }, [annotation, controller, editing, strokeIndex]);
+  return <>
+    {(selectedStroke || activeStroke) && <path d={path} fill="none" stroke={activeStroke ? "#dc2626" : selectedStroke} strokeWidth={annotation.strokeWidth + 7} opacity={activeStroke ? 0.38 : 0.28} pointerEvents="none" />}
+    <path d={path} fill="none" stroke={annotation.color} strokeWidth={annotation.strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={editing ? "cursor-pointer" : "cursor-move"} pointerEvents="stroke" onPointerDown={handlePointerDown} />
+    {editing && stroke.map((point, pointIndex) => <GeometryNode key={`${strokeIndex}-${pointIndex}`} annotation={annotation} controller={controller} point={point} pointIndex={pointIndex} strokeIndex={strokeIndex} />)}
+  </>;
+}
+
 function AnnotationPath({ annotation, controller, users, me, resolveAnchor }: Omit<CanvasAnnotationLayerProps, "layer" | "width" | "height"> & { annotation: CanvasAnnotation }) {
   const handlePointerDown = useCallback((event: ReactPointerEvent<SVGPathElement>) => controller.handleAnnotationPointerDown(event, annotation), [annotation, controller]);
+  const handleStartPointerDown = useCallback((event: ReactPointerEvent<SVGCircleElement>) => controller.handleArrowEndpointPointerDown(event, annotation, "start"), [annotation, controller]);
+  const handleEndPointerDown = useCallback((event: ReactPointerEvent<SVGCircleElement>) => controller.handleArrowEndpointPointerDown(event, annotation, "end"), [annotation, controller]);
   const selectedStroke = selectionStroke(annotation, controller, users, me);
   const arrowStart = annotation.start ? resolveAnchor(annotation.start) : { x: 0, y: 0 };
   const arrowEnd = annotation.end ? resolveAnchor(annotation.end) : { x: 0, y: 0 };
+  if (annotation.kind === "freehand_stroke") return <g>{annotationStrokes(annotation).map((stroke, index) => <FreehandStrokePath key={index} annotation={annotation} controller={controller} stroke={stroke} strokeIndex={index} selectedStroke={selectedStroke} />)}</g>;
   const path = annotation.kind === "arrow" ? `M${arrowStart.x} ${arrowStart.y} L${arrowEnd.x} ${arrowEnd.y}` : pointsPath(annotation.points ?? [], annotation.kind === "background_boundary");
+  const editingBoundary = annotation.kind === "background_boundary" && controller.geometryEditing && controller.selectedId === annotation.id;
   return <g>
     {selectedStroke && <path d={path} fill="none" stroke={selectedStroke} strokeWidth={annotation.strokeWidth + 7} opacity={0.28} pointerEvents="none" />}
     <path
@@ -80,11 +108,16 @@ function AnnotationPath({ annotation, controller, users, me, resolveAnchor }: Om
       strokeLinejoin="round"
       strokeDasharray={annotation.kind === "background_boundary" ? "12 8" : undefined}
       markerEnd={annotation.kind === "arrow" ? `url(#annotation-arrow-${annotation.id})` : undefined}
-      className="cursor-move"
+      className={editingBoundary ? "cursor-default" : "cursor-move"}
       pointerEvents={annotation.kind === "background_boundary" ? "visiblePainted" : "stroke"}
-      onPointerDown={handlePointerDown}
+      onPointerDown={editingBoundary ? undefined : handlePointerDown}
     />
     {annotation.kind === "arrow" && <defs><marker id={`annotation-arrow-${annotation.id}`} markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill={annotation.color} /></marker></defs>}
+    {annotation.kind === "arrow" && controller.selectedId === annotation.id && <>
+      <circle cx={arrowStart.x} cy={arrowStart.y} r={6} fill="white" stroke="#2563eb" strokeWidth={3} className="cursor-move" pointerEvents="all" onPointerDown={handleStartPointerDown} />
+      <circle cx={arrowEnd.x} cy={arrowEnd.y} r={6} fill="white" stroke="#2563eb" strokeWidth={3} className="cursor-move" pointerEvents="all" onPointerDown={handleEndPointerDown} />
+    </>}
+    {editingBoundary && (annotation.points ?? []).map((point, pointIndex) => <GeometryNode key={pointIndex} annotation={annotation} controller={controller} point={point} pointIndex={pointIndex} />)}
   </g>;
 }
 
@@ -139,8 +172,8 @@ function StickyAnnotation({ annotation, controller, users, me }: Omit<CanvasAnno
 
 export function CanvasAnnotationLayer({ layer, controller, users, me, resolveAnchor, width = 3200, height = 2400 }: CanvasAnnotationLayerProps) {
   if (!controller.visible) return null;
-  const draft = controller.draft;
-  const persistent = controller.canvasAnnotations.filter((annotation) => annotation.id !== draft?.id && (layer === "background" ? annotation.layer === "background" : annotation.layer !== "background"));
+  const draft = controller.previewAnnotation;
+  const persistent = controller.canvasAnnotations.filter((annotation) => annotation.id !== controller.previewAnnotationId && (layer === "background" ? annotation.layer === "background" : annotation.layer !== "background"));
   const draftForLayer = draft && (layer === "background" ? draft.layer === "background" : draft.layer !== "background") ? [draft] : [];
   const annotations = [...persistent, ...draftForLayer].sort((left, right) => (left.zIndex ?? 0) - (right.zIndex ?? 0));
   const paths = annotations.filter((annotation) => annotation.kind !== "sticky_note");
@@ -150,7 +183,7 @@ export function CanvasAnnotationLayer({ layer, controller, users, me, resolveAnc
       {paths.map((annotation) => <AnnotationPath key={`${draft === annotation ? "draft-" : ""}${annotation.id}`} annotation={annotation} controller={controller} users={users} me={me} resolveAnchor={resolveAnchor} />)}
     </svg>
     {layer === "foreground" && paths.filter((annotation) => annotation.kind === "arrow").map((annotation) => <AnnotationLabel key={`label-${annotation.id}`} annotation={annotation} controller={controller} users={users} me={me} resolveAnchor={resolveAnchor} />)}
-    {layer === "background" && paths.map((annotation) => <AnnotationLabel key={`label-${annotation.id}`} annotation={annotation} controller={controller} users={users} me={me} resolveAnchor={resolveAnchor} />)}
+    {layer === "background" && paths.filter((annotation) => !(controller.geometryEditing && controller.selectedId === annotation.id)).map((annotation) => <AnnotationLabel key={`label-${annotation.id}`} annotation={annotation} controller={controller} users={users} me={me} resolveAnchor={resolveAnchor} />)}
     {stickies.map((annotation) => <StickyAnnotation key={annotation.id} annotation={annotation} controller={controller} users={users} me={me} />)}
   </div>;
 }

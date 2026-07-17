@@ -68,7 +68,18 @@ func (h *Hub) validAnnotationLocked(annotation CanvasAnnotation) bool {
 	case "arrow":
 		return annotation.Start != nil && annotation.End != nil && annotation.Layer == "annotation"
 	case "freehand_stroke":
-		return len(annotation.Points) >= 2 && annotation.Layer == "annotation"
+		if annotation.Layer != "annotation" {
+			return false
+		}
+		if len(annotation.Strokes) == 0 {
+			return len(annotation.Points) >= 2
+		}
+		for _, stroke := range annotation.Strokes {
+			if len(stroke.Points) < 2 {
+				return false
+			}
+		}
+		return true
 	case "background_boundary":
 		return len(annotation.Points) >= 3 && annotation.Layer == "background"
 	default:
@@ -110,6 +121,10 @@ func annotationIndex(annotations []CanvasAnnotation, id string) int {
 
 func cloneAnnotation(annotation CanvasAnnotation) CanvasAnnotation {
 	annotation.Points = append([]CanvasPoint(nil), annotation.Points...)
+	annotation.Strokes = append([]AnnotationStroke(nil), annotation.Strokes...)
+	for index := range annotation.Strokes {
+		annotation.Strokes[index].Points = append([]CanvasPoint(nil), annotation.Strokes[index].Points...)
+	}
 	if annotation.Start != nil {
 		start := *annotation.Start
 		annotation.Start = &start
