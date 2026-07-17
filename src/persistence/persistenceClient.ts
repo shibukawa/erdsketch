@@ -2,7 +2,7 @@ import type { DurableOperation, DurableState } from "../collaboration/types";
 import type { OpfsProject } from "./projectCatalog";
 import { PersistenceService, type CatalogView, type PersistenceSession } from "./persistenceService";
 import { PERSISTENCE_PROTOCOL_VERSION, type PersistenceOperation, type PersistenceRequest, type PersistenceResponse } from "./persistenceProtocol";
-import { createProjectDocumentSet, readProjectDocumentSet, type ProjectDocumentSet } from "./projectDocument";
+import { createProjectDocumentSet, readProjectDocumentSet } from "./projectDocument";
 import { wailsApp } from "./wailsBridge";
 
 type PersistedModel = { id: string; x?: number; y?: number };
@@ -202,9 +202,7 @@ export class PersistenceClient<T extends PersistedModel> {
   }
 
   async decodeProjectFile(file: File) {
-    if (!file.name.toLowerCase().endsWith(".gz")) {
-      return readProjectDocumentSet<T>(JSON.parse(await file.text()) as ProjectDocumentSet);
-    }
+    if (!file.name.toLowerCase().endsWith(".zip")) throw new Error("Choose an .erdsketch.zip project archive");
     return this.decodeArchive(file);
   }
 
@@ -212,10 +210,10 @@ export class PersistenceClient<T extends PersistedModel> {
 
   downloadArchive(projectId: string, state: DurableState<T>) {
     return this.encodeArchive(projectId, state).then((buffer) => {
-      const url = URL.createObjectURL(new Blob([buffer], { type: "application/gzip" }));
+      const url = URL.createObjectURL(new Blob([buffer], { type: "application/zip" }));
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `${projectId}.erdsketch.txtar.gz`;
+      anchor.download = `${projectId}.erdsketch.zip`;
       anchor.click();
       setTimeout(() => URL.revokeObjectURL(url), 0);
     });

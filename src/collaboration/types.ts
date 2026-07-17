@@ -1,6 +1,8 @@
 import type { CanvasAnnotation, CanvasType } from "../features/annotations/types";
 import type { CanvasModelPlacement, DataDomain, DfdState, DomainCategory, ErdCanvas, NamingPolicy, RefinementResult, Relationship, RelationshipReference, VocabularyEntry } from "../features/modeling/types";
 
+export type Timestamped = { timestamp?: string };
+
 export type Collaborator = {
   id: string;
   name: string;
@@ -35,11 +37,11 @@ export type DurableState<T> = Omit<CollaborationState<T>, "users" | "locks">;
 
 export type DurableOperation<T> =
   | { type: "replace_project"; state: DurableState<T> }
-  | { type: "seed"; seed: T; create: boolean; canvasId: string; catalog?: boolean }
+  | { type: "seed"; seed: T; create: boolean; canvasId: string; catalog?: boolean; placementTimestamp?: string }
   | { type: "placement"; placement: CanvasModelPlacement; create: boolean }
   | { type: "canvas"; canvas: ErdCanvas; create: boolean }
   | { type: "dfd"; dfd: DfdState }
-  | { type: "ownership"; seedId: string; expectedOwnerId: string; targetCanvasId: string }
+  | { type: "ownership"; seedId: string; expectedOwnerId: string; targetCanvasId: string; placementTimestamp?: string }
   | { type: "domain"; domain: DataDomain; create: boolean; delete: boolean }
   | { type: "domain_category"; category: DomainCategory; create: boolean }
   | { type: "naming_policy"; policy: NamingPolicy }

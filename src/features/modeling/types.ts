@@ -2,12 +2,14 @@ export type EntityRole = "master" | "transaction" | "summary" | "history" | "wor
 
 export type ErdCanvas = {
   id: string;
+  timestamp?: string;
   name: string;
 };
 
 export type CanvasAccessMode = "owner" | "readonly";
 
 export type CanvasModelPlacement = {
+  timestamp?: string;
   canvasId: string;
   seedId: string;
   x: number;
@@ -37,6 +39,7 @@ export type NamingPolicy = {
 
 export type VocabularyEntry = {
   id: string;
+  timestamp?: string;
   businessName: string;
   systemName: string;
   physicalName: string;
@@ -57,6 +60,7 @@ export type VocabularyBinding = {
 
 export type ModelField = {
   id: string;
+  timestamp?: string;
   name: string;
   names?: NameSet;
   vocabularyBinding?: VocabularyBinding;
@@ -215,12 +219,14 @@ export type DomainComponent = {
 
 export type DomainCategory = {
   id: string;
+  timestamp?: string;
   name: string;
   system?: boolean;
 };
 
 export type DataDomain = {
   id: string;
+  timestamp?: string;
   name: string;
   names?: NameSet;
   vocabularyBinding?: VocabularyBinding;
@@ -259,6 +265,7 @@ export type RelationshipKind = "foreign-key" | "inherit" | "label" | "compositio
 
 export type Relationship = {
   id: string;
+  timestamp?: string;
   name: string;
   sourceId: string;
   targetId: string;
@@ -271,6 +278,7 @@ export type Relationship = {
 
 export type RelationshipReference = {
   id: string;
+  timestamp?: string;
   relationshipId: string;
   primaryKey: boolean;
   foreignKey: boolean;
@@ -281,6 +289,7 @@ export type CardDisplayMode = "description" | "key-fields";
 
 export type ModelSeed = {
   id: string;
+  timestamp?: string;
   title: string;
   names?: NameSet;
   vocabularyBinding?: VocabularyBinding;
@@ -302,6 +311,7 @@ export type ModelSeed = {
 
 export type DfdCanvas = {
   id: string;
+  timestamp?: string;
   name: string;
 };
 
@@ -324,6 +334,7 @@ export type DfdCrudMatrix = {
 
 export type DfdNode = {
   id: string;
+  timestamp?: string;
   definitionId: string;
   canvasId: string;
   kind: DfdNodeKind;
@@ -340,6 +351,7 @@ export type DfdNode = {
 
 export type DfdFlow = {
   id: string;
+  timestamp?: string;
   canvasId: string;
   sourceId: string;
   destinationId: string;
@@ -356,6 +368,7 @@ export type DfdGroupKind = "process" | "data_entity";
 
 export type DfdGroup = {
   id: string;
+  timestamp?: string;
   canvasId: string;
   kind: DfdGroupKind;
   memberIds: string[];

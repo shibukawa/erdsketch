@@ -4,13 +4,14 @@ import type { CanvasAnnotation, CanvasType, SaveAnnotation } from "./features/an
 import type { CanvasModelPlacement, DataDomain, DfdState, DomainCategory, ErdCanvas, NamingPolicy, RefinementResult, Relationship, RelationshipReference, VocabularyEntry } from "./features/modeling/types";
 import { applyDurableOperation, applyEphemeralOperation } from "./collaboration/hostState";
 import { durableState, isDurableOperation, type CollaborationState, type Collaborator, type DurableOperation, type DurableState, type Operation, type RelayJoinResult, type RelayMessage } from "./collaboration/types";
-import { chooseProjectDirectory, createProjectDocumentSet } from "./persistence/projectDocument";
+import { chooseProjectDirectory } from "./persistence/projectDocument";
 import { hasWailsBridge } from "./persistence/wailsBridge";
 import { usesGoServer, usesWailsDesktop } from "./runtime";
 import { loadNativeSeedOverrides } from "./persistence/nativeSeeds";
 import { PersistenceClient, type CatalogView, type OpfsProject, type PersistenceSession } from "./persistence/persistenceClient";
 import { useWebRtcSharing } from "./collaboration/webrtc/useWebRtcSharing";
 import { clearParticipantCheckpoint, saveParticipantCheckpoint, type ParticipantRecoveryCandidate } from "./collaboration/webrtc/participantCheckpoint";
+import { ensureStateTimestamps, MonotonicTimer, timestampDurableOperation } from "./collaboration/timestamp";
 
 export type { Collaborator } from "./collaboration/types";
 
@@ -117,6 +118,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   const pendingCursorRef = useRef<{ x: number; y: number } | undefined>(undefined);
   const webRtcAvailableRef = useRef(false);
   const webRtcSendRef = useRef<(message: Omit<RelayMessage<T>, "senderId">) => Promise<boolean>>(async () => false);
+  const timestampTimerRef = useRef(new MonotonicTimer());
 
   const replaceVisibleState = useCallback((next: CollaborationState<T>) => {
     stateRef.current = next;
@@ -165,13 +167,14 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
       const current = confirmedStateRef.current;
       let next: CollaborationState<T>;
       if (isDurableOperation(operation)) {
+        const acceptedOperation = timestampDurableOperation(current, operation, timestampTimerRef.current);
         const persistence = persistenceRef.current;
         if (!persistence) throw new Error("recovery storage is not ready");
         if (durableWritesBlockedRef.current) throw new Error("durable changes are paused because recovery storage failed");
-        next = applyDurableOperation(current, operation, actorID);
+        next = applyDurableOperation(current, acceptedOperation, actorID);
         let committed: Awaited<ReturnType<PersistenceClient<T>["append"]>>;
         try {
-          committed = await persistence.append(operation, requestId, sequenceRef.current);
+          committed = await persistence.append(acceptedOperation, requestId, sequenceRef.current);
         } catch (error) {
           durableWritesBlockedRef.current = true;
           setRecoveryStatus((status) => ({ ...status, error: error instanceof Error ? error.message : String(error) }));
@@ -322,6 +325,8 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
         // Bundled seed data remains the static-mode and backend-read fallback.
       }
     }
+    const timestamped = ensureStateTimestamps(durableState(current), timestampTimerRef.current);
+    current = { ...timestamped, users: current.users, locks: current.locks };
     initialProjectStateRef.current = durableState(current);
     persistenceRef.current?.dispose();
     const persistence = new PersistenceClient<T>();
@@ -543,7 +548,8 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     const persistence = persistenceRef.current;
     if (!persistence) return false;
     try {
-      const session = await persistence.createProjectFromState(displayName, durableState(confirmedStateRef.current), structuredClone(projectState));
+      const timestamped = ensureStateTimestamps(structuredClone(projectState), timestampTimerRef.current);
+      const session = await persistence.createProjectFromState(displayName, durableState(confirmedStateRef.current), timestamped);
       installPersistenceSession(session, confirmedStateRef.current.users);
       await publishState("state_snapshot");
       return true;
@@ -559,7 +565,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     if (!persistence) return false;
     try {
       const projectState = await persistence.decodeProjectFile(file);
-      const displayName = file.name.replace(/\.erdsketch\.txtar\.gz$|\.erdsketch\.json$|\.txtar\.gz$|\.json$|\.gz$/i, "").trim() || "Imported project";
+      const displayName = file.name.replace(/\.erdsketch\.zip$|\.zip$/i, "").trim() || "Imported project";
       return createProjectFromStateNow(displayName, projectState);
     } catch (error) {
       return failProjectTask(error);
@@ -678,7 +684,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   const createExportSnapshot = useCallback(() => {
     const projectId = activeProjectRef.current?.projectId;
     if (!projectId) throw new Error("Active project is not ready");
-    return JSON.stringify(createProjectDocumentSet(projectId, durableState(confirmedStateRef.current)));
+    return JSON.stringify({ formatVersion: 1, projectId, documents: { "project.json": JSON.stringify(durableState(confirmedStateRef.current)) } });
   }, []);
 
   const importProject = useCallback(async (file: File) => {

@@ -65,10 +65,34 @@ Every accepted durable change is appended to the host browser's Origin Private F
 
 - The `Projects` control manages named and temporary projects inside OPFS. Each project has an immutable internal ID, a user-visible name, and its own checkpoint and journal.
 - `New project`, `Save current as`, `Load`, rename, and confirmed deletion are available to the session host. The last active project is restored after restart.
-- With the Go backend, `Open` and `Save` use files under `model/projects/` through the backend.
+- With the Go backend, `Open` and `Save` use one directory per project under `model/projects/` through the backend.
 - Without the backend, Chromium browsers can use a user-selected real folder through `showDirectoryPicker()`.
-- Safari and browsers without the directory picker use OPFS for continuous recovery and compressed `txtar` archives for import/export.
-- Exported archives use the `.erdsketch.txtar.gz` extension and are portable across the runtime modes.
+- Safari and browsers without the directory picker use OPFS for continuous recovery and ZIP archives for import/export.
+- Exported archives use the `.erdsketch.zip` extension and contain the same split YAML tree as a local project folder.
+- Every persisted element receives a fixed-width Base36 timestamp from the collaboration host. Stable timestamp-based paths and one YAML file per element keep Git conflicts localized.
+
+```text
+project.yaml
+model/model-{timestamp}/
+  model.yaml
+  field-{timestamp}.yaml
+erd/erd-{timestamp}/
+  canvas.yaml
+  model-{timestamp}.yaml
+  annotation-{type}-{timestamp}.yaml
+erd/relation-{timestamp}.yaml
+dfd/dfd-{timestamp}/
+  canvas.yaml
+  process-{timestamp}.yaml
+  model-{timestamp}.yaml
+  extentity-{timestamp}.yaml
+  datastore-{timestamp}.yaml
+  dataflow-{timestamp}.yaml
+  group-{timestamp}.yaml
+domain/domain-{timestamp}.yaml
+domain/category-{timestamp}.yaml
+vocabulary/vocabulary-{timestamp}.yaml
+```
 
 Run frontend-only mode with `npm run dev`. If the `/api/relay/join` endpoint is unavailable, the browser becomes a standalone local host automatically.
 

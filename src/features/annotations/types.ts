@@ -12,6 +12,7 @@ export type AnnotationAnchor = CanvasPoint & {
 
 export type CanvasAnnotation = {
   id: string;
+  timestamp?: string;
   canvasType: CanvasType;
   canvasId: string;
   kind: AnnotationKind;

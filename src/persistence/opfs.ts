@@ -9,7 +9,7 @@ export async function getAppDirectory() {
   const manager = storageManager();
   if (!manager.getDirectory) throw new Error("Origin-private file system is unavailable");
   const root = await manager.getDirectory();
-  return root.getDirectoryHandle("erdsketch", { create: true });
+  return root.getDirectoryHandle("erdsketch-v2", { create: true });
 }
 
 export async function getProjectsDirectory() {
