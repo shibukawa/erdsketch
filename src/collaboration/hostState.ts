@@ -81,7 +81,7 @@ export function applyDurableOperation<T extends { id: string; x?: number; y?: nu
       if (validate && exists && !operation.create) requireLocks(state, actorID, [operation.seed.id]);
       const seeds = replaceByID(state.seeds, operation.seed, operation.create);
       if (operation.catalog || exists) return { ...state, seeds };
-      const placement: CanvasModelPlacement = { canvasId: operation.canvasId, seedId: operation.seed.id, x: operation.seed.x ?? 0, y: operation.seed.y ?? 0, accessMode: "owner" };
+      const placement: CanvasModelPlacement = { timestamp: operation.placementTimestamp, canvasId: operation.canvasId, seedId: operation.seed.id, x: operation.seed.x ?? 0, y: operation.seed.y ?? 0, accessMode: "owner" };
       return { ...state, seeds, placements: [...state.placements, placement] };
     }
     case "placement": {
@@ -104,7 +104,7 @@ export function applyDurableOperation<T extends { id: string; x?: number; y?: nu
       if (!placements.some((item) => item.seedId === operation.seedId && item.canvasId === operation.targetCanvasId)) {
         const seed = state.seeds.find((item) => item.id === operation.seedId);
         if (!seed) throw new OperationError("model not found");
-        placements = [...placements, { canvasId: operation.targetCanvasId, seedId: operation.seedId, x: seed.x ?? 0, y: seed.y ?? 0, accessMode: "readonly" }];
+        placements = [...placements, { timestamp: operation.placementTimestamp, canvasId: operation.targetCanvasId, seedId: operation.seedId, x: seed.x ?? 0, y: seed.y ?? 0, accessMode: "readonly" }];
       }
       placements = placements.map((item) => item.seedId !== operation.seedId ? item : { ...item, accessMode: item.canvasId === operation.targetCanvasId ? "owner" : "readonly" });
       const locks = { ...state.locks };

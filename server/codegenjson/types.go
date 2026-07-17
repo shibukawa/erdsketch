@@ -2,7 +2,7 @@ package codegenjson
 
 const SchemaID = "urn:erdsketch:schema:codegen:1"
 
-// CanonicalDocumentSet is the persisted .erdsketch.json envelope.
+// CanonicalDocumentSet is the JSON bridge envelope used by the export WASM boundary.
 type CanonicalDocumentSet struct {
 	FormatVersion int               `json:"formatVersion"`
 	ProjectID     string            `json:"projectId"`

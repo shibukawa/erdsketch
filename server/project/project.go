@@ -38,8 +38,11 @@ func (s *Service) Save(ctx context.Context, documents DocumentSet) error {
 }
 
 func Validate(documents DocumentSet) error {
-	if documents.FormatVersion != 1 || !validName(documents.ProjectID) || len(documents.Documents) == 0 {
+	if documents.FormatVersion != 2 || !validName(documents.ProjectID) || len(documents.Documents) == 0 {
 		return errors.New("invalid project document set")
+	}
+	if _, ok := documents.Documents["project.yaml"]; !ok {
+		return errors.New("project.yaml is missing")
 	}
 	for name := range documents.Documents {
 		if !validDocumentPath(name) {

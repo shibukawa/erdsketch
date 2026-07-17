@@ -50,7 +50,7 @@ func TestRuntimeProjectWritesRequireHost(t *testing.T) {
 	handler := NewRuntime(relay.NewHub(), seedListerStub{}, store, log.New(io.Discard, "", 0))
 	runtimePost(handler, "/api/relay/join", `{"clientId":"host","user":{"id":"host"}}`)
 	runtimePost(handler, "/api/relay/join", `{"clientId":"peer","user":{"id":"peer"}}`)
-	body := `{"formatVersion":1,"projectId":"demo","documents":{"project.json":"{}"}}`
+	body := `{"formatVersion":2,"projectId":"demo","documents":{"project.yaml":"format_version: 2\nproject_id: demo\n"}}`
 	peerRequest := httptest.NewRequest(http.MethodPut, "/api/project", bytes.NewBufferString(body))
 	peerRequest.Header.Set("X-ERDSketch-Client-ID", "peer")
 	peerResponse := httptest.NewRecorder()

@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io/fs"
 
 	"erdsketch/server/fileio"
@@ -65,14 +64,13 @@ func (a *App) ListSeeds() ([]SeedDocument, error) {
 }
 
 func (a *App) OpenProject() (*project.DocumentSet, error) {
-	selected, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title:   "Open ERDSketch Project",
-		Filters: []runtime.FileFilter{{DisplayName: "ERDSketch project", Pattern: "*.erdsketch.json"}},
+	selected, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Open ERDSketch Project Folder",
 	})
 	if err != nil || selected == "" {
 		return nil, err
 	}
-	documents, err := fileio.ReadProjectFile(selected)
+	documents, err := fileio.ReadProjectDirectory(selected)
 	if err != nil {
 		return nil, err
 	}
@@ -80,10 +78,8 @@ func (a *App) OpenProject() (*project.DocumentSet, error) {
 }
 
 func (a *App) SaveProject(documents project.DocumentSet) error {
-	selected, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		Title:           "Save ERDSketch Project",
-		DefaultFilename: fmt.Sprintf("%s.erdsketch.json", documents.ProjectID),
-		Filters:         []runtime.FileFilter{{DisplayName: "ERDSketch project", Pattern: "*.erdsketch.json"}},
+	selected, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Save ERDSketch Project Folder",
 	})
 	if err != nil || selected == "" {
 		if err != nil {
@@ -91,5 +87,5 @@ func (a *App) SaveProject(documents project.DocumentSet) error {
 		}
 		return errors.New("save cancelled")
 	}
-	return fileio.WriteProjectFile(selected, documents)
+	return fileio.WriteProjectDirectory(a.ctx, selected, documents)
 }

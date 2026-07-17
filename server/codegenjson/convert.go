@@ -10,8 +10,8 @@ import (
 
 const projectDocumentName = "project.json"
 
-// Convert transforms canonical .erdsketch.json bytes into a deterministic,
-// UI-independent code-generation JSON document.
+// Convert transforms the UI's JSON bridge envelope into a deterministic,
+// UI-independent code-generation JSON document. It is not a persisted project format.
 func Convert(input []byte) ([]byte, error) {
 	projectID, state, err := decodeProject(input)
 	if err != nil {
