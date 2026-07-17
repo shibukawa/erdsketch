@@ -40,6 +40,7 @@ import { CoworkClosedScreen } from "../components/collaboration/CoworkClosedScre
 import { CoworkReadOnlySnapshotNotice } from "../components/collaboration/CoworkReadOnlySnapshotNotice";
 import { ExportDialog } from "../components/layout/ExportDialog";
 import { GuidedTourTrigger } from "../components/guidedTour/GuidedTourTrigger";
+import { defaultModelDescription } from "../features/modeling/maturity";
 
 type ModelingWorkspacePageProps = { initialInvitationToken?: string; initialParticipantRecovery?: ParticipantRecoveryCandidate<ModelSeed> };
 
@@ -97,6 +98,7 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
     saveDfd,
     saveCatalogSeed,
     savePlacement,
+    removeModel,
     transferOwnership,
     saveRelationship,
     saveRefinement,
@@ -468,7 +470,7 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
       const seed: ModelSeed = {
         id: crypto.randomUUID(),
         title: requestedTitle?.trim() || `Model Seed ${index}`,
-        description: "A rough model idea. Drag it near related seeds and rename it when it gets clearer.",
+        description: defaultModelDescription,
         fields: [],
         x: point.x,
         y: point.y,
@@ -891,6 +893,7 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
 
   const openVocabulary = useCallback(() => { setVocabularyFocusKey(null); setVocabularyOpen(true); }, []);
   const openVocabularyAt = useCallback((matchKey: string) => { setVocabularyFocusKey(matchKey); setVocabularyOpen(true); }, []);
+  const openSidebarVocabulary = useCallback((matchKey?: string) => { if (matchKey) openVocabularyAt(matchKey); else openVocabulary(); }, [openVocabulary, openVocabularyAt]);
   const closeVocabulary = useCallback(() => { setVocabularyOpen(false); setVocabularyFocusKey(null); }, []);
 
   const selectCanvas = useCallback((canvasId: string, focusSeedId?: string) => {
@@ -1061,6 +1064,23 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
     return true;
   }, [ownershipTransferSeedId, placements, seeds, setLocalPlacements, transferOwnership]);
 
+  const removeSelectedModel = useCallback(async (seedId: string) => {
+    const model = seeds.find((seed) => seed.id === seedId);
+    const placement = placements.find((item) => item.canvasId === activeCanvasId && item.seedId === seedId);
+    if (!model || !placement || participantSnapshotReadOnly) return false;
+    if (placement.accessMode === "owner" && locks[seedId]?.id !== me.id && !(await lock(seedId))) {
+      window.alert("The model must be unlocked before it can be deleted from the project.");
+      return false;
+    }
+    const removed = await removeModel(seedId, activeCanvasId);
+    if (!removed) {
+      window.alert(placement.accessMode === "owner" ? "The model could not be deleted from the project." : "The model could not be removed from this canvas.");
+      return false;
+    }
+    setSelectedId("");
+    return true;
+  }, [activeCanvasId, lock, locks, me.id, participantSnapshotReadOnly, placements, removeModel, seeds]);
+
   const handleCloseDisconnectedCowork = useCallback(() => {
     abandonParticipantRecovery();
     setCoworkClosed(true);
@@ -1111,19 +1131,19 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
       <div className="flex h-full">
         <Sidebar
           query={query}
-          cardDisplayMode={cardDisplayMode}
-          nameDisplayMode={nameDisplayMode}
           selectedSeed={selectedSeed}
           selectedOwner={selectedOwner}
           canEditSelected={canEditSelected}
           selectedPlacement={selectedPlacement}
+          domains={domains}
+          vocabularyEntries={vocabularyEntries}
+          canDeleteSelected={!participantSnapshotReadOnly}
           onQueryChange={setQuery}
-          onCardDisplayModeChange={setCardDisplayMode}
-          onNameDisplayModeChange={setNameDisplayMode}
           onAddSeed={quickCreateSeed}
           onUpdateSeed={updateSeed}
-          onOpenDomainDictionary={() => openDomainDictionary()}
-          onOpenVocabulary={openVocabulary}
+          onRemoveSelected={removeSelectedModel}
+          onOpenDomainDictionary={openDomainDictionary}
+          onOpenVocabulary={openSidebarVocabulary}
         />
 
         <section className="flex min-w-0 flex-1 flex-col">
@@ -1162,6 +1182,8 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
             selectedId={selectedId}
             displayMode={cardDisplayMode}
             nameDisplayMode={nameDisplayMode}
+            onDisplayModeChange={setCardDisplayMode}
+            onNameDisplayModeChange={setNameDisplayMode}
             vocabularyCache={vocabularyCache}
             locks={locks}
             me={me}

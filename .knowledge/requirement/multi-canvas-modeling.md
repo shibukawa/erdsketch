@@ -56,6 +56,8 @@ acceptance:
   - Users can open a listed canvas and locate the selected model placement.
   - Users can transfer an exclusively owned model to another canvas from the model catalog.
   - Ownership transfer makes the target placement owner and the previous owner placement readonly as one atomic change.
+  - Deleting from an owner placement removes the model from the project after confirmation.
+  - Deleting from a non-owner placement removes only that canvas placement.
 open_decisions:
   - Whether master model placements are writable on every canvas or use an explicit editing authority.
   - How ownership is represented for an explicitly shared boundary or work model.

@@ -28,6 +28,7 @@ ui:
       - pan_canvas
       - zoom_canvas
       - create_and_edit_shared_annotations
+      - switch_card_content_from_bottom_left_speed_dial
     quick_create: ui:modeling-quick-create
     palette:
       selection: radio
@@ -88,6 +89,7 @@ ui:
     model_scope: rule:dfd-model-scope
     model_picker: ui:dfd-model-picker-dialog
     guidance: ui:dfd-daily-tips
+    card_content_control: ui:model-card-display-mode
     viewport_controls: ui:canvas-floating-controls
     validation: requirement:dfd-validation
     connector: rule:dfd-flow-routing
@@ -121,6 +123,7 @@ constraints:
   - Models are shared through data:model-catalog.
   - Model placement uses ui:dfd-model-picker-dialog.
   - A DFD model placement exposes the same field editor and data as its ERD placement.
+  - DFD card content is selected from the bottom-left canvas FAB, not the sidebar.
   - Shared visual annotations follow requirement:collaborative-canvas-annotation.
   - DFD node movement and continuous inspector controls synchronize only after user confirmation under rule:collaborative-edit-commit.
   - Unchanged data-flow geometry retains the same rendered rough path during cursor movement and unrelated drag updates.

@@ -111,6 +111,8 @@ export function timestampDurableOperation<T extends { id: string }>(state: Colla
       };
     case "placement":
       return { ...operation, placement: operation.create ? created(operation.placement, timer) : existingPlacement(operation.placement, state.placements, timer) };
+    case "remove_model":
+      return operation;
     case "canvas":
       return { ...operation, canvas: operation.create ? created(operation.canvas, timer) : existingOrCreated(operation.canvas, state.canvases, timer) };
     case "dfd":

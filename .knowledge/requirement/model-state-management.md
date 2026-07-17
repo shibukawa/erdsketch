@@ -4,40 +4,30 @@ type: requirement
 title: Model State Management
 ---
 
-Users manually control model state; automatic assessment is deferred.
+The application automatically derives model state and matching roughness from model completeness.
 
 ```yaml
 current_behavior:
-  authority: user_selected_state
-  manual_change: allowed
+  authority: rule:model-maturity-assessment
+  manual_change: forbidden
   mapping: data:model-state
-  on_state_change:
+  on_assessment_change:
     set_card_roughness_to_mapped_value: true
   valid_states:
     - seed_model
     - conceptual_model
     - logical_model
     - matured_model
-readiness_guidance:
-  source: data:model-state
-  cumulative: true
-  blocks_manual_change: false
-  validation: none
-future_behavior:
-  automatic_state_assessment:
-    status: deferred
-    decision_required: true
-  automatic_state_transition:
-    status: deferred
-    decision_required: true
+validation: requirement:erd-maturity-validation
 acceptance:
-  - New models start as seed_model with roughness 6.0.
-  - Users can select any state manually.
-  - State selection updates visual roughness to the exact mapped value.
-  - Missing guidance criteria do not reject a manual state selection.
-  - No automatic state update occurs in the current scope.
+  - New models assess as seed_model with roughness 6.0.
+  - Users cannot select or override model state.
+  - Relevant edits immediately reassess state and set exact mapped roughness.
+  - Validation lists every concrete item required for the next state.
 related:
   - data:model-state
   - data:model-seed
   - ui:erd-sketch-canvas
+  - rule:model-maturity-assessment
+  - requirement:erd-maturity-validation
 ```

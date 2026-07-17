@@ -4,7 +4,7 @@ type: data
 title: Model State
 ---
 
-Model state names four cumulative refinement levels and their exact Rough.js roughness.
+Model state names four automatically assessed refinement levels and their exact Rough.js roughness.
 
 ```yaml
 order:
@@ -20,29 +20,19 @@ states:
     guidance:
       - initial_state
   conceptual_model:
-    display_label: Conceptual Model
+    display_label: Concept
     roughness: 3.5
-    guidance:
-      - primary_key_attributes_defined
-      - favorite_attributes_defined
-      - relationships_between_independent_models_configured
   logical_model:
     display_label: Logical Model
     roughness: 1.25
     includes: conceptual_model
-    guidance:
-      - relationships_for_dependent_models_configured
-      - indexes_configured
   matured_model:
     display_label: Matured Model
     roughness: 0.5
     includes: logical_model
-    guidance:
-      - business_name_configured
-      - system_name_configured
-guidance_policy:
-  cumulative: true
-  enforcement: advisory_only
+assessment: rule:model-maturity-assessment
+authority: derived_only
+manual_change: false
 related:
   - data:model-seed
   - data:attribute
@@ -50,4 +40,5 @@ related:
   - data:dependent-entity
   - requirement:performance-design
   - term:vocabulary
+  - rule:model-maturity-assessment
 ```
