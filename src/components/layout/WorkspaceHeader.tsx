@@ -1,4 +1,4 @@
-import { Grid3X3, LocateFixed, Search, ZoomIn, ZoomOut } from "lucide-react";
+import { FileOutput, Grid3X3, Search } from "lucide-react";
 import { startTransition, useCallback, useState, type ChangeEvent, type FocusEvent, type FormEvent } from "react";
 import type { Collaborator } from "../../collaboration";
 import { WorkspaceProjectNavigation } from "./WorkspaceProjectNavigation";
@@ -8,11 +8,8 @@ type WorkspaceHeaderProps = {
   me: Collaborator;
   users: Collaborator[];
   connected: boolean;
-  scale: number;
   canvasName: string;
   onRename: (name: string) => Promise<boolean>;
-  onResetView: () => void;
-  onUpdateScale: (scale: number) => void;
   onOpenCanvasSelector: () => void;
   onOpenModelCatalog: () => void;
   onOpenCrudMatrix: () => void;
@@ -23,9 +20,10 @@ type WorkspaceHeaderProps = {
   recoveryError?: string;
   activeProject?: { displayName: string; kind: "named" | "temporary" };
   onOpenProjectManager: () => void;
+  onOpenExport: () => void;
 };
 
-export function WorkspaceHeader({ me, users, connected, scale, canvasName, onRename, onResetView, onUpdateScale, onOpenCanvasSelector, onOpenModelCatalog, onOpenCrudMatrix, onShareWork, isHost, recoveryReady, persistentStorage, recoveryError, activeProject, onOpenProjectManager }: WorkspaceHeaderProps) {
+export function WorkspaceHeader({ me, users, connected, canvasName, onRename, onOpenCanvasSelector, onOpenModelCatalog, onOpenCrudMatrix, onShareWork, isHost, recoveryReady, persistentStorage, recoveryError, activeProject, onOpenProjectManager, onOpenExport }: WorkspaceHeaderProps) {
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(me.name);
   const saveName = useCallback(async () => {
@@ -60,14 +58,6 @@ export function WorkspaceHeader({ me, users, connected, scale, canvasName, onRen
     setEditingName(true);
   }, [me.name]);
 
-  const handleZoomOut = useCallback(() => {
-    onUpdateScale(scale * 0.85);
-  }, [onUpdateScale, scale]);
-
-  const handleZoomIn = useCallback(() => {
-    onUpdateScale(scale * 1.15);
-  }, [onUpdateScale, scale]);
-
   return (
     <header className="z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-7 py-4 shadow-sm">
       <WorkspaceProjectNavigation isHost={isHost} recoveryReady={recoveryReady} persistentStorage={persistentStorage} recoveryError={recoveryError} activeProject={activeProject} canvasName={canvasName} onOpenProjectManager={onOpenProjectManager} onOpenCanvasSelector={onOpenCanvasSelector} />
@@ -97,21 +87,7 @@ export function WorkspaceHeader({ me, users, connected, scale, canvasName, onRen
             {me.name}
           </button>
         )}
-        <button className="btn btn-outline btn-sm rounded-lg gap-2" onClick={onResetView}>
-          <LocateFixed size={16} />
-          Reset
-        </button>
-        <div className="join">
-          <button className="btn join-item btn-sm" onClick={handleZoomOut} aria-label="Zoom out">
-            <ZoomOut size={16} />
-          </button>
-          <span className="join-item flex h-8 min-w-16 items-center justify-center border-y border-slate-300 bg-white px-3 text-sm font-semibold">
-            {Math.round(scale * 100)}%
-          </span>
-          <button className="btn join-item btn-sm" onClick={handleZoomIn} aria-label="Zoom in">
-            <ZoomIn size={16} />
-          </button>
-        </div>
+        <button type="button" className="btn btn-error btn-sm gap-2 text-white" onClick={onOpenExport}><FileOutput size={16} />Export</button>
       </div>
     </header>
   );

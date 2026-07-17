@@ -5,6 +5,7 @@ import type { OpfsProject } from "../../persistence/projectCatalog";
 import { FileSystemStoragePanel } from "./FileSystemStoragePanel";
 import { NewProjectPanel } from "./NewProjectPanel";
 import { OriginPrivateStoragePanel } from "./OriginPrivateStoragePanel";
+import { LanguageSwitcher } from "../../i18n/LanguageSwitcher";
 
 type StorageTab = "new" | "opfs" | "filesystem";
 
@@ -63,7 +64,7 @@ export function ProjectManagerDialog({ projects, activeProjectId, isHost, recove
     <div className="modal-box flex h-[calc(100dvh-2rem)] max-h-[760px] max-w-5xl flex-col overflow-hidden rounded-xl bg-white p-0 shadow-2xl">
       <header className="shrink-0 flex items-center justify-between border-b border-slate-200 px-6 py-4">
         <div><p className="text-xs font-bold uppercase tracking-wide text-blue-700">Project storage</p><h2 id="project-manager-title" className="text-xl font-bold">Project Management</h2><p className="mt-1 text-sm text-slate-600">Manage browser projects, files, and portable archives from one place.</p></div>
-        <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={onClose} aria-label="Close project manager"><X size={18} /></button>
+        <div className="flex items-center gap-2"><LanguageSwitcher /><button type="button" className="btn btn-ghost btn-sm btn-square" onClick={onClose} aria-label="Close project manager"><X size={18} /></button></div>
       </header>
 
       <div className="shrink-0 border-b border-slate-200 px-6 pt-3" role="tablist" aria-label="Project storage">

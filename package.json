@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "npm run build:static",
-    "build:static": "tsc && vite build --mode static",
+    "build:export-wasm": "./scripts/build-export-wasm.sh",
+    "build:static": "npm run build:export-wasm && tsc && vite build --mode static",
     "build:server": "tsc && vite build --mode server",
     "build:desktop": "tsc && vite build --mode desktop",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",

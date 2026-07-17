@@ -30,5 +30,5 @@ constraints:
   - Data-entity class accepts data:model-catalog and data:dfd-intermediate-data placements.
   - Multiple intermediate-data nodes between processes may share one dashed data-entity group.
   - Grouping does not merge or copy member definitions.
-  - Removing a member preserves its definition and remaining flows.
+  - Removing a member preserves its definition and applies rule:dfd-group-flow-restoration to remaining flows.
 ```

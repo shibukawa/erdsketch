@@ -2,6 +2,17 @@ import type { CrudOperation, DfdCrudAssignment, DfdFlow, DfdGroup, DfdGroupKind,
 
 export type DfdBounds = { x: number; y: number; width: number; height: number };
 export type DfdWarning = { id: string; message: string; nodeId?: string };
+export type DfdGroupFlowRestoration = {
+  groupId: string;
+  memberIds: string[];
+  originalFlows: DfdFlow[];
+  expandedFlowCount: number;
+};
+
+export type DfdGroupingResult = {
+  state: DfdState;
+  restoration?: DfdGroupFlowRestoration;
+};
 
 export const DFD_NODE_SIZE: Record<DfdNode["kind"], { width: number; height: number }> = {
   process: { width: 184, height: 96 },
@@ -233,6 +244,96 @@ export function groupAfterOverlap(state: DfdState, draggedId: string): DfdState 
 
 function expandedEndpointIds(id: string, groups: DfdGroup[]) {
   return groups.find((group) => group.id === id)?.memberIds ?? [id];
+}
+
+function flowExpandedCount(flow: DfdFlow, groups: DfdGroup[]) {
+  return expandedEndpointIds(flow.sourceId, groups).length * expandedEndpointIds(flow.destinationId, groups).length;
+}
+
+function sameMembers(first: string[], second: string[]) {
+  return first.length === second.length && first.every((id) => second.includes(id));
+}
+
+function directedEndpointKey(flow: Pick<DfdFlow, "canvasId" | "sourceId" | "destinationId">) {
+  return `${flow.canvasId}\0${flow.sourceId}\0${flow.destinationId}`;
+}
+
+function mergeFlowDetails(first: DfdFlow, second: DfdFlow): DfdFlow {
+  const crudAssignments = [...(first.crudAssignments ?? []), ...(second.crudAssignments ?? [])];
+  return { ...first, crudAssignments: crudAssignments.length ? crudAssignments : undefined };
+}
+
+function deduplicateDirectedFlows(flows: DfdFlow[]): DfdFlow[] {
+  const deduplicated = new Map<string, DfdFlow>();
+  for (const flow of flows) {
+    const key = directedEndpointKey(flow);
+    const existing = deduplicated.get(key);
+    deduplicated.set(key, existing ? mergeFlowDetails(existing, flow) : flow);
+  }
+  return [...deduplicated.values()];
+}
+
+function mergeAffectedDirectedFlows(remaining: DfdFlow[], added: DfdFlow[]): DfdFlow[] {
+  const affectedKeys = new Set(added.map(directedEndpointKey));
+  const unaffected = remaining.filter((flow) => !affectedKeys.has(directedEndpointKey(flow)));
+  const affected = remaining.filter((flow) => affectedKeys.has(directedEndpointKey(flow)));
+  return [...unaffected, ...deduplicateDirectedFlows([...affected, ...added])];
+}
+
+export function groupAfterOverlapWithRestoration(state: DfdState, draggedId: string): DfdGroupingResult {
+  const next = groupAfterOverlap(state, draggedId);
+  if (next === state) return { state };
+  const group = next.groups.find((item) => item.memberIds.includes(draggedId) && !state.groups.some((previous) => previous.id === item.id && sameMembers(previous.memberIds, item.memberIds)));
+  if (!group) return { state: next };
+
+  const previousGroupIds = new Set(state.groups.filter((item) => item.memberIds.some((id) => group.memberIds.includes(id))).map((item) => item.id));
+  const affectedEndpointIds = new Set([...group.memberIds, ...previousGroupIds]);
+  const originalFlows = state.flows.filter((flow) => affectedEndpointIds.has(flow.sourceId) || affectedEndpointIds.has(flow.destinationId));
+  const expandedFlowCount = next.flows
+    .filter((flow) => flow.sourceId === group.id || flow.destinationId === group.id)
+    .reduce((count, flow) => count + flowExpandedCount(flow, next.groups), 0);
+
+  return {
+    state: next,
+    restoration: { groupId: group.id, memberIds: [...group.memberIds], originalFlows, expandedFlowCount }
+  };
+}
+
+export function ungroupDfd(state: DfdState, groupId: string, restoration?: DfdGroupFlowRestoration, idFactory: () => string = () => crypto.randomUUID()): DfdState {
+  const group = state.groups.find((item) => item.id === groupId);
+  if (!group) return state;
+
+  const groupedFlows = state.flows.filter((flow) => flow.sourceId === groupId || flow.destinationId === groupId);
+  const remainingFlows = state.flows.filter((flow) => flow.sourceId !== groupId && flow.destinationId !== groupId);
+  const groups = state.groups.filter((item) => item.id !== groupId);
+  const currentExpandedFlowCount = groupedFlows.reduce((count, flow) => count + flowExpandedCount(flow, state.groups), 0);
+  const validEndpointIds = new Set([...state.nodes.map((node) => node.id), ...groups.map((item) => item.id)]);
+  const canRestore = Boolean(
+    restoration
+    && restoration.groupId === group.id
+    && sameMembers(restoration.memberIds, group.memberIds)
+    && restoration.expandedFlowCount === currentExpandedFlowCount
+    && restoration.originalFlows.every((flow) => validEndpointIds.has(flow.sourceId) && validEndpointIds.has(flow.destinationId))
+  );
+
+  let flows: DfdFlow[];
+  if (canRestore && restoration) {
+    flows = mergeAffectedDirectedFlows(remainingFlows, restoration.originalFlows);
+  } else {
+    const expanded = groupedFlows.flatMap((flow) => {
+      const sourceIds = flow.sourceId === group.id ? group.memberIds : [flow.sourceId];
+      const destinationIds = flow.destinationId === group.id ? group.memberIds : [flow.destinationId];
+      let first = true;
+      return sourceIds.flatMap((sourceId) => destinationIds.map((destinationId) => {
+        const next = { ...flow, id: first ? flow.id : idFactory(), sourceId, destinationId };
+        first = false;
+        return next;
+      }));
+    });
+    flows = mergeAffectedDirectedFlows(remainingFlows, expanded);
+  }
+
+  return normalizeDfdCrud({ ...state, groups, flows });
 }
 
 export function canTerminateDfdFlow(node: DfdNode) {

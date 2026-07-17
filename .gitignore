@@ -1,7 +1,10 @@
 node_modules
+.knowledge/.cache
 dist
 /desktop/build/
 /desktop/frontend/dist/
 /server/webassets/dist/
 /src/wailsjs/
 /package.json.md5
+/public/erdsketch-export.wasm
+/public/wasm_exec.js

@@ -23,7 +23,7 @@ ui:
       - edit_detailed_crud_assignments
       - open_field_list_from_selected_model_menu
       - overlap_same_class_nodes_to_group
-      - separate_group_member
+      - separate_group_member_using_rule:dfd-group-flow-restoration
       - open_canvas_selector
       - pan_canvas
       - zoom_canvas
@@ -88,6 +88,7 @@ ui:
     model_scope: rule:dfd-model-scope
     model_picker: ui:dfd-model-picker-dialog
     guidance: ui:dfd-daily-tips
+    viewport_controls: ui:canvas-floating-controls
     validation: requirement:dfd-validation
     connector: rule:dfd-flow-routing
     visual_language: rule:dfd-rough-rendering
@@ -114,6 +115,7 @@ constraints:
   - Process, model, and intermediate-data definitions appear once per canvas.
   - The same external-entity definition may appear more than once per canvas.
   - A group connector follows rule:dfd-group-flow-expansion.
+  - Separating a group follows rule:dfd-group-flow-restoration.
   - CRUD text appears only beside a model endpoint and follows rule:dfd-model-crud-label.
   - Group members and physical process members retain independent data:crud-assignment values.
   - Models are shared through data:model-catalog.
@@ -121,4 +123,5 @@ constraints:
   - A DFD model placement exposes the same field editor and data as its ERD placement.
   - Shared visual annotations follow requirement:collaborative-canvas-annotation.
   - DFD node movement and continuous inspector controls synchronize only after user confirmation under rule:collaborative-edit-commit.
+  - Unchanged data-flow geometry retains the same rendered rough path during cursor movement and unrelated drag updates.
 ```

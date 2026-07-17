@@ -4,7 +4,7 @@ import type { CanvasAnnotation, CanvasType, SaveAnnotation } from "./features/an
 import type { CanvasModelPlacement, DataDomain, DfdState, DomainCategory, ErdCanvas, NamingPolicy, RefinementResult, Relationship, RelationshipReference, VocabularyEntry } from "./features/modeling/types";
 import { applyDurableOperation, applyEphemeralOperation } from "./collaboration/hostState";
 import { durableState, isDurableOperation, type CollaborationState, type Collaborator, type DurableOperation, type DurableState, type Operation, type RelayJoinResult, type RelayMessage } from "./collaboration/types";
-import { chooseProjectDirectory } from "./persistence/projectDocument";
+import { chooseProjectDirectory, createProjectDocumentSet } from "./persistence/projectDocument";
 import { hasWailsBridge } from "./persistence/wailsBridge";
 import { usesGoServer, usesWailsDesktop } from "./runtime";
 import { loadNativeSeedOverrides } from "./persistence/nativeSeeds";
@@ -675,6 +675,12 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     }
   }, []);
 
+  const createExportSnapshot = useCallback(() => {
+    const projectId = activeProjectRef.current?.projectId;
+    if (!projectId) throw new Error("Active project is not ready");
+    return JSON.stringify(createProjectDocumentSet(projectId, durableState(confirmedStateRef.current)));
+  }, []);
+
   const importProject = useCallback(async (file: File) => {
     if (roleRef.current !== "host") return false;
     try {
@@ -728,6 +734,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     saveProject,
     openProject,
     exportProject,
+    createExportSnapshot,
     importProject,
     rename,
     changeCanvas,

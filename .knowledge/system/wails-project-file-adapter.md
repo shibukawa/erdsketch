@@ -21,6 +21,11 @@ operations:
   - export_data:portable-project-archive
 storage:
   user_projects: user_selected_location
+  canonical_file:
+    source: data:project-document-set
+    format: uncompressed JSON
+    extension: .erdsketch.json
+    authority: editable project source of truth
 save:
   behavior: atomic_replace_when_supported
   requirements:
@@ -35,4 +40,6 @@ constraints:
   - Native dialogs and filesystem calls execute in Go.
   - Adapter failures are ordinary recoverable UI errors.
   - Go services remain independent of Wails-generated binding types.
+  - Native Save writes the canonical JSON, not data:codegen-exchange-model.
+  - The saved canonical JSON is valid input to requirement:headless-export-cli.
 ```

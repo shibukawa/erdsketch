@@ -16,11 +16,13 @@ shared:
   - data:project-document-set
   - data:portable-project-archive
   - modeling behavior and validation
+  - decision:shared-go-export-engine export semantics
 target_specific:
   - runtime bootstrap
   - persistence adapter
   - collaboration transport availability
   - packaging and release metadata
+  - native Go versus TinyGo/WASM export adapter
 build_contract:
   - Each target has one documented noninteractive build command.
   - Each target writes to an isolated output directory.
@@ -32,4 +34,5 @@ acceptance:
   - A project exported by any target imports into every other target.
   - Shared frontend tests run independently of runtime adapters.
   - Target-specific tests fail when forbidden runtime dependencies are introduced.
+  - Export formats have one Go implementation and native/WASM parity tests prevent behavioral forks.
 ```

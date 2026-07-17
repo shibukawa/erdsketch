@@ -116,6 +116,7 @@ ui:
     viewport:
       pan: drag_empty_space_or_trackpad_scroll
       zoom: trackpad_pinch_or_ctrl_wheel
+      controls: ui:canvas-floating-controls
     persistence:
       owner: data:project
       cardinality_per_project: many

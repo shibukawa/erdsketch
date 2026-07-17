@@ -26,6 +26,7 @@ runtime:
   browser_HTTP_handlers: not_used_for_in_process_calls
 architecture:
   - Reuse storage-neutral Go services below HTTP and Wails adapters.
+  - Call decision:shared-go-export-engine as native Go without WebAssembly.
   - Keep Wails bootstrap and bindings outside reusable domain packages.
   - Keep browser-only globals behind frontend runtime adapters.
 collaboration:
@@ -35,6 +36,9 @@ collaboration:
 acceptance:
   - The application opens a usable workspace without a browser or separately started server.
   - Native open and save dialogs exchange data:project-document-set without exposing absolute paths to shared frontend state.
+  - Native Save persists one uncompressed canonical `.erdsketch.json` at the user-selected location.
+  - The canonical JSON can be exported by requirement:headless-export-cli without starting the Wails UI.
+  - Wails exports and CLI exports are byte-identical for the same input and options.
   - Accepted durable changes survive application restart according to rule:continuous-project-recovery.
   - Import and export use the same data:portable-project-archive bytes as web targets.
   - Closing the last window flushes pending durable writes or reports failure before exit.

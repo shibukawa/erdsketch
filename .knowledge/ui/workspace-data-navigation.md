@@ -34,9 +34,10 @@ header_exclusions:
   - standalone_open_button
   - standalone_save_button
   - standalone_import_button
-  - standalone_export_button
+  - standalone_project_archive_export_button
 constraints:
   - One project-management entry point replaces separate workspace file controls.
   - The active project remains identifiable from the project button.
   - The active canvas remains identifiable from the canvas button.
+  - Artifact generation uses ui:workspace-header and ui:export-dialog, independently from project archive storage.
 ```

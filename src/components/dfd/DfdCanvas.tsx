@@ -11,6 +11,7 @@ import type { CanvasAnnotationController } from "../../features/annotations/useC
 import { CanvasAnnotationLayer } from "../annotations/CanvasAnnotationLayer";
 import { AnnotationToolbar } from "../annotations/AnnotationToolbar";
 import { RemoteCursor } from "../diagram/RemoteCursor";
+import { CanvasTips } from "../diagram/CanvasTips";
 
 type DfdCanvasProps = {
   canvasRef: RefObject<HTMLDivElement | null>;
@@ -42,9 +43,11 @@ type DfdCanvasProps = {
   me: Collaborator;
   remoteUsers: Collaborator[];
   resolveAnnotationAnchor: (anchor: AnnotationAnchor) => CanvasPoint;
+  onResetView: () => void;
+  onUpdateScale: (scale: number) => void;
 };
 
-export function DfdCanvas({ canvasRef, nodes, groups, flows, models, viewport, selectedEndpointId, selectedFlowId, connectionSourceId, connectionDrag, connectionDropTargetId, tip, displayMode, onCanvasPointerDown, onCanvasPointerMove, onCanvasPointerUp, onNodePointerDown, onLinkPointerDown, onGroupLinkPointerDown, onEditModelFields, onUpdateNode, onUpdateModel, onSelectEndpoint, onSelectFlow, annotationController, annotationUsers, me, remoteUsers, resolveAnnotationAnchor }: DfdCanvasProps) {
+export function DfdCanvas({ canvasRef, nodes, groups, flows, models, viewport, selectedEndpointId, selectedFlowId, connectionSourceId, connectionDrag, connectionDropTargetId, tip, displayMode, onCanvasPointerDown, onCanvasPointerMove, onCanvasPointerUp, onNodePointerDown, onLinkPointerDown, onGroupLinkPointerDown, onEditModelFields, onUpdateNode, onUpdateModel, onSelectEndpoint, onSelectFlow, annotationController, annotationUsers, me, remoteUsers, resolveAnnotationAnchor, onResetView, onUpdateScale }: DfdCanvasProps) {
   return <div ref={canvasRef} className="erd-canvas relative min-h-0 flex-1 overflow-hidden cursor-grab" style={{ backgroundPosition: `${viewport.x}px ${viewport.y}px, ${viewport.x}px ${viewport.y}px, ${viewport.x}px ${viewport.y}px`, backgroundSize: `${24 * viewport.scale}px ${24 * viewport.scale}px, ${120 * viewport.scale}px ${120 * viewport.scale}px, ${120 * viewport.scale}px ${120 * viewport.scale}px` }} onPointerDown={onCanvasPointerDown} onPointerMove={onCanvasPointerMove} onPointerUp={onCanvasPointerUp} onPointerCancel={onCanvasPointerUp}>
     <div className="absolute left-0 top-0 origin-top-left" style={{ width: DFD_CANVAS_SIZE.width, height: DFD_CANVAS_SIZE.height, transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})` }}>
       <CanvasAnnotationLayer layer="background" controller={annotationController} users={annotationUsers} me={me} resolveAnchor={resolveAnnotationAnchor} width={DFD_CANVAS_SIZE.width} height={DFD_CANVAS_SIZE.height} />
@@ -59,6 +62,6 @@ export function DfdCanvas({ canvasRef, nodes, groups, flows, models, viewport, s
       {remoteUsers.map((user) => <RemoteCursor key={user.id} user={user} />)}
     </div>
     <AnnotationToolbar controller={annotationController} />
-    <div className="pointer-events-none absolute bottom-5 left-1/2 max-w-xl -translate-x-1/2 rounded-full border border-slate-200 bg-white/95 px-5 py-2 text-center text-xs font-medium text-slate-600 shadow-sm"><span className="mr-2 font-bold text-blue-700">Daily tip</span>{tip}</div>
+    <CanvasTips scale={viewport.scale} onResetView={onResetView} onUpdateScale={onUpdateScale} dailyTip={tip} />
   </div>;
 }

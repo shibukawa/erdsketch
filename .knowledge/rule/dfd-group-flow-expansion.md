@@ -41,4 +41,5 @@ constraints:
   - Individual expanded flows cannot override shared data, label, protocol, or direction while grouped.
   - data:crud-assignment may vary for each expanded process/model pair and physical process unit.
   - rule:dfd-model-crud-label renders the union of those detailed assignments.
+  - Separating a group follows rule:dfd-group-flow-restoration.
 ```

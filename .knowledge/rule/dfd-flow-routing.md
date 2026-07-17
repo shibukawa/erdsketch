@@ -27,4 +27,13 @@ constraints:
   - Bidirectional state is independent of node placement.
   - Parallel or bidirectional flows use distinct offset ports.
   - Routing avoids overlapping connector segments where space permits.
+render_stability:
+  regenerate_only_when:
+    - endpoint_geometry_changes
+    - flow_geometry_changes
+    - selection_style_changes
+  preserve_when:
+    - cursor_moves
+    - unrelated_drag_state_changes
+    - unrelated_presence_changes
 ```

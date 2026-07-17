@@ -63,6 +63,8 @@ acceptance:
   - Field edits made from DFD update the shared model definition and appear in ERD.
   - Direct process-to-process and data-entity-to-data-entity flows cannot remain on the diagram.
   - Users can compress repeated process-to-data-entity lines with data:dfd-overlap-group.
+  - Separating a group restores its pre-grouping arrows when no flow was added or removed while grouped.
+  - Separating a changed group leaves at most one arrow for each directed source and destination pair.
   - Intermediate data can be compressed into one dashed data-entity group.
   - The same external entity can be placed multiple times on one DFD canvas.
   - External entities can exchange data with processes, models, and intermediate data.

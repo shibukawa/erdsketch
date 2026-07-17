@@ -58,6 +58,8 @@ type DiagramCanvasProps = {
   annotationController: CanvasAnnotationController;
   annotationUsers: Collaborator[];
   resolveAnnotationAnchor: (anchor: AnnotationAnchor) => CanvasPoint;
+  onResetView: () => void;
+  onUpdateScale: (scale: number) => void;
 };
 
 export function DiagramCanvas({
@@ -96,11 +98,13 @@ export function DiagramCanvas({
   onUpdateRelationshipReference,
   onDeleteRelationship,
   onCreateDomain,
-  onOpenDomainDictionary
-  ,onApplyRefinement,
+  onOpenDomainDictionary,
+  onApplyRefinement,
   annotationController,
   annotationUsers,
-  resolveAnnotationAnchor
+  resolveAnnotationAnchor,
+  onResetView,
+  onUpdateScale
 }: DiagramCanvasProps) {
   const relationshipDropTargetId = dragState?.type === "relationship"
     ? getRelationshipDropTarget(dragState.sourceId, dragState, allSeeds)?.id
@@ -180,7 +184,7 @@ export function DiagramCanvas({
         <CanvasAnnotationLayer layer="foreground" controller={annotationController} users={annotationUsers} me={me} resolveAnchor={resolveAnnotationAnchor} />
       </div>
       <AnnotationToolbar controller={annotationController} />
-      <CanvasTips />
+      <CanvasTips scale={viewport.scale} onResetView={onResetView} onUpdateScale={onUpdateScale} />
     </div>
   );
 }

@@ -13,6 +13,9 @@ ui:
     id: project-management
     title: Project Management
     children:
+      - kind: header_control
+        control: ui:language-selector
+        placement: right
       - kind: tabs
         id: project-storage-tabs
         children:
@@ -61,7 +64,8 @@ behavior:
       - import_data:portable-project-archive
       - export_data:portable-project-archive
 constraints:
-  - Import and export are available inside the dialog rather than as workspace-header buttons.
+  - Editable project archive import and export stay inside this dialog rather than becoming workspace-header buttons.
+  - Artifact export uses ui:export-dialog from ui:workspace-header.
   - File System actions never imply that OPFS continuous recovery is disabled.
   - Closing the dialog does not change the active project.
   - Non-host participants see project storage as host-managed and cannot run durable actions.

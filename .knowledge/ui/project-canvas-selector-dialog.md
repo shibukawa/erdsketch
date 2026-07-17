@@ -30,8 +30,13 @@ launch_behavior:
 subsequent_behavior:
   entry_point: workspace_header
   switching: no_project_migration
+canvas_item:
+  primary_action: open
+  hit_target: full_item_row_except_rename_action
+  keyboard_accessible: true
 constraints:
   - Project source selection is complete before this dialog opens.
   - Starter templates do not force a preferred diagram kind.
   - ERD and DFD reuse the same data:model-catalog, domain dictionary, and vocabulary.
+  - Canvas selection never restricts its click target to label glyphs or text bounds.
 ```
