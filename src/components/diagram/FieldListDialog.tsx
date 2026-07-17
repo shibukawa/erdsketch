@@ -337,7 +337,7 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
   return createPortal(
     <VocabularyNavigationProvider onOpen={handleOpenVocabulary}><dialog
       ref={dialogRef}
-      className="field-list-dialog m-auto h-[min(90vh,860px)] w-[min(98vw,1460px)] rounded-xl border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl"
+      className="field-list-dialog m-auto h-[min(90vh,860px)] w-[min(98vw,1460px)] overflow-hidden rounded-xl border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl"
       aria-labelledby="field-list-title"
       onCancel={handleCancel}
       onClose={onClose}
@@ -345,7 +345,7 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
       onPointerDown={handleDialogPointerDown}
       onWheel={handleDialogWheel}
     >
-      <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <header className="shrink-0 border-b border-slate-200 px-5 py-4">
           <div className="flex items-start justify-between gap-5">
             <div className="flex min-w-0 items-baseline gap-3">
@@ -411,7 +411,7 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
           )}
         </header>
 
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="field-list-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-3">
           <div
             className="sticky top-0 z-10 grid h-8 grid-cols-[40px_minmax(140px,1fr)_120px_78px_70px_56px_44px_40px] items-center border-b border-slate-200 bg-white/95 text-[10px] font-bold uppercase tracking-wider text-slate-400 backdrop-blur"
@@ -442,7 +442,7 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
             </ul>
           )}
         </div>
-        <aside className="flex w-[370px] shrink-0 flex-col bg-slate-50"><div role="tablist" className="tabs tabs-lift tabs-sm mx-3 mt-3 flex-nowrap whitespace-nowrap bg-slate-100"><button type="button" role="tab" aria-selected={sideTab === "definition"} className={`tab min-w-0 flex-1 text-xs ${sideTab === "definition" ? "tab-active bg-white" : "bg-slate-100"}`} onClick={handleDefinitionTab}>Definition</button><button type="button" role="tab" aria-selected={sideTab === "domains"} className={`tab min-w-0 flex-1 text-xs ${sideTab === "domains" ? "tab-active bg-white" : "bg-slate-100"}`} onClick={handleDomainsTab}>Domains</button><button type="button" role="tab" aria-selected={sideTab === "refinement"} className={`tab min-w-0 flex-1 text-xs ${sideTab === "refinement" ? "tab-active bg-white" : "bg-slate-100"}`} onClick={handleRefinementTab}>Refinement</button></div><div className="min-h-0 flex-1">{sideTab === "definition" ? <FieldDefinitionPanel field={fields.find((field) => field.id === editingFieldId)} domains={domains} canEdit={canEdit} onChange={handleFieldDefinitionChange}/> : sideTab === "domains" ? <DomainDictionaryPanel domains={domains} categories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} canEdit={canEdit} onCreate={onCreateDomain} onOpen={() => onOpenDomainDictionary(editingFieldId ?? undefined)} /> : <RefinementPanel source={seeds.find((seed) => seed.id === modelId)!} seeds={seeds} relationships={allRelationships} relationshipReferences={allRelationshipReferences} domains={domains} selectedFieldIds={selectedRefinementFieldIds} selectedRelationshipIds={selectedRefinementRelationshipIds} canEdit={canEdit} onApply={handleApplyRefinement}/>}</div></aside>
+        <aside className="flex min-h-0 w-[370px] shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-slate-50"><div role="tablist" className="tabs tabs-lift tabs-sm mx-3 mt-3 shrink-0 flex-nowrap whitespace-nowrap bg-slate-100"><button type="button" role="tab" aria-selected={sideTab === "definition"} className={`tab min-w-0 flex-1 text-xs ${sideTab === "definition" ? "tab-active bg-white" : "bg-slate-100"}`} onClick={handleDefinitionTab}>Definition</button><button type="button" role="tab" aria-selected={sideTab === "domains"} className={`tab min-w-0 flex-1 text-xs ${sideTab === "domains" ? "tab-active bg-white" : "bg-slate-100"}`} onClick={handleDomainsTab}>Domains</button><button type="button" role="tab" aria-selected={sideTab === "refinement"} className={`tab min-w-0 flex-1 text-xs ${sideTab === "refinement" ? "tab-active bg-white" : "bg-slate-100"}`} onClick={handleRefinementTab}>Refinement</button></div><div className="flex min-h-0 flex-1 overflow-hidden">{sideTab === "definition" ? <FieldDefinitionPanel field={fields.find((field) => field.id === editingFieldId)} domains={domains} canEdit={canEdit} onChange={handleFieldDefinitionChange}/> : sideTab === "domains" ? <DomainDictionaryPanel domains={domains} categories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} canEdit={canEdit} onCreate={onCreateDomain} onOpen={() => onOpenDomainDictionary(editingFieldId ?? undefined)} /> : <RefinementPanel source={seeds.find((seed) => seed.id === modelId)!} seeds={seeds} relationships={allRelationships} relationshipReferences={allRelationshipReferences} domains={domains} selectedFieldIds={selectedRefinementFieldIds} selectedRelationshipIds={selectedRefinementRelationshipIds} canEdit={canEdit} onApply={handleApplyRefinement}/>}</div></aside>
         </div>
       </div>
       {advancedDialog === "indexes" && <IndexDefinitionDialog fields={fields} domains={domains} relationshipReferences={relationshipReferences} initial={seeds.find((seed) => seed.id === modelId)?.indexes ?? []} canEdit={canEdit} onSave={handleSaveIndexes} onClose={handleCloseAdvanced}/>}

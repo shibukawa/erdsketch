@@ -83,7 +83,7 @@ export function DomainDictionaryPanel({ domains, categories, nameDisplayMode, vo
   }, [onOpen]);
 
   return (
-    <aside className="flex w-[280px] min-h-0 shrink-0 flex-col border-l border-slate-200 bg-slate-50 p-4" aria-label="Domain candidates">
+    <aside className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-slate-50 p-4" aria-label="Domain candidates">
       <div className="flex items-center gap-2 text-sm font-bold text-slate-800"><BookOpen size={16} />Domain dictionary</div>
       <label className="input input-bordered intent-add mt-3 flex h-10 items-center gap-2">
         <Plus size={15} className="text-slate-400" />
@@ -94,8 +94,8 @@ export function DomainDictionaryPanel({ domains, categories, nameDisplayMode, vo
         <input type="text" className="min-w-0 grow text-sm" value={query} onChange={handleQueryChange} placeholder="Search assignable domains" aria-label="Search assignable domains" />
       </label>
       <p className="mt-2 text-[11px] leading-4 text-slate-500">Drag any domain to a field row. Its definition can remain undefined or an empty multi-field.</p>
-      <ul className="mt-2 min-h-0 flex-1 space-y-1 overflow-y-auto" aria-label="Assignable domains">
-        {matchingDomains.map((domain) => <li key={domain.id}><button type="button" data-domain-id={domain.id} draggable={canEdit} className="flex w-full items-center gap-2 rounded-md bg-white px-2 py-2 text-left shadow-sm ring-1 ring-slate-200 hover:ring-blue-300" onDragStart={handleDomainDragStart}><GripVertical size={14} className="shrink-0 text-slate-400" /><span className="min-w-0 flex-1 truncate font-mono text-xs font-semibold"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`domain:${domain.id}`} legacyName={domain.name} names={domain.names} mode={nameDisplayMode} /></span><span className="shrink-0 text-[10px] text-slate-500">{domainTypeSummary(domain)}</span></button></li>)}
+      <ul className="mt-2 min-h-0 w-full flex-1 space-y-1 overflow-y-auto overscroll-contain pr-1" aria-label="Assignable domains">
+        {matchingDomains.map((domain) => <li key={domain.id} className="w-full"><button type="button" data-domain-id={domain.id} draggable={canEdit} className="flex w-full min-w-0 items-center gap-2 rounded-md bg-white px-2 py-2 text-left shadow-sm ring-1 ring-slate-200 hover:ring-blue-300" onDragStart={handleDomainDragStart}><GripVertical size={14} className="shrink-0 text-slate-400" /><span className="min-w-0 flex-1 break-words font-mono text-xs font-semibold leading-tight"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`domain:${domain.id}`} legacyName={domain.name} names={domain.names} mode={nameDisplayMode} /></span><span className="max-w-[48%] shrink-0 break-words text-right text-[10px] leading-tight text-slate-500">{domainTypeSummary(domain)}</span></button></li>)}
         {matchingDomains.length === 0 && <li className="rounded-md border border-dashed border-slate-300 bg-white px-3 py-4 text-center text-xs text-slate-500">No assignable domains match.</li>}
       </ul>
       <button type="button" className="btn btn-outline mt-3 justify-start gap-2" onClick={handleOpen}><BookOpen size={16} />Open domain dictionary</button>

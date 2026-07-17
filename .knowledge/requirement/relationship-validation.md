@@ -33,6 +33,11 @@ semantic_validation_candidates:
   - foreign_key_target_is_non_primary_composite_candidate_key
   - set_null_action_targets_non_nullable_local_column
   - cascade_action_conflicts_with_deletion_policy_or_lifecycle
+  - composition_name_is_not_valid_export_field_name
+  - composition_name_conflicts_with_owner_field
+  - composition_owner_or_child_endpoint_is_ambiguous
+  - composition_child_has_multiple_owners
+  - composition_relational_projection_is_not_cascade
 classification_to_decide_later:
   - blocking_error
   - warning

@@ -5,6 +5,8 @@ import { reconcilePhysicalProcesses } from "../../features/dfd/dfd";
 
 export type DfdNodeDraft = Pick<DfdNode, "name" | "description"> & { processKind?: DfdProcessKind; intermediateKind?: DfdIntermediateKind; format?: string; physicalProcesses?: DfdNode["physicalProcesses"]; definitionId?: string };
 
+const modeLabels = { process: "process", external: "external entity", intermediate: "intermediate data" } as const;
+
 type DfdNodeDialogProps = {
   mode: "process" | "external" | "intermediate";
   existingExternalDefinitions?: Array<{ id: string; name: string }>;
@@ -22,7 +24,7 @@ export function DfdNodeDialog({ mode, existingExternalDefinitions = [], initial,
   const [format, setFormat] = useState(initial?.format ?? (mode === "intermediate" ? "JSON" : ""));
   const [physicalText, setPhysicalText] = useState(initial?.physicalProcesses?.map((item) => item.name).join("\n") ?? "");
   const [definitionId, setDefinitionId] = useState("");
-  const heading = useMemo(() => title ?? `Add ${mode.replace("-", " ")}`, [mode, title]);
+  const heading = useMemo(() => title ?? `Add ${modeLabels[mode]}`, [mode, title]);
   const handleExisting = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
     setDefinitionId(event.target.value);
     const definition = existingExternalDefinitions.find((item) => item.id === event.target.value);

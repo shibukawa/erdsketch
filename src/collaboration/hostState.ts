@@ -1,5 +1,6 @@
 import type { CanvasAnnotation } from "../features/annotations/types";
 import type { CanvasModelPlacement, DataDomain, DomainCategory, Relationship, VocabularyEntry } from "../features/modeling/types";
+import { normalizeRelationshipSemantics } from "../features/modeling/utils.ts";
 import type { CollaborationState, DurableOperation, EphemeralOperation } from "./types";
 
 export class OperationError extends Error {}
@@ -45,8 +46,25 @@ function applyVocabulary(entries: VocabularyEntry[], entry: VocabularyEntry, cre
 
 function applyRelationship(relationships: Relationship[], relationship: Relationship, create: boolean, remove: boolean) {
   if (remove) return relationships.filter((item) => item.id !== relationship.id);
-  if (!relationship.name.trim() || relationship.sourceId === relationship.targetId) throw new OperationError("invalid relationship");
-  return replaceByID(relationships, relationship, create);
+  const normalized = normalizeRelationshipSemantics(relationship);
+  if (!normalized.name || normalized.sourceId === normalized.targetId || !["foreign-key", "inherit", "label", "composition"].includes(normalized.kind)) throw new OperationError("invalid relationship");
+  if (normalized.kind === "composition" && relationships.some((item) => item.id !== normalized.id && item.kind === "composition" && item.targetId === normalized.targetId)) {
+    throw new OperationError("composition child already has an owner");
+  }
+  return replaceByID(relationships, normalized, create);
+}
+
+function normalizeRelationshipGraph(relationships: Relationship[]) {
+  const compositionChildren = new Set<string>();
+  return relationships.map((relationship) => {
+    const normalized = normalizeRelationshipSemantics(relationship);
+    if (!normalized.name || normalized.sourceId === normalized.targetId || !["foreign-key", "inherit", "label", "composition"].includes(normalized.kind)) throw new OperationError("invalid relationship");
+    if (normalized.kind === "composition") {
+      if (compositionChildren.has(normalized.targetId)) throw new OperationError("composition child already has an owner");
+      compositionChildren.add(normalized.targetId);
+    }
+    return normalized;
+  });
 }
 
 function applyAnnotation(annotations: CanvasAnnotation[], annotation: CanvasAnnotation, create: boolean, remove: boolean) {
@@ -114,7 +132,7 @@ export function applyDurableOperation<T extends { id: string; x?: number; y?: nu
       return {
         ...state,
         seeds: structuredClone(operation.result.seeds) as unknown as T[],
-        relationships: structuredClone(operation.result.relationships),
+        relationships: structuredClone(normalizeRelationshipGraph(operation.result.relationships)),
         relationshipReferences: structuredClone(operation.result.relationshipReferences),
         domains: structuredClone(operation.result.domains)
       };

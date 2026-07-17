@@ -49,6 +49,9 @@ ui:
           item: data:referential-action
           visible_when: relationship_exports_foreign_key
           default: no_action
+          composition:
+            value: cascade
+            editable: false
         canvas_line:
           geometry: soft_curve
           preserve_existing_style: true
@@ -56,13 +59,16 @@ ui:
           endpoint_labels: UML_multiplicity
           arrow: selected_reading_direction
           avoid: ERD_crows_foot_notation
+          composition:
+            owner_endpoint: filled_black_diamond
+            child_endpoint: no_diamond
         delete:
           confirmation_required: true
           warning: Relationship and its projected reference field will disappear.
         editable_types:
           - has-a
           - is-a
-          - Composition
+          - composition
           - Aggregation
           - dependent
         editable_semantics:

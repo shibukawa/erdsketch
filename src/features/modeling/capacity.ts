@@ -11,7 +11,12 @@ export type CapacityProjection = {
   indexBytes: number;
   totalBytes: number;
   missingFieldNames: string[];
+  missingDomainFieldNames: string[];
+  incompleteDomainFieldNames: string[];
+  missingAverageSizeFieldNames: string[];
 };
+
+type FieldSizeIssue = "domain" | "domain_definition" | "average_size";
 
 export const defaultProjectionHorizons: ProjectionHorizon[] = [
   { label: "Now", value: 0, unit: "day" },
@@ -140,19 +145,24 @@ export function effectivePrimitiveType(field: ModelField, domains: DataDomain[])
   return resolvedDomain(field.domainId, domains)?.primitiveType;
 }
 
-function fieldAverageSize(field: ModelField, domains: DataDomain[]): { bytes: number; missing: boolean } {
-  if (field.estimatedAverageSizeBytes !== undefined) return { bytes: Math.max(0, field.estimatedAverageSizeBytes), missing: false };
+function fieldSizeIssue(domain: DataDomain): FieldSizeIssue {
+  return domain.shape === "unresolved" || !domain.primitiveType ? "domain_definition" : "average_size";
+}
+
+function fieldAverageSize(field: ModelField, domains: DataDomain[]): { bytes: number; issues: FieldSizeIssue[] } {
+  if (field.estimatedAverageSizeBytes !== undefined) return { bytes: Math.max(0, field.estimatedAverageSizeBytes), issues: [] };
   const domain = resolvedDomain(field.domainId, domains);
-  if (!domain) return { bytes: 0, missing: true };
+  if (!domain) return { bytes: 0, issues: [field.domainId ? "domain_definition" : "domain"] };
   if (domain.shape === "composite") {
-    return domain.components.reduce<{ bytes: number; missing: boolean }>((total, component) => {
+    return domain.components.reduce<{ bytes: number; issues: FieldSizeIssue[] }>((total, component) => {
       const componentDomain = resolvedDomain(component.domainId, domains);
       const bytes = primitiveSize(componentDomain?.primitiveType, componentDomain);
-      return { bytes: total.bytes + (bytes ?? 0), missing: total.missing || bytes === undefined };
-    }, { bytes: 0, missing: false });
+      const issue = bytes === undefined ? (componentDomain ? fieldSizeIssue(componentDomain) : "domain_definition") : undefined;
+      return { bytes: total.bytes + (bytes ?? 0), issues: issue && !total.issues.includes(issue) ? [...total.issues, issue] : total.issues };
+    }, { bytes: 0, issues: [] });
   }
   const bytes = primitiveSize(domain.primitiveType, domain);
-  return { bytes: bytes ?? 0, missing: bytes === undefined };
+  return { bytes: bytes ?? 0, issues: bytes === undefined ? [fieldSizeIssue(domain)] : [] };
 }
 
 function fieldIndexKeySize(field: ModelField, componentId: string | undefined, domains: DataDomain[]) {
@@ -177,7 +187,10 @@ export function indexStructureCount(seed: ModelSeed) {
 export function estimateCapacity(seed: ModelSeed, domains: DataDomain[], horizon: ProjectionHorizon): CapacityProjection {
   const volume = seed.volumeEstimate ?? defaultVolumeEstimate(seed.role);
   const sizes = seed.fields.map((field) => ({ field, ...fieldAverageSize(field, domains) }));
-  const missingFieldNames = sizes.filter((item) => item.missing).map((item) => item.field.name);
+  const missingFieldNames = sizes.filter((item) => item.issues.length > 0).map((item) => item.field.name);
+  const missingDomainFieldNames = sizes.filter((item) => item.issues.includes("domain")).map((item) => item.field.name);
+  const incompleteDomainFieldNames = sizes.filter((item) => item.issues.includes("domain_definition")).map((item) => item.field.name);
+  const missingAverageSizeFieldNames = sizes.filter((item) => item.issues.includes("average_size")).map((item) => item.field.name);
   const recordPayloadBytes = sizes.reduce((sum, item) => sum + item.bytes, 0);
   const recordSizeBytes = recordPayloadBytes * 1.2;
   const recordCount = estimateRecordCount(seed.role, volume, horizon);
@@ -196,7 +209,7 @@ export function estimateCapacity(seed: ModelSeed, domains: DataDomain[], horizon
   const primaryKeyIndexBytes = primaryKeyFields.length > 0 ? indexStorageBytes(recordCount, primaryKeyBytes) : 0;
   const uniqueIndexBytes = seed.fields.filter((field) => field.unique && !field.primaryKey).reduce((total, field) => total + indexStorageBytes(recordCount, fieldIndexKeySize(field, undefined, domains)), 0);
   const indexBytes = explicitIndexBytes + primaryKeyIndexBytes + uniqueIndexBytes;
-  return { horizon, recordCount, recordPayloadBytes, recordSizeBytes, tableBytes, indexBytes, totalBytes: tableBytes + indexBytes, missingFieldNames };
+  return { horizon, recordCount, recordPayloadBytes, recordSizeBytes, tableBytes, indexBytes, totalBytes: tableBytes + indexBytes, missingFieldNames, missingDomainFieldNames, incompleteDomainFieldNames, missingAverageSizeFieldNames };
 }
 
 export function formatBytes(bytes: number) {

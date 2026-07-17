@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import type { ModelSeed, Relationship } from "../../features/modeling/types";
-import { getRelationshipGeometry, getRelationshipRoughness, relationshipDirectionEndpoints } from "../../features/modeling/utils";
+import { getCompositionDiamondPath, getRelationshipGeometry, getRelationshipRoughness, relationshipDirectionEndpoints } from "../../features/modeling/utils";
 import { RoughLink } from "./RoughLink";
 
 type RelationshipLinkProps = {
@@ -20,7 +20,7 @@ export function RelationshipLink({ relationship, seeds, onEdit }: RelationshipLi
 
   return (
     <>
-      <RoughLink path={geometry.path} roughness={getRelationshipRoughness(relationship, seeds)} arrowPath={relationship.kind === "label" ? undefined : geometry.arrowPath} />
+      <RoughLink path={geometry.path} roughness={getRelationshipRoughness(relationship, seeds)} arrowPath={relationship.kind === "label" ? undefined : geometry.arrowPath} diamondPath={getCompositionDiamondPath(relationship, seeds)} />
       {relationship.kind !== "label" && <><span className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded bg-white/90 px-1.5 py-0.5 font-mono text-[11px] font-bold text-slate-600 shadow-sm" style={{ left: geometry.sourceLabel.x, top: geometry.sourceLabel.y }}>
         {relationship.sourceMultiplicity}
       </span>

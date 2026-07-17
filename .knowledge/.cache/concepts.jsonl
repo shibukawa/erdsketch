@@ -14,6 +14,7 @@
 {"category": "structure", "id": "data:code-set", "path": ".knowledge/data/code-set.md", "role": "supporting", "title": "Code Set", "type": "data"}
 {"category": "structure", "id": "data:collaboration-message", "path": ".knowledge/data/collaboration-message.md", "role": "supporting", "title": "Collaboration Message", "type": "data"}
 {"category": "structure", "id": "data:column-default", "path": ".knowledge/data/column-default.md", "role": "supporting", "title": "Column Default", "type": "data"}
+{"category": "structure", "id": "data:composition-relationship", "path": ".knowledge/data/composition-relationship.md", "role": "supporting", "title": "Composition Relationship", "type": "data"}
 {"category": "structure", "id": "data:concept-projection", "path": ".knowledge/data/concept-projection.md", "role": "supporting", "title": "Concept Projection", "type": "data"}
 {"category": "structure", "id": "data:correction-pattern", "path": ".knowledge/data/correction-pattern.md", "role": "supporting", "title": "Correction Pattern", "type": "data"}
 {"category": "structure", "id": "data:cowork-participant-checkpoint", "path": ".knowledge/data/cowork-participant-checkpoint.md", "role": "supporting", "title": "Co-work Participant Checkpoint", "type": "data"}
@@ -138,6 +139,7 @@
 {"category": "objective", "id": "requirement:sql-table-definition", "path": ".knowledge/requirement/sql-table-definition.md", "role": "primary", "title": "SQL Table Definition", "type": "requirement"}
 {"category": "objective", "id": "requirement:static-web-distribution", "path": ".knowledge/requirement/static-web-distribution.md", "role": "primary", "title": "Static Web Distribution", "type": "requirement"}
 {"category": "objective", "id": "requirement:unmatched-name-presentation", "path": ".knowledge/requirement/unmatched-name-presentation.md", "role": "primary", "title": "Unmatched Name Presentation", "type": "requirement"}
+{"category": "objective", "id": "requirement:user-interface-localization", "path": ".knowledge/requirement/user-interface-localization.md", "role": "primary", "title": "User Interface Localization", "type": "requirement"}
 {"category": "objective", "id": "requirement:vocabulary-alias-correction", "path": ".knowledge/requirement/vocabulary-alias-correction.md", "role": "primary", "title": "Vocabulary Alias Correction", "type": "requirement"}
 {"category": "objective", "id": "requirement:vocabulary-cache-maintenance", "path": ".knowledge/requirement/vocabulary-cache-maintenance.md", "role": "primary", "title": "Vocabulary Cache Maintenance", "type": "requirement"}
 {"category": "objective", "id": "requirement:vocabulary-management", "path": ".knowledge/requirement/vocabulary-management.md", "role": "primary", "title": "Vocabulary Management", "type": "requirement"}
@@ -201,6 +203,7 @@
 {"category": "interface", "id": "ui:field-list-dialog", "path": ".knowledge/ui/field-list-dialog.md", "role": "primary", "title": "Field List Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:index-definition-dialog", "path": ".knowledge/ui/index-definition-dialog.md", "role": "primary", "title": "Index Definition Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:join-shared-work-dialog", "path": ".knowledge/ui/join-shared-work-dialog.md", "role": "primary", "title": "Join Co-work Dialog", "type": "ui"}
+{"category": "interface", "id": "ui:language-selector", "path": ".knowledge/ui/language-selector.md", "role": "primary", "title": "Language Selector", "type": "ui"}
 {"category": "interface", "id": "ui:lifecycle-view", "path": ".knowledge/ui/lifecycle-view.md", "role": "primary", "title": "Lifecycle View", "type": "ui"}
 {"category": "interface", "id": "ui:model-card-display-mode", "path": ".knowledge/ui/model-card-display-mode.md", "role": "primary", "title": "Model Card Display Mode", "type": "ui"}
 {"category": "interface", "id": "ui:model-catalog-view", "path": ".knowledge/ui/model-catalog-view.md", "role": "primary", "title": "Project Model Catalog View", "type": "ui"}

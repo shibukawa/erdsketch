@@ -1,5 +1,5 @@
 import { useCallback, type ChangeEvent, type MouseEvent } from "react";
-import { dependencyOptions, maturedLevelSteps, roleMeta, roleOptions } from "../../features/modeling/constants";
+import { dependencyLabels, dependencyOptions, maturedLevelSteps, maturedStepLabels, roleMeta, roleOptions } from "../../features/modeling/constants";
 import { defaultVolumeEstimate, normalizeTransactionRetention } from "../../features/modeling/capacity";
 import type { Dependency, EntityRole, ModelSeed } from "../../features/modeling/types";
 import { clampMaturedLevel, getModelStageLabel, updateNameSet } from "../../features/modeling/utils";
@@ -9,13 +9,6 @@ type ModelBasicSettingsPanelProps = {
   canEdit: boolean;
   onChange: (patch: Partial<ModelSeed>) => void;
 };
-
-const maturedStepLabels = new Map([
-  [6, "seed"],
-  [3.5, "concept"],
-  [1.25, "logical"],
-  [0.5, "matured"]
-]);
 
 export function ModelBasicSettingsPanel({ model, canEdit, onChange }: ModelBasicSettingsPanelProps) {
   const businessName = model.names?.business ?? model.title;
@@ -58,7 +51,7 @@ export function ModelBasicSettingsPanel({ model, canEdit, onChange }: ModelBasic
           </label>
           <div>
             <span className="flex items-center justify-between gap-3 text-sm font-bold text-slate-700">
-              <span>Matured level</span>
+              <span>Model stage</span>
               <span className="text-[10px] uppercase tracking-wide text-slate-400">{getModelStageLabel(model.maturedLevel)}</span>
             </span>
             <input type="range" className="range range-primary range-sm mt-3" min={0.5} max={6} step={0.25} value={model.maturedLevel} onChange={handleMaturedLevelChange} style={{ direction: "rtl" }} />
@@ -84,11 +77,11 @@ export function ModelBasicSettingsPanel({ model, canEdit, onChange }: ModelBasic
             </div>
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-700">Dependency</p>
+            <p className="text-sm font-bold text-slate-700">Table type</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {dependencyOptions.map((dependency) => (
                 <button key={dependency} type="button" data-dependency={dependency} className={`rounded-md border px-3 py-1.5 text-xs font-semibold ${model.dependency === dependency ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700"}`} onClick={handleDependencyClick}>
-                  {dependency}
+                  {dependencyLabels[dependency]}
                 </button>
               ))}
             </div>

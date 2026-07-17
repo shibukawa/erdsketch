@@ -255,7 +255,7 @@ export type ExpandedDomainField = {
 export type Multiplicity = "0..1" | "1" | "0..*" | "1..*";
 
 export type RelationshipDirection = "source-to-target" | "target-to-source";
-export type RelationshipKind = "foreign-key" | "inherit" | "label";
+export type RelationshipKind = "foreign-key" | "inherit" | "label" | "composition";
 
 export type Relationship = {
   id: string;

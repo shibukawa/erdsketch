@@ -18,7 +18,7 @@ ui:
         id: model-search
       - kind: checkbox
         id: independent-only
-        label: Independent only
+        label: Parent tables only
         default: true
         filter:
           field: dependency
@@ -37,8 +37,8 @@ ui:
         label: Place
         action: create data:dfd-node-placement
 constraints:
-  - Turning Independent only off includes dependent models without warning.
+  - Turning Parent tables only off includes Dependent table models without warning.
   - Both shared and dfd_only models are eligible.
-  - Search applies after the Independent only filter.
+  - Search applies after the Parent tables only filter.
   - Selecting an already placed model focuses its existing placement instead of duplicating it.
 ```

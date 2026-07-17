@@ -49,6 +49,11 @@ requirements:
         display: relationship_name_only
         multiplicity: none
         reading_direction: none
+      composition:
+        semantics: data:composition-relationship
+        source_role: owner
+        target_role: child
+        name_becomes: owner_field_name
   export_projection:
     timing: code_export
     one_to_many_or_many_to_one:
@@ -58,6 +63,10 @@ requirements:
     foreign_key:
       referenced_key: target_primary_key_only
       on_delete: data:referential-action
+    composition:
+      relational: child_foreign_key_with_on_delete_cascade
+      document_and_search: named_embedded_child_field
+      reference_projection: owner_endpoint
   rendering:
     line: existing_soft_curve
     roughness: rule:relationship-roughness
@@ -75,6 +84,7 @@ requirements:
       one_to_one: arrow_origin_endpoint
       many_to_many: both_endpoints
     changes_are_presentation_only: true
+    composition_override: owner_endpoint
     model_ownership: none
     content:
       - chain_icon
@@ -112,6 +122,11 @@ acceptance:
   - Deleting the relationship or linked reference asks for confirmation and explains that the relationship disappears.
   - Relationship meaning remains available even when it has no SQL representation.
   - Foreign-key relationships may choose NO ACTION, RESTRICT, CASCADE, or SET NULL deletion behavior.
+  - Composition requires one non-empty relationship name, and that name becomes the owner-side field name.
+  - Composition renders a filled black UML diamond at the owner endpoint and no diamond at the child endpoint.
+  - Relational composition exports a child-to-owner foreign key with ON DELETE CASCADE.
+  - Elasticsearch, OpenSearch, and document projections place the child object or child collection under the named owner field.
+  - A composition child has exactly one lifecycle owner and cannot outlive it.
   - SET NULL is rejected when projected local foreign-key columns are not nullable.
   - Foreign keys to non-primary composite candidate keys and ON UPDATE actions remain deferred.
   - Inherit export creates a child table containing all effective parent attributes and the child's own attributes.

@@ -40,6 +40,7 @@ derived_presentation:
     many_to_one: many_endpoint
     one_to_one: arrow_origin_endpoint
     many_to_many: both_endpoints
+    composition: owner_endpoint
   ownership_semantics: none
   sort: rule:field-list-sort
   canvas_visibility:

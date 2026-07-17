@@ -179,7 +179,10 @@ func (h *Hub) join(user Collaborator, assignAvailableName bool, seeds []ModelSee
 		for _, seed := range seeds {
 			h.placements = append(h.placements, CanvasModelPlacement{CanvasID: DefaultCanvasID, SeedID: seed.ID, X: seed.X, Y: seed.Y, AccessMode: "owner"})
 		}
-		h.relationships = append([]Relationship(nil), relationships...)
+		h.relationships = make([]Relationship, len(relationships))
+		for index, relationship := range relationships {
+			h.relationships[index] = normalizeRelationship(relationship)
+		}
 		h.relationshipReferences = append([]RelationshipReference(nil), references...)
 		if len(initialDomains) > 0 {
 			h.domains = normalizeDomains(initialDomains[0])
@@ -399,13 +402,16 @@ func (h *Hub) UpdateRelationship(clientID string, next Relationship, reference R
 	if !ok {
 		return RelationshipUpdate{}, ErrUnknownClient
 	}
-	if next.Kind != "foreign-key" {
-		next.OnDelete = ""
-	} else if next.OnDelete == "" {
-		next.OnDelete = "no_action"
-	}
+	next = normalizeRelationship(next)
 	if next.ID == "" || next.SourceID == "" || next.TargetID == "" || next.SourceID == next.TargetID || next.Name == "" || !h.hasSeed(next.SourceID) || !h.hasSeed(next.TargetID) || !validMultiplicity(next.SourceMultiplicity) || !validMultiplicity(next.TargetMultiplicity) || !validDirection(next.Direction) || !validRelationshipKind(next.Kind) || !validReferentialAction(next.OnDelete) || (next.OnDelete == "set_null" && !relationshipForeignKeyNullable(next)) {
 		return RelationshipUpdate{}, ErrRelationshipInvalid
+	}
+	if next.Kind == "composition" {
+		for _, relationship := range h.relationships {
+			if relationship.ID != next.ID && relationship.Kind == "composition" && relationship.TargetID == next.TargetID {
+				return RelationshipUpdate{}, ErrRelationshipInvalid
+			}
+		}
 	}
 	if !h.hasSeedLockedBy(next.SourceID, clientID) || !h.hasSeedLockedBy(next.TargetID, clientID) {
 		return RelationshipUpdate{}, ErrLockRequired
@@ -681,9 +687,18 @@ func (h *Hub) ApplyRefinement(clientID string, seeds []ModelSeed, relationships 
 		}
 	}
 	relationshipIDs := make(map[string]bool, len(relationships))
-	for _, item := range relationships {
-		if item.ID == "" || relationshipIDs[item.ID] || !seedIDs[item.SourceID] || !seedIDs[item.TargetID] || item.SourceID == item.TargetID || item.Name == "" || !validMultiplicity(item.SourceMultiplicity) || !validMultiplicity(item.TargetMultiplicity) || !validDirection(item.Direction) || !validRelationshipKind(item.Kind) {
+	compositionChildren := make(map[string]bool)
+	for itemIndex := range relationships {
+		item := normalizeRelationship(relationships[itemIndex])
+		relationships[itemIndex] = item
+		if item.ID == "" || relationshipIDs[item.ID] || !seedIDs[item.SourceID] || !seedIDs[item.TargetID] || item.SourceID == item.TargetID || item.Name == "" || !validMultiplicity(item.SourceMultiplicity) || !validMultiplicity(item.TargetMultiplicity) || !validDirection(item.Direction) || !validRelationshipKind(item.Kind) || !validReferentialAction(item.OnDelete) || (item.OnDelete == "set_null" && !relationshipForeignKeyNullable(item)) {
 			return RefinementUpdate{}, ErrRelationshipInvalid
+		}
+		if item.Kind == "composition" {
+			if compositionChildren[item.TargetID] {
+				return RefinementUpdate{}, ErrRelationshipInvalid
+			}
+			compositionChildren[item.TargetID] = true
 		}
 		relationshipIDs[item.ID] = true
 		currentIndex := relationshipIndex(h.relationships, item.ID)
@@ -1327,11 +1342,26 @@ func validDirection(value string) bool {
 
 func validRelationshipKind(value string) bool {
 	switch value {
-	case "", "foreign-key", "inherit", "label":
+	case "", "foreign-key", "inherit", "label", "composition":
 		return true
 	default:
 		return false
 	}
+}
+
+func normalizeRelationship(relationship Relationship) Relationship {
+	relationship.Name = strings.TrimSpace(relationship.Name)
+	switch relationship.Kind {
+	case "composition":
+		relationship.OnDelete = "cascade"
+	case "foreign-key":
+		if relationship.OnDelete == "" {
+			relationship.OnDelete = "no_action"
+		}
+	default:
+		relationship.OnDelete = ""
+	}
+	return relationship
 }
 
 func validReferentialAction(value string) bool {

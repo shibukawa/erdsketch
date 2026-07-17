@@ -60,6 +60,10 @@
 {"context": "body", "path": ".knowledge/data/collaboration-message.md", "source": "data:collaboration-message", "target": "system:collaboration-relay", "target_category": "external", "target_type": "system"}
 {"context": "body", "path": ".knowledge/data/collaboration-message.md", "source": "data:collaboration-message", "target": "system:webrtc-collaboration-transport", "target_category": "external", "target_type": "system"}
 {"context": "body", "path": ".knowledge/data/column-default.md", "source": "data:column-default", "target": "data:ddl-extension-text", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/data/composition-relationship.md", "source": "data:composition-relationship", "target": "data:relationship", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/data/composition-relationship.md", "source": "data:composition-relationship", "target": "data:referential-action", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/data/composition-relationship.md", "source": "data:composition-relationship", "target": "policy:deletion-policy", "target_category": "constraint", "target_type": "policy"}
+{"context": "body", "path": ".knowledge/data/composition-relationship.md", "source": "data:composition-relationship", "target": "system:storage-target", "target_category": "external", "target_type": "system"}
 {"context": "body", "path": ".knowledge/data/concept-projection.md", "source": "data:concept-projection", "target": "data:sql-table-projection", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/data/concept-projection.md", "source": "data:concept-projection", "target": "system:storage-target", "target_category": "external", "target_type": "system"}
 {"context": "body", "path": ".knowledge/data/concept-projection.md", "source": "data:concept-projection", "target": "ui:storage-view", "target_category": "interface", "target_type": "ui"}
@@ -261,6 +265,7 @@
 {"context": "body", "path": ".knowledge/data/reference-implementation.md", "source": "data:reference-implementation", "target": "data:snapshot-reference", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/data/reference-implementation.md", "source": "data:reference-implementation", "target": "data:concept-projection", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/data/referential-action.md", "source": "data:referential-action", "target": "data:relationship", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/data/referential-action.md", "source": "data:referential-action", "target": "data:composition-relationship", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/data/referential-action.md", "source": "data:referential-action", "target": "policy:deletion-policy", "target_category": "constraint", "target_type": "policy"}
 {"context": "body", "path": ".knowledge/data/referential-action.md", "source": "data:referential-action", "target": "data:data-lifecycle", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/data/relationship-reference.md", "source": "data:relationship-reference", "target": "data:relationship", "target_category": "structure", "target_type": "data"}
@@ -274,6 +279,7 @@
 {"context": "body", "path": ".knowledge/data/relationship.md", "source": "data:relationship", "target": "rule:inherit-attribute-projection", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/data/relationship.md", "source": "data:relationship", "target": "data:relationship-reference", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/data/relationship.md", "source": "data:relationship", "target": "data:attribute", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/data/relationship.md", "source": "data:relationship", "target": "data:composition-relationship", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/data/relationship.md", "source": "data:relationship", "target": "term:relationship-vocabulary", "target_category": "vocabulary", "target_type": "term"}
 {"context": "body", "path": ".knowledge/data/relationship.md", "source": "data:relationship", "target": "ui:relationship-view", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/data/relationship.md", "source": "data:relationship", "target": "data:dependent-entity", "target_category": "structure", "target_type": "data"}
@@ -669,6 +675,7 @@
 {"context": "body", "path": ".knowledge/requirement/portable-project-persistence.md", "source": "requirement:portable-project-persistence", "target": "data:portable-project-archive", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/portable-project-persistence.md", "source": "requirement:portable-project-persistence", "target": "ui:project-management-dialog", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/requirement/relationship-management.md", "source": "requirement:relationship-management", "target": "rule:inherit-attribute-projection", "target_category": "constraint", "target_type": "rule"}
+{"context": "body", "path": ".knowledge/requirement/relationship-management.md", "source": "requirement:relationship-management", "target": "data:composition-relationship", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/relationship-management.md", "source": "requirement:relationship-management", "target": "data:referential-action", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/relationship-management.md", "source": "requirement:relationship-management", "target": "rule:relationship-roughness", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/requirement/relationship-management.md", "source": "requirement:relationship-management", "target": "data:relationship-reference", "target_category": "structure", "target_type": "data"}
@@ -711,6 +718,7 @@
 {"context": "body", "path": ".knowledge/requirement/unmatched-name-presentation.md", "source": "requirement:unmatched-name-presentation", "target": "data:vocabulary-entry", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/unmatched-name-presentation.md", "source": "requirement:unmatched-name-presentation", "target": "rule:sql-naming-policy", "target_category": "constraint", "target_type": "rule"}
 {"context": "body", "path": ".knowledge/requirement/unmatched-name-presentation.md", "source": "requirement:unmatched-name-presentation", "target": "data:vocabulary-match-cache", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/requirement/user-interface-localization.md", "source": "requirement:user-interface-localization", "target": "ui:language-selector", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/requirement/vocabulary-alias-correction.md", "source": "requirement:vocabulary-alias-correction", "target": "data:vocabulary-binding", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/vocabulary-alias-correction.md", "source": "requirement:vocabulary-alias-correction", "target": "data:vocabulary-entry", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/requirement/vocabulary-alias-correction.md", "source": "requirement:vocabulary-alias-correction", "target": "data:vocabulary-usage", "target_category": "structure", "target_type": "data"}
@@ -830,6 +838,7 @@
 {"context": "body", "path": ".knowledge/rule/field-list-sort.md", "source": "rule:field-list-sort", "target": "ui:field-list-dialog", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/rule/inherit-attribute-projection.md", "source": "rule:inherit-attribute-projection", "target": "data:relationship", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/rule/inherit-attribute-projection.md", "source": "rule:inherit-attribute-projection", "target": "data:model-transformation", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/rule/model-seed-labels.md", "source": "rule:model-seed-labels", "target": "data:model-state", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/rule/model-seed-labels.md", "source": "rule:model-seed-labels", "target": "data:model-seed", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/rule/model-seed-labels.md", "source": "rule:model-seed-labels", "target": "ui:erd-sketch-canvas", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/rule/primary-key-column-order.md", "source": "rule:primary-key-column-order", "target": "ui:field-list-dialog", "target_category": "interface", "target_type": "ui"}
@@ -1000,6 +1009,7 @@
 {"context": "body", "path": ".knowledge/ui/index-definition-dialog.md", "source": "ui:index-definition-dialog", "target": "ui:field-list-dialog", "target_category": "interface", "target_type": "ui"}
 {"context": "body", "path": ".knowledge/ui/index-definition-dialog.md", "source": "ui:index-definition-dialog", "target": "data:index-definition", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/ui/join-shared-work-dialog.md", "source": "ui:join-shared-work-dialog", "target": "data:share-work-token", "target_category": "structure", "target_type": "data"}
+{"context": "body", "path": ".knowledge/ui/language-selector.md", "source": "ui:language-selector", "target": "requirement:user-interface-localization", "target_category": "objective", "target_type": "requirement"}
 {"context": "body", "path": ".knowledge/ui/lifecycle-view.md", "source": "ui:lifecycle-view", "target": "data:data-lifecycle", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/ui/lifecycle-view.md", "source": "ui:lifecycle-view", "target": "data:state-transition", "target_category": "structure", "target_type": "data"}
 {"context": "body", "path": ".knowledge/ui/lifecycle-view.md", "source": "ui:lifecycle-view", "target": "policy:deletion-policy", "target_category": "constraint", "target_type": "policy"}

@@ -25,7 +25,7 @@ export function NameModeControl({ value, onChange, compact = false }: NameModeCo
           key={option.value}
           type="button"
           data-mode={option.value}
-          className={`rounded-md ${compact ? "px-1.5 py-1 text-[11px]" : "px-2 py-2 text-xs"} font-bold transition-colors ${
+          className={`whitespace-nowrap rounded-md ${compact ? "px-1 py-1 text-[10px]" : "px-2 py-2 text-xs"} font-bold transition-colors ${
             value === option.value ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"
           }`}
           aria-pressed={value === option.value}
