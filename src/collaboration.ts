@@ -306,7 +306,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     availableRef: webRtcAvailableRef
   });
 
-  const initializeHost = useCallback(async (users: Collaborator[]) => {
+  const initializeHost = useCallback(async (users: Collaborator[], isCancelled: () => boolean) => {
     let current = confirmedStateRef.current;
     if (relayAvailableRef.current || usesWailsDesktop()) {
       try {
@@ -327,8 +327,13 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     const persistence = new PersistenceClient<T>();
     persistenceRef.current = persistence;
     const recovered = await persistence.initialize(durableState(current));
+    if (isCancelled() || persistenceRef.current !== persistence) {
+      persistence.dispose();
+      return false;
+    }
     durableWritesBlockedRef.current = false;
     installPersistenceSession(recovered, users);
+    return true;
   }, [installPersistenceSession]);
 
   useEffect(() => {
@@ -355,7 +360,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
         const users = joined.participants.map((participant) => participant.user);
         confirmedStateRef.current = { ...confirmedStateRef.current, users };
         replaceVisibleState(confirmedStateRef.current);
-        if (joined.role === "host") await initializeHost(users);
+        if (joined.role === "host" && !(await initializeHost(users, () => cancelled))) return;
         if (cancelled) return;
         const events = new EventSource(`/api/relay/events?clientId=${encodeURIComponent(me.id)}`);
         eventSourceRef.current = events;
@@ -373,9 +378,11 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
         roleRef.current = "host";
         setIsHost(true);
         try {
-          await initializeHost([me]);
+          if (!(await initializeHost([me], () => cancelled))) return;
+          if (cancelled) return;
           setConnected(true);
         } catch (error) {
+          if (cancelled) return;
           setRecoveryStatus({ ready: false, recoveredOperations: 0, ignoredTailRecords: 0, persistentStorage: false, error: error instanceof Error ? error.message : String(error) });
           setConnected(false);
         }
@@ -532,6 +539,45 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     }
   }), [failProjectTask, installPersistenceSession, publishState, runProjectTask]);
 
+  const createProjectFromStateNow = useCallback(async (displayName: string, projectState: DurableState<T>) => {
+    const persistence = persistenceRef.current;
+    if (!persistence) return false;
+    try {
+      const session = await persistence.createProjectFromState(displayName, durableState(confirmedStateRef.current), structuredClone(projectState));
+      installPersistenceSession(session, confirmedStateRef.current.users);
+      await publishState("state_snapshot");
+      return true;
+    } catch (error) {
+      return failProjectTask(error);
+    }
+  }, [failProjectTask, installPersistenceSession, publishState]);
+
+  const createProjectFromState = useCallback((displayName: string, projectState: DurableState<T>) => runProjectTask(() => createProjectFromStateNow(displayName, projectState)), [createProjectFromStateNow, runProjectTask]);
+
+  const importProjectAsNew = useCallback((file: File) => runProjectTask(async () => {
+    const persistence = persistenceRef.current;
+    if (!persistence) return false;
+    try {
+      const projectState = await persistence.decodeProjectFile(file);
+      const displayName = file.name.replace(/\.erdsketch\.txtar\.gz$|\.erdsketch\.json$|\.txtar\.gz$|\.json$|\.gz$/i, "").trim() || "Imported project";
+      return createProjectFromStateNow(displayName, projectState);
+    } catch (error) {
+      return failProjectTask(error);
+    }
+  }), [createProjectFromStateNow, failProjectTask, runProjectTask]);
+
+  const openNativeProjectAsNew = useCallback(() => runProjectTask(async () => {
+    const persistence = persistenceRef.current;
+    if (!persistence || !nativeFileSystemAvailable) return false;
+    try {
+      const projectId = activeProjectRef.current?.projectId ?? "project";
+      const projectState = await persistence.loadNative(me.id, projectId);
+      return projectState ? createProjectFromStateNow("Opened project", projectState) : false;
+    } catch (error) {
+      return failProjectTask(error);
+    }
+  }), [createProjectFromStateNow, failProjectTask, me.id, nativeFileSystemAvailable, runProjectTask]);
+
   const saveOpfsProjectAs = useCallback((displayName: string) => runProjectTask(async () => {
     const persistence = persistenceRef.current;
     if (!persistence) return false;
@@ -634,7 +680,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     try {
       const persistence = persistenceRef.current;
       if (!persistence) throw new Error("Recovery storage is not ready");
-      return dispatch({ type: "replace_project", state: await persistence.decodeArchive(file) });
+      return dispatch({ type: "replace_project", state: await persistence.decodeProjectFile(file) });
     } catch (error) {
       setRecoveryStatus((status) => ({ ...status, error: error instanceof Error ? error.message : String(error) }));
       return false;
@@ -673,6 +719,9 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     abandonParticipantRecovery,
     loadOpfsProject,
     createOpfsProject,
+    createProjectFromState,
+    importProjectAsNew,
+    openNativeProjectAsNew,
     saveOpfsProjectAs,
     renameOpfsProject,
     deleteOpfsProject,

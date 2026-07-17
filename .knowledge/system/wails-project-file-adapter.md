@@ -9,6 +9,9 @@ Wails project file adapter exposes native project persistence to the desktop fro
 ```yaml
 availability: wails_desktop_mode
 boundary: generated_Wails_bindings
+surface:
+  launch_panel: ui:workspace-start-panel
+  management_dialog: ui:project-management-dialog
 operations:
   - choose_project_location
   - list_recent_projects

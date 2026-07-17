@@ -6,7 +6,7 @@ title: Project Load and Save
 
 ```yaml
 load:
-  trigger: actor:session-host selects a source in ui:project-management-dialog or starts from initial seeds.
+  trigger: actor:session-host selects a source in ui:project-management-dialog or ui:workspace-start-panel.
   steps:
     - id: select
       action: resolve adapter through decision:storage-adapter-selection
@@ -20,6 +20,8 @@ load:
       action: receive a durable checkpoint acknowledgement from system:persistence-worker before publication
     - id: publish
       action: send a data:collaboration-message state_snapshot to participants
+    - id: navigate
+      action: open ui:project-canvas-selector-dialog when load originated in ui:workspace-start-panel
   failure: keep_current_project_unchanged
 save:
   trigger: actor:session-host requests save or export in ui:project-management-dialog.

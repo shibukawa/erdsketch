@@ -11,14 +11,15 @@ authority: actor:session-host
 contract: data:project-document-set
 selection: decision:storage-adapter-selection
 operations:
-  - create_from_initial_seeds
+  - create_empty_project
+  - create_from_data:starter-project-template
   - load
   - save
   - import_archive
   - export_archive
   - recover_after_restart
 acceptance:
-  - Go backend mode loads initial seeds and reads and writes local project files.
+  - Go backend mode loads bundled data:starter-project-template documents and reads and writes local project files.
   - Static mode works without a Go process.
   - Wails desktop mode works without an external Go process or HTTP server.
   - Wails desktop mode uses system:wails-project-file-adapter for user-selected native files.
@@ -34,5 +35,6 @@ acceptance:
   - Non-host participants cannot initiate durable project replacement.
   - Site-data deletion and device loss remain explicit backup risks.
   - Project load, save, import, and export entry points are consolidated in ui:project-management-dialog.
+  - Startup project creation, saved-project selection, and upload entry points are also available in ui:workspace-start-panel.
   - Missing browser picker APIs never leave enabled nonfunctional Open or Save controls.
 ```

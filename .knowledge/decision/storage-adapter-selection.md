@@ -41,8 +41,9 @@ browser_policy:
     UI:
       file_system_tab: unavailable_with_explanation_when_picker_API_is_missing
       archive_exchange: origin_private_storage_tab
-initial_seeds:
-  go_backend_mode: system:native-project-file-adapter
-  static_content_mode: bundled_static_seed_documents
-  wails_desktop_mode: bundled_or_native_seed_documents
+starter_templates:
+  contract: data:starter-project-template
+  go_backend_mode: bundled_or_system:native-project-file-adapter
+  static_content_mode: bundled_static_documents
+  wails_desktop_mode: bundled_or_system:wails-project-file-adapter
 ```

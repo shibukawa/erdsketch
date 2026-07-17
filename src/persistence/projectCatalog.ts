@@ -87,8 +87,8 @@ export class ProjectCatalog {
     return this.create(normalizeName(displayName), "named");
   }
 
-  async createTemporary() {
-    return this.create("Untitled project", "temporary");
+  async createTemporary(displayName = "Untitled project") {
+    return this.create(normalizeName(displayName), "temporary");
   }
 
   async setActive(projectId: string) {

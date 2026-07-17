@@ -3,7 +3,6 @@ import { startTransition, useCallback, useState, type ChangeEvent, type FocusEve
 import type { Collaborator } from "../../collaboration";
 import { WorkspaceProjectNavigation } from "./WorkspaceProjectNavigation";
 import { CoworkParticipantSummary } from "../collaboration/CoworkParticipantSummary";
-import { LanguageSwitcher } from "../../i18n/LanguageSwitcher";
 
 type WorkspaceHeaderProps = {
   me: Collaborator;
@@ -73,7 +72,6 @@ export function WorkspaceHeader({ me, users, connected, scale, canvasName, onRen
     <header className="z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-7 py-4 shadow-sm">
       <WorkspaceProjectNavigation isHost={isHost} recoveryReady={recoveryReady} persistentStorage={persistentStorage} recoveryError={recoveryError} activeProject={activeProject} canvasName={canvasName} onOpenProjectManager={onOpenProjectManager} onOpenCanvasSelector={onOpenCanvasSelector} />
       <div className="flex items-center gap-2">
-        <LanguageSwitcher />
         <button type="button" className="btn btn-outline btn-sm gap-2" onClick={onOpenModelCatalog}><Search size={16} />Models</button>
         <button type="button" className="btn btn-outline btn-sm gap-2" onClick={onOpenCrudMatrix}><Grid3X3 size={16} />CRUD Matrix</button>
         <CoworkParticipantSummary me={me} users={users} connected={connected} isHost={isHost} onOpenCowork={onShareWork} />

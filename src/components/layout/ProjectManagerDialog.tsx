@@ -1,10 +1,12 @@
-import { Database, FolderOpen, X } from "lucide-react";
+import { Database, FilePlus2, FolderOpen, X } from "lucide-react";
 import { startTransition, useCallback, useState } from "react";
+import type { StarterProjectId, StarterProjectSummary } from "../../features/modeling/starterProjects";
 import type { OpfsProject } from "../../persistence/projectCatalog";
 import { FileSystemStoragePanel } from "./FileSystemStoragePanel";
+import { NewProjectPanel } from "./NewProjectPanel";
 import { OriginPrivateStoragePanel } from "./OriginPrivateStoragePanel";
 
-type StorageTab = "opfs" | "filesystem";
+type StorageTab = "new" | "opfs" | "filesystem";
 
 type Props = {
   projects: OpfsProject[];
@@ -13,6 +15,8 @@ type Props = {
   recoveryReady: boolean;
   recoveryError?: string;
   fileSystemAvailable: boolean;
+  starters: StarterProjectSummary[];
+  onCreateStarter: (id: StarterProjectId) => Promise<boolean>;
   onCreate: (displayName: string) => Promise<boolean>;
   onSaveAs: (displayName: string) => Promise<boolean>;
   onLoad: (projectId: string) => Promise<boolean>;
@@ -25,7 +29,7 @@ type Props = {
   onClose: () => void;
 };
 
-export function ProjectManagerDialog({ projects, activeProjectId, isHost, recoveryReady, recoveryError, fileSystemAvailable, onCreate, onSaveAs, onLoad, onRename, onDelete, onOpenFileSystem, onSaveFileSystem, onExport, onImport, onClose }: Props) {
+export function ProjectManagerDialog({ projects, activeProjectId, isHost, recoveryReady, recoveryError, fileSystemAvailable, starters, onCreateStarter, onCreate, onSaveAs, onLoad, onRename, onDelete, onOpenFileSystem, onSaveFileSystem, onExport, onImport, onClose }: Props) {
   const [tab, setTab] = useState<StorageTab>("opfs");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +46,10 @@ export function ProjectManagerDialog({ projects, activeProjectId, isHost, recove
     return succeeded;
   }, []);
 
+  const showNew = useCallback(() => {
+    setTab("new");
+    setError(null);
+  }, []);
   const showOpfs = useCallback(() => {
     setTab("opfs");
     setError(null);
@@ -59,6 +67,7 @@ export function ProjectManagerDialog({ projects, activeProjectId, isHost, recove
       </header>
 
       <div className="shrink-0 border-b border-slate-200 px-6 pt-3" role="tablist" aria-label="Project storage">
+        <button type="button" role="tab" aria-selected={tab === "new"} className={`btn btn-ghost rounded-b-none border-b-2 px-4 ${tab === "new" ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500"}`} onClick={showNew}><FilePlus2 size={17} />Create new</button>
         <button type="button" role="tab" aria-selected={tab === "opfs"} className={`btn btn-ghost rounded-b-none border-b-2 px-4 ${tab === "opfs" ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500"}`} onClick={showOpfs}><Database size={17} />Origin Private Storage</button>
         <button type="button" role="tab" aria-selected={tab === "filesystem"} className={`btn btn-ghost rounded-b-none border-b-2 px-4 ${tab === "filesystem" ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500"}`} onClick={showFileSystem}><FolderOpen size={17} />File System</button>
       </div>
@@ -68,9 +77,9 @@ export function ProjectManagerDialog({ projects, activeProjectId, isHost, recove
         {recoveryError && <p className="mx-6 mt-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Recovery storage error: {recoveryError}</p>}
         {error && <p className="mx-6 mt-5 rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>}
 
-        {tab === "opfs"
-          ? <OriginPrivateStoragePanel projects={projects} activeProjectId={activeProjectId} disabled={!canManage || busy} run={run} onCreate={onCreate} onSaveAs={onSaveAs} onLoad={onLoad} onRename={onRename} onDelete={onDelete} onExport={onExport} onImport={onImport} onClose={onClose} />
-          : <FileSystemStoragePanel available={fileSystemAvailable} disabled={!canManage || busy} run={run} onOpen={onOpenFileSystem} onSave={onSaveFileSystem} onClose={onClose} onShowOriginPrivate={showOpfs} />}
+        {tab === "new" && <NewProjectPanel starters={starters} disabled={!canManage || busy} run={run} onCreateStarter={onCreateStarter} />}
+        {tab === "opfs" && <OriginPrivateStoragePanel projects={projects} activeProjectId={activeProjectId} disabled={!canManage || busy} run={run} onCreate={onCreate} onSaveAs={onSaveAs} onLoad={onLoad} onRename={onRename} onDelete={onDelete} onExport={onExport} onImport={onImport} onClose={onClose} />}
+        {tab === "filesystem" && <FileSystemStoragePanel available={fileSystemAvailable} disabled={!canManage || busy} run={run} onOpen={onOpenFileSystem} onSave={onSaveFileSystem} onClose={onClose} onShowOriginPrivate={showOpfs} />}
       </div>
     </div>
     <button className="modal-backdrop" onClick={onClose} aria-label="Close project manager" />

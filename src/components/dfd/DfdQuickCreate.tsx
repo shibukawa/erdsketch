@@ -33,7 +33,7 @@ export function DfdQuickCreate({ onCreate }: DfdQuickCreateProps) {
     inputRef.current?.focus();
   }, [kind, name, onCreate, saving]);
   return <form onSubmit={handleSubmit} className="mt-2 space-y-2">
-    <div role="radiogroup" aria-label="DFD item type" className="grid grid-cols-3 gap-1.5">{options.map((option) => <label key={option.kind} className={`btn btn-xs ${kind === option.kind ? "btn-primary" : "btn-outline"}`}><input type="radio" className="sr-only" name="dfd-kind" value={option.kind} checked={kind === option.kind} onChange={handleKindChange} />{option.label}</label>)}</div>
+    <div role="radiogroup" aria-label="DFD item type" className="grid grid-cols-3 gap-1.5">{options.map((option) => <label key={option.kind} className={`btn btn-xs min-w-0 whitespace-nowrap px-1 text-[11px] ${kind === option.kind ? "btn-primary" : "btn-outline"}`}><input type="radio" className="sr-only" name="dfd-kind" value={option.kind} checked={kind === option.kind} onChange={handleKindChange} />{option.label}</label>)}</div>
     <div className="join intent-add w-full rounded-lg"><input ref={inputRef} className="input input-sm input-bordered join-item min-w-0 flex-1 bg-transparent" value={name} disabled={saving} onChange={handleNameChange} placeholder={`New ${selectedLabel} name`} aria-label="New DFD item name" /><button className="btn btn-primary btn-sm join-item" disabled={!name.trim() || saving}>Add</button></div>
     <p className="text-[11px] text-slate-500">Enter creates the selected type and keeps this input ready.</p>
   </form>;

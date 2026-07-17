@@ -7,6 +7,7 @@ export type PersistenceOperation =
   | "has_message"
   | "activate_project"
   | "create_project"
+  | "create_project_from_state"
   | "save_as"
   | "rename_project"
   | "delete_project"

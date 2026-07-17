@@ -2,7 +2,7 @@ import type { DurableOperation, DurableState } from "../collaboration/types";
 import type { OpfsProject } from "./projectCatalog";
 import { PersistenceService, type CatalogView, type PersistenceSession } from "./persistenceService";
 import { PERSISTENCE_PROTOCOL_VERSION, type PersistenceOperation, type PersistenceRequest, type PersistenceResponse } from "./persistenceProtocol";
-import { createProjectDocumentSet, readProjectDocumentSet } from "./projectDocument";
+import { createProjectDocumentSet, readProjectDocumentSet, type ProjectDocumentSet } from "./projectDocument";
 import { wailsApp } from "./wailsBridge";
 
 type PersistedModel = { id: string; x?: number; y?: number };
@@ -59,7 +59,7 @@ class WorkerBackend implements PersistenceBackend {
   }
 
   dispose() {
-    if (!this.failed) void this.invoke("close").finally(() => this.worker.terminate());
+    if (!this.failed) void this.invoke("close").then(() => this.worker.terminate(), () => this.worker.terminate());
     else this.worker.terminate();
     this.fail(new PersistenceWorkerError("Persistence worker was closed", "WorkerClosed", false));
   }
@@ -118,6 +118,7 @@ function invokeService(service: PersistenceService<PersistedModel>, operation: P
     case "has_message": return service.hasMessage(String(payload.messageId));
     case "activate_project": return service.activateProject(String(payload.projectId), durable(payload, "currentState"), durable(payload, "initialState"), payload.checkpointCurrent !== false);
     case "create_project": return service.createProject(String(payload.displayName), durable(payload, "currentState"), durable(payload, "initialState"));
+    case "create_project_from_state": return service.createProjectFromState(String(payload.displayName), durable(payload, "currentState"), durable(payload, "state"));
     case "save_as": return service.saveAs(String(payload.displayName), durable(payload, "currentState"));
     case "rename_project": return service.renameProject(String(payload.projectId), String(payload.displayName));
     case "delete_project": return service.deleteProject(String(payload.projectId), durable(payload, "currentState"), durable(payload, "initialState"));
@@ -174,6 +175,7 @@ export class PersistenceClient<T extends PersistedModel> {
   hasMessage(messageId: string) { return this.call<boolean>("has_message", { messageId }); }
   activateProject(projectId: string, currentState: DurableState<T>, initialState: DurableState<T>, checkpointCurrent = true) { return this.call<PersistenceSession<T>>("activate_project", { projectId, currentState, initialState, checkpointCurrent }); }
   createProject(displayName: string, currentState: DurableState<T>, initialState: DurableState<T>) { return this.call<PersistenceSession<T>>("create_project", { displayName, currentState, initialState }); }
+  createProjectFromState(displayName: string, currentState: DurableState<T>, state: DurableState<T>) { return this.call<PersistenceSession<T>>("create_project_from_state", { displayName, currentState, state }); }
   saveAs(displayName: string, currentState: DurableState<T>) { return this.call<PersistenceSession<T>>("save_as", { displayName, currentState }); }
   renameProject(projectId: string, displayName: string) { return this.call<CatalogView>("rename_project", { projectId, displayName }); }
   deleteProject(projectId: string, currentState: DurableState<T>, initialState: DurableState<T>) { return this.call<PersistenceSession<T>>("delete_project", { projectId, currentState, initialState }); }
@@ -197,6 +199,13 @@ export class PersistenceClient<T extends PersistedModel> {
   async decodeArchive(file: Blob) {
     const buffer = await file.arrayBuffer();
     return this.call<DurableState<T>>("decode_archive", { buffer }, [buffer]);
+  }
+
+  async decodeProjectFile(file: File) {
+    if (!file.name.toLowerCase().endsWith(".gz")) {
+      return readProjectDocumentSet<T>(JSON.parse(await file.text()) as ProjectDocumentSet);
+    }
+    return this.decodeArchive(file);
   }
 
   quota() { return this.call<StorageEstimate>("quota"); }

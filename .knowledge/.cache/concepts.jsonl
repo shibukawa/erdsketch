@@ -9,6 +9,7 @@
 {"category": "concept", "id": "concept:pattern-discovery", "path": ".knowledge/concept/pattern-discovery.md", "role": "supporting", "title": "Pattern Discovery", "type": "concept"}
 {"category": "concept", "id": "concept:pattern-heuristic", "path": ".knowledge/concept/pattern-heuristic.md", "role": "supporting", "title": "Pattern Heuristic", "type": "concept"}
 {"category": "structure", "id": "data:attribute", "path": ".knowledge/data/attribute.md", "role": "supporting", "title": "Attribute", "type": "data"}
+{"category": "structure", "id": "data:blog-starter-project", "path": ".knowledge/data/blog-starter-project.md", "role": "supporting", "title": "Blog Starter Project", "type": "data"}
 {"category": "structure", "id": "data:canvas-annotation", "path": ".knowledge/data/canvas-annotation.md", "role": "supporting", "title": "Canvas Annotation", "type": "data"}
 {"category": "structure", "id": "data:canvas-model-placement", "path": ".knowledge/data/canvas-model-placement.md", "role": "supporting", "title": "Canvas Model Placement", "type": "data"}
 {"category": "structure", "id": "data:code-set", "path": ".knowledge/data/code-set.md", "role": "supporting", "title": "Code Set", "type": "data"}
@@ -45,6 +46,7 @@
 {"category": "structure", "id": "data:field-size-estimate", "path": ".knowledge/data/field-size-estimate.md", "role": "supporting", "title": "Field Average Size Estimate", "type": "data"}
 {"category": "structure", "id": "data:governance-metadata", "path": ".knowledge/data/governance-metadata.md", "role": "supporting", "title": "Governance Metadata", "type": "data"}
 {"category": "structure", "id": "data:growth-rate", "path": ".knowledge/data/growth-rate.md", "role": "supporting", "title": "Growth Rate", "type": "data"}
+{"category": "structure", "id": "data:help-desk-starter-project", "path": ".knowledge/data/help-desk-starter-project.md", "role": "supporting", "title": "Help Desk Starter Project", "type": "data"}
 {"category": "structure", "id": "data:index-definition", "path": ".knowledge/data/index-definition.md", "role": "supporting", "title": "Index Definition", "type": "data"}
 {"category": "structure", "id": "data:master-data-distribution", "path": ".knowledge/data/master-data-distribution.md", "role": "supporting", "title": "Master Data Distribution", "type": "data"}
 {"category": "structure", "id": "data:model-catalog", "path": ".knowledge/data/model-catalog.md", "role": "supporting", "title": "Project Model Catalog", "type": "data"}
@@ -71,9 +73,11 @@
 {"category": "structure", "id": "data:snapshot-reference", "path": ".knowledge/data/snapshot-reference.md", "role": "supporting", "title": "Snapshot Reference", "type": "data"}
 {"category": "structure", "id": "data:split-by-code-set-pattern", "path": ".knowledge/data/split-by-code-set-pattern.md", "role": "supporting", "title": "Split Model by Code Set Pattern", "type": "data"}
 {"category": "structure", "id": "data:sql-table-projection", "path": ".knowledge/data/sql-table-projection.md", "role": "supporting", "title": "SQL Table Projection", "type": "data"}
+{"category": "structure", "id": "data:starter-project-template", "path": ".knowledge/data/starter-project-template.md", "role": "supporting", "title": "Starter Project Template", "type": "data"}
 {"category": "structure", "id": "data:state-transition", "path": ".knowledge/data/state-transition.md", "role": "supporting", "title": "State Transition", "type": "data"}
 {"category": "structure", "id": "data:system-boundary-pattern", "path": ".knowledge/data/system-boundary-pattern.md", "role": "supporting", "title": "System Boundary Pattern", "type": "data"}
 {"category": "structure", "id": "data:time-characteristic", "path": ".knowledge/data/time-characteristic.md", "role": "supporting", "title": "Time Characteristic", "type": "data"}
+{"category": "structure", "id": "data:todo-starter-project", "path": ".knowledge/data/todo-starter-project.md", "role": "supporting", "title": "Todo Starter Project", "type": "data"}
 {"category": "structure", "id": "data:value-generation", "path": ".knowledge/data/value-generation.md", "role": "supporting", "title": "Value Generation", "type": "data"}
 {"category": "structure", "id": "data:value-object", "path": ".knowledge/data/value-object.md", "role": "supporting", "title": "Value Object", "type": "data"}
 {"category": "structure", "id": "data:vocabulary-binding", "path": ".knowledge/data/vocabulary-binding.md", "role": "supporting", "title": "Vocabulary Binding", "type": "data"}
@@ -101,6 +105,7 @@
 {"category": "behavior", "id": "flow:project-restart-recovery", "path": ".knowledge/flow/project-restart-recovery.md", "role": "primary", "title": "Project Restart Recovery", "type": "flow"}
 {"category": "behavior", "id": "flow:recover-disconnected-cowork-participant", "path": ".knowledge/flow/recover-disconnected-cowork-participant.md", "role": "primary", "title": "Recover Disconnected Co-work Participant", "type": "flow"}
 {"category": "behavior", "id": "flow:relay-webrtc-answer", "path": ".knowledge/flow/relay-webrtc-answer.md", "role": "primary", "title": "Relay WebRTC Answer to Host Tab", "type": "flow"}
+{"category": "behavior", "id": "flow:start-project-from-launch-panel", "path": ".knowledge/flow/start-project-from-launch-panel.md", "role": "primary", "title": "Start Project from Launch Panel", "type": "flow"}
 {"category": "behavior", "id": "flow:transfer-canvas-model-ownership", "path": ".knowledge/flow/transfer-canvas-model-ownership.md", "role": "primary", "title": "Transfer Canvas Model Ownership", "type": "flow"}
 {"category": "behavior", "id": "flow:vocabulary-cache-lifecycle", "path": ".knowledge/flow/vocabulary-cache-lifecycle.md", "role": "primary", "title": "Vocabulary Cache Lifecycle", "type": "flow"}
 {"category": "behavior", "id": "flow:vocabulary-first-naming", "path": ".knowledge/flow/vocabulary-first-naming.md", "role": "primary", "title": "Vocabulary First Naming", "type": "flow"}
@@ -147,6 +152,7 @@
 {"category": "objective", "id": "requirement:vocabulary-usage-inspection", "path": ".knowledge/requirement/vocabulary-usage-inspection.md", "role": "primary", "title": "Vocabulary Usage Inspection", "type": "requirement"}
 {"category": "objective", "id": "requirement:wails-desktop-distribution", "path": ".knowledge/requirement/wails-desktop-distribution.md", "role": "primary", "title": "Wails Desktop Distribution", "type": "requirement"}
 {"category": "objective", "id": "requirement:webrtc-share-work", "path": ".knowledge/requirement/webrtc-share-work.md", "role": "primary", "title": "WebRTC Co-work", "type": "requirement"}
+{"category": "objective", "id": "requirement:workspace-start-project-selection", "path": ".knowledge/requirement/workspace-start-project-selection.md", "role": "primary", "title": "Workspace Start Project Selection", "type": "requirement"}
 {"category": "constraint", "id": "rule:canvas-annotation-collaboration", "path": ".knowledge/rule/canvas-annotation-collaboration.md", "role": "supporting", "title": "Canvas Annotation Collaboration", "type": "rule"}
 {"category": "constraint", "id": "rule:canvas-annotation-semantics", "path": ".knowledge/rule/canvas-annotation-semantics.md", "role": "supporting", "title": "Canvas Annotation Semantics", "type": "rule"}
 {"category": "constraint", "id": "rule:canvas-model-ownership", "path": ".knowledge/rule/canvas-model-ownership.md", "role": "supporting", "title": "Canvas Model Ownership", "type": "rule"}
@@ -212,6 +218,7 @@
 {"category": "interface", "id": "ui:normalization-view", "path": ".knowledge/ui/normalization-view.md", "role": "primary", "title": "Normalization View", "type": "ui"}
 {"category": "interface", "id": "ui:partition-definition-dialog", "path": ".knowledge/ui/partition-definition-dialog.md", "role": "primary", "title": "Partition Definition Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:pattern-library-view", "path": ".knowledge/ui/pattern-library-view.md", "role": "primary", "title": "Pattern Library View", "type": "ui"}
+{"category": "interface", "id": "ui:project-canvas-selector-dialog", "path": ".knowledge/ui/project-canvas-selector-dialog.md", "role": "primary", "title": "Project Canvas Selector Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:project-management-dialog", "path": ".knowledge/ui/project-management-dialog.md", "role": "primary", "title": "Project Management Dialog", "type": "ui"}
 {"category": "interface", "id": "ui:project-settings-view", "path": ".knowledge/ui/project-settings-view.md", "role": "primary", "title": "Project Settings View", "type": "ui"}
 {"category": "interface", "id": "ui:relationship-view", "path": ".knowledge/ui/relationship-view.md", "role": "primary", "title": "Relationship View", "type": "ui"}
@@ -222,4 +229,5 @@
 {"category": "interface", "id": "ui:vocabulary-view", "path": ".knowledge/ui/vocabulary-view.md", "role": "primary", "title": "Vocabulary View", "type": "ui"}
 {"category": "interface", "id": "ui:volume-view", "path": ".knowledge/ui/volume-view.md", "role": "primary", "title": "Volume View", "type": "ui"}
 {"category": "interface", "id": "ui:workspace-data-navigation", "path": ".knowledge/ui/workspace-data-navigation.md", "role": "primary", "title": "Workspace Data Navigation", "type": "ui"}
+{"category": "interface", "id": "ui:workspace-start-panel", "path": ".knowledge/ui/workspace-start-panel.md", "role": "primary", "title": "Workspace Start Panel", "type": "ui"}
 {"category": "objective", "id": "vision:modeling-workbench", "path": ".knowledge/vision/modeling-workbench.md", "role": "primary", "title": "Modeling Workbench", "type": "vision"}
