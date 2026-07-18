@@ -151,4 +151,7 @@ export function timestampDurableOperation<T extends { id: string }>(state: Colla
     case "naming_policy":
       return operation;
   }
+
+  const unhandledOperation: never = operation;
+  return unhandledOperation;
 }
