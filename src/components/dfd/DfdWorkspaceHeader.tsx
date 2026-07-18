@@ -3,6 +3,8 @@ import type { Collaborator } from "../../collaboration";
 import { WorkspaceProjectNavigation } from "../layout/WorkspaceProjectNavigation";
 import { CoworkParticipantSummary } from "../collaboration/CoworkParticipantSummary";
 import { GuidedTourButton } from "../guidedTour/GuidedTourButton";
+import { useI18n } from "../../i18n/I18nProvider";
+import { translateText } from "../../i18n/translations";
 
 type DfdWorkspaceHeaderProps = {
   me: Collaborator;
@@ -24,6 +26,7 @@ type DfdWorkspaceHeaderProps = {
 };
 
 export function DfdWorkspaceHeader({ me, users, connected, canvasName, isHost, recoveryReady, persistentStorage, recoveryError, activeProject, onOpenProjectManager, onOpenCanvasSelector, onOpenModelPicker, onOpenCrudMatrix, onShareWork, onLeaveSession, onOpenExport }: DfdWorkspaceHeaderProps) {
+  const { locale } = useI18n();
   return <header className="z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-7 py-4 shadow-sm">
     <WorkspaceProjectNavigation isHost={isHost} recoveryReady={recoveryReady} persistentStorage={persistentStorage} recoveryError={recoveryError} activeProject={activeProject} canvasName={canvasName} onOpenProjectManager={onOpenProjectManager} onOpenCanvasSelector={onOpenCanvasSelector} />
     <div className="flex items-center gap-2">
@@ -31,7 +34,7 @@ export function DfdWorkspaceHeader({ me, users, connected, canvasName, isHost, r
       <button className="btn btn-outline btn-sm gap-2" onClick={onOpenCrudMatrix}><Grid3X3 size={15} />CRUD Matrix</button>
       <GuidedTourButton tour="dfd" label="DFD" />
       <CoworkParticipantSummary me={me} users={users} connected={connected} isHost={isHost} onOpenCowork={onShareWork} onLeaveSession={onLeaveSession} iconSize={15} />
-      <span className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-amber-500"}`} title={connected ? "Connected" : "Connecting"} />
+      <span className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-amber-500"}`} title={translateText(connected ? "Connected" : "Connecting", locale)} />
       <span data-tour="collaborator-name" className="btn btn-ghost btn-sm pointer-events-none"><span className="h-3 w-3 rounded-full" style={{ backgroundColor: me.color }} /><span data-i18n-skip>{me.name}</span></span>
       <button type="button" className="btn btn-error btn-sm gap-2 text-white" onClick={onOpenExport}><FileOutput size={15} />Export</button>
     </div>

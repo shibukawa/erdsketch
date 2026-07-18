@@ -15,10 +15,10 @@ requirements:
   editing:
     surface: ui:vocabulary-view
     tab: word_list
-    quick_entry:
-      input: business_name
-      submit: Enter_when_not_ime_composing
-      result: append_entry_and_keep_input_ready
+    default_mode: selection_only_list
+    selected_entry_editor: details_sidebar
+    bulk_mode: explicit_bulk_settings_action
+    placeholders: none
     creation_required_field: business_name
     deferred_fields:
       - system_name
@@ -39,9 +39,16 @@ requirements:
   details:
     fields:
       - meaning
-      - memo
+      - notes
       - aliases
       - usage_list: data:vocabulary-usage
+    quick_fill: requirement:vocabulary-quick-fill
+  text_assistance:
+    fields:
+      - business_name
+      - system_name
+    spellcheck: true
+    lang: selected_language
   display:
     behavior: requirement:name-display-switching
     modes:
@@ -65,7 +72,10 @@ requirements:
   cache: requirement:vocabulary-cache-maintenance
 acceptance:
   - A non-developer can understand the primary table without opening row details.
-  - Users can register consecutive business terms without completing system or physical names.
+  - Opening the word list shows selectable rows rather than a wall of text boxes.
+  - Meaning, notes, aliases, and usage are available for the selected entry.
+  - Quick fill completes missing technical names without replacing confirmed values.
+  - Bulk settings preserves efficient editing of many entries without becoming the default view.
   - Vocabulary entries remain available before any table, field, or domain uses them.
   - A Japanese system name and romanized physical name can coexist.
   - The diagram can switch naming modes without changing model identity.

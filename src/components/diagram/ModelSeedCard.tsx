@@ -1,7 +1,7 @@
 import { Columns3, Database, KeyRound, Link2, Lock, Menu, Pencil, Star } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FocusEvent, type KeyboardEvent, type PointerEvent } from "react";
 import type { Collaborator } from "../../collaboration";
-import { cardHeight, cardWidth, roleMeta } from "../../features/modeling/constants";
+import { cardHeight, cardWidth, dependencyLabels, roleMeta } from "../../features/modeling/constants";
 import type { CanvasAccessMode, CardDisplayMode, DataDomain, DomainCategory, ModelField, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
 import { expandDomainField, flattenLabels, getFieldEffectiveName, getModelStageLabel, relationshipDisplaySeedIDs, updateNameSet } from "../../features/modeling/utils";
 import { FieldListDialog } from "./FieldListDialog";
@@ -9,6 +9,8 @@ import { ModelEditDialog } from "./ModelEditDialog";
 import { RoughShape } from "./RoughShape";
 import { getCachedDisplayName, type VocabularyMatchCache } from "../../features/modeling/vocabulary";
 import { VocabularyDisplayName } from "./VocabularyDisplayName";
+import { useI18n } from "../../i18n/I18nProvider";
+import { translateText } from "../../i18n/translations";
 
 type ModelSeedCardProps = {
   seed: ModelSeed;
@@ -41,6 +43,7 @@ type ModelSeedCardProps = {
 };
 
 export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayMode, nameDisplayMode, vocabularyCache, owner, me, accessMode, titleFocusRequested, onTitleFocusHandled, onPointerDown, onUpdate, onEditingChange, remoteEditor, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, domains, domainCategories, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, seeds, onApplyRefinement }: ModelSeedCardProps) {
+  const { locale } = useI18n();
   const meta = roleMeta[seed.role];
   const lockedByMe = accessMode === "owner" && owner?.id === me.id;
   const lockedByOther = !!owner && !lockedByMe;
@@ -367,7 +370,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
                 tag === seed.role ? roleMeta[seed.role].chip : "border-slate-200 bg-white/80 text-slate-700"
               }`}
             >
-              {tag}
+              {translateText(tag === seed.dependency ? dependencyLabels[seed.dependency] : tag, locale)}
             </span>
           ))}
         </div>

@@ -134,7 +134,7 @@ const copy: Record<GuidedTourId, Record<Locale, Copy[]>> = {
       { title: "Word list and usage", content: "Edit authoritative terms in Word list, then inspect naming coverage in Usage." },
       { title: "Business and system names", content: "Use a business name for the term people use in the business, and a system name for the term used in software. Keeping both is useful when industry terminology differs from system terminology, or when business and system languages differ." },
       { title: "Physical names", content: "Use the physical name for the database or symbol form—for example, an all-lowercase name or an abbreviation chosen to keep identifiers short." },
-      { title: "Add a term", content: "Enter a business name and press Enter. System and physical names can be completed later." },
+      { title: "Add and inspect terms", content: "Add a business name, select a row, then complete names and details in the sidebar. Use Bulk settings when editing many terms." },
       { title: "Usage coverage", content: "Find unmatched or incomplete names and open the action needed to resolve each one." }
     ],
     ja: [
@@ -142,7 +142,7 @@ const copy: Record<GuidedTourId, Record<Locale, Copy[]>> = {
       { title: "単語一覧と使用状況", content: "単語一覧で正式な用語を編集し、使用状況で命名の適用範囲を確認します。" },
       { title: "ビジネス用語とシステム用語", content: "ビジネス用語には業務で使う言葉、システム用語にはソフトウェア内で使う言葉を登録します。業界専門用語とシステム上の呼び名が異なる場合や、業務とシステムで英語・他国語を使い分ける場合に両方を管理できます。" },
       { title: "物理名", content: "物理名にはデータベースやシンボルで使う表記を登録します。全部小文字にした名前や、シンボル名を短くするための略称などを指定できます。" },
-      { title: "用語を追加", content: "ビジネス名を入力して Enter を押します。システム名と物理名は後から補完できます。" },
+      { title: "用語の追加と確認", content: "ビジネス名を追加して行を選択し、サイドバーで名前や詳細を設定します。複数の用語を編集するときは一括設定を使います。" },
       { title: "使用状況", content: "未一致・未完成の名前を見つけ、それぞれに必要な修正操作を開けます。" }
     ]
   },
@@ -170,7 +170,7 @@ const targets: Record<GuidedTourId, string[]> = {
   export: ["[data-tour='export-dialog'] header", "[data-tour='export-formats']", "[data-tour='export-options']", "[data-tour='export-actions']"],
   fields: ["[data-tour='field-dialog'] header", "[data-tour='field-quick-entry']", "[data-tour='field-dialog'] .field-list-scroll", "[data-tour='field-dialog'] aside"],
   models: ["[data-tour='model-catalog'] .modal-box > header", "[data-tour='model-filters']", "[data-tour='model-catalog'] table"],
-  vocabulary: ["[data-tour='vocabulary-dialog'] header", "[data-tour='vocabulary-tabs']", "[data-tour='vocabulary-tabs']", "[data-tour='vocabulary-tabs']", "[data-tour='vocabulary-quick-entry']", "[data-tour='vocabulary-tabs'] button[data-tab='usage']"],
+  vocabulary: ["[data-tour='vocabulary-dialog'] header", "[data-tour='vocabulary-tabs']", "[data-tour='vocabulary-tabs']", "[data-tour='vocabulary-tabs']", "[data-tour='vocabulary-add-entry']", "[data-tour='vocabulary-tabs'] button[data-tab='usage']"],
   "vocabulary-registration": ["[data-tour='vocabulary-registration'] header", "[data-tour='vocabulary-segmentation']", "[data-tour='vocabulary-segments']", "[data-tour='vocabulary-register']"]
 };
 

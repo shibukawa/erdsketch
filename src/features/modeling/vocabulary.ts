@@ -4,7 +4,7 @@ import { getDisplayName, toSnakeCase } from "./utils.ts";
 export type VocabularyTarget = "table" | "field" | "domain";
 export type VocabularyStatus = "unmatched" | "correction_required" | "incomplete" | "complete";
 export type VocabularyDisplaySegment = { text: string; state: "resolved" | "unmatched" | "alias" | "missing" };
-export type VocabularyAliasMatch = { segmentIndex: number; alias: string; preferred: string };
+export type VocabularyAliasMatch = { segmentIndex: number; entryId: string; alias: string; preferred: string };
 
 export type VocabularySource = {
   key: string;
@@ -26,11 +26,54 @@ export type VocabularyMatch = VocabularySource & {
   status: VocabularyStatus;
 };
 
+export type VocabularyIndicators = {
+  unregistered: boolean;
+  aliasMatch: boolean;
+  missingSystemName: boolean;
+  missingPhysicalName: boolean;
+  complete: boolean;
+};
+
+export type VocabularyPrimaryIndicator = keyof VocabularyIndicators;
+export type VocabularyAutofillTarget = "system" | "physical";
+
 export type VocabularyMatchCache = {
   matches: Map<string, VocabularyMatch>;
   entryUsage: Map<string, string[]>;
   builtAt: number;
 };
+
+export function getVocabularyIndicators(match: VocabularyMatch): VocabularyIndicators {
+  const unregistered = match.unmatched.length > 0;
+  const aliasMatch = match.aliasMatches.length > 0;
+  const missingSystemName = match.displaySegments.system.some((segment) => segment.state === "missing");
+  const missingPhysicalName = match.displaySegments.physical.some((segment) => segment.state === "missing");
+  return {
+    unregistered,
+    aliasMatch,
+    missingSystemName,
+    missingPhysicalName,
+    complete: !unregistered && !aliasMatch && !missingSystemName && !missingPhysicalName
+  };
+}
+
+export function getPrimaryVocabularyIndicator(match: VocabularyMatch): VocabularyPrimaryIndicator {
+  const indicators = getVocabularyIndicators(match);
+  if (indicators.unregistered) return "unregistered";
+  if (indicators.missingSystemName) return "missingSystemName";
+  if (indicators.missingPhysicalName) return "missingPhysicalName";
+  if (indicators.aliasMatch) return "aliasMatch";
+  return "complete";
+}
+
+export function fillMissingVocabularyName(entry: VocabularyEntry, target: VocabularyAutofillTarget): VocabularyEntry {
+  if (target === "system") {
+    if (entry.systemName.trim()) return entry;
+    return { ...entry, systemName: entry.businessName.trim() };
+  }
+  if (entry.physicalName.trim()) return entry;
+  return { ...entry, physicalName: toSnakeCase(entry.businessName) };
+}
 
 export function getCachedDisplayName(cache: VocabularyMatchCache, key: string, legacyName: string, names: NameSet | undefined, mode: NameDisplayMode) {
   return cache.matches.get(key)?.names[mode] || getDisplayName(legacyName, names, mode);
@@ -119,7 +162,7 @@ export function materializeVocabularyMatch(source: VocabularySource, entries: Vo
     if (segment.type !== "entry") return [];
     const entry = entryById.get(segment.entryId);
     const matchKind = segment.matchKind ?? (entry && segment.source.localeCompare(entry.businessName, undefined, { sensitivity: "accent" }) === 0 ? "preferred" : "alias");
-    return matchKind === "alias" && entry ? [{ segmentIndex, alias: segment.source, preferred: entry.businessName }] : [];
+    return matchKind === "alias" && entry ? [{ segmentIndex, entryId: entry.id, alias: segment.source, preferred: entry.businessName }] : [];
   });
   const missingEntry = binding.segments.some((segment) => segment.type === "entry" && !entryById.has(segment.entryId));
   const incomplete = matchedEntries.some((entry) => !entry.systemName || !entry.physicalName);
