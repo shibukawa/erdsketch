@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createStarterProjectState, starterProjects } from "../src/features/modeling/starterProjects.ts";
+import { estimateCapacity, projectionHorizonsForModel } from "../src/features/modeling/capacity.ts";
 import { buildVocabularyMatchCache } from "../src/features/modeling/vocabulary.ts";
 
 test("starter catalog contains empty and registered complete examples", () => {
@@ -43,6 +44,25 @@ test("starters include valid ERD relationships and a populated DFD", () => {
     assert.ok(state.dfd.nodes.some((node) => node.kind === "model"));
     assert.ok(state.dfd.flows.length > 0);
     assert.ok(state.dfd.flows.every((flow) => dfdNodeIds.has(flow.sourceId) && dfdNodeIds.has(flow.destinationId)));
+  }
+});
+
+test("every starter model has complete nonzero volume and storage estimates", () => {
+  for (const starter of starterProjects.filter((candidate) => candidate.id !== "empty")) {
+    const state = createStarterProjectState(starter.id);
+    for (const model of state.seeds) {
+      assert.ok(model.volumeEstimate, `${starter.id}/${model.id} has no volume estimate`);
+      assert.ok(model.volumeEstimate.initialRecordCount > 0, `${starter.id}/${model.id} has no initial records`);
+      assert.ok(model.volumeEstimate.growthRate.amount > 0, `${starter.id}/${model.id} has no growth estimate`);
+      if (model.role === "transaction") assert.ok(model.volumeEstimate.retentionPeriod?.value > 0, `${starter.id}/${model.id} has no retention estimate`);
+
+      const horizons = projectionHorizonsForModel(model);
+      const projection = estimateCapacity(model, state.domains, horizons.at(-1));
+      assert.deepEqual(projection.missingFieldNames, [], `${starter.id}/${model.id} has incomplete field-size estimates`);
+      assert.ok(projection.recordCount > 0, `${starter.id}/${model.id} has no projected records`);
+      assert.ok(projection.totalBytes > 0, `${starter.id}/${model.id} has no projected storage`);
+    }
+    assert.ok(new Set(state.seeds.map((model) => model.volumeEstimate.initialRecordCount)).size > 1, `${starter.id} estimates do not create useful relative weights`);
   }
 });
 

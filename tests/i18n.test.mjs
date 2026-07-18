@@ -106,3 +106,16 @@ test("capacity inputs, projections, and estimate details are localized", () => {
   assert.equal(translateText("Complete the domain definition for: address.", "ja"), "ドメインの物理型の設定を行ってください: address。");
   assert.equal(translateText("Set estimated average size for: notes.", "ja"), "Text／Blob といった可変要素では、推定平均サイズを設定してください: notes。");
 });
+
+test("CRUD heatmap controls and SELECT-cost caution are localized", () => {
+  assert.equal(translateText("Process / Model", "ja"), "プロセス / モデル");
+  assert.equal(translateText("Model / Process", "ja"), "モデル / プロセス");
+  assert.equal(translateText("Heatmap basis", "ja"), "ヒートマップの計算基準");
+  assert.equal(translateText("Record count", "ja"), "レコード数");
+  assert.equal(translateText("Storage size", "ja"), "ストレージサイズ");
+  assert.equal(translateText("Record count: 12,345 · Table size: 2.5 GiB", "ja"), "レコード数: 12,345 · テーブルサイズ: 2.5 GiB");
+  assert.equal(
+    translateText("Heatmap values are only rough indications of SELECT query cost. Actual cost can differ substantially depending on index access, WHERE-clause selectivity, and multi-table join order or loop strategy.", "ja"),
+    "ヒートマップは SELECT クエリーの重さの大まかな目安です。実際の負荷は、インデックスアクセス、WHERE 句の絞り込み、複数テーブルの結合順序やループ戦略によって大きく変わります。"
+  );
+});

@@ -13,8 +13,8 @@ The `StarterProjectId` type, launch-panel metadata, counts, and project-state ge
 
 Remove its import and entry from `projectSpecs` in `registry.ts`, then delete its definition file.
 
-`empty` is built into the shared factory and intentionally does not appear in the registry.
+`empty` is built into the shared factory and intentionally does not appear in the registry. Every model in a registered starter must define a nonzero `volumeEstimate`. Variable-size Text or Blob fields must also define `estimatedAverageSizeBytes` so both CRUD heatmap bases produce complete values.
 
 ## Definition checks
 
-Run `npm test`. The generic starter tests validate every registered definition, including unique IDs and domains, assigned field domains, complete vocabulary bindings, valid ERD relationships, populated DFD flows, metadata counts, and independent state creation.
+Run `npm test`. The generic starter tests validate every registered definition, including unique IDs and domains, assigned field domains, complete vocabulary bindings, nonzero record and storage estimates, valid ERD relationships, populated DFD flows, metadata counts, and independent state creation.

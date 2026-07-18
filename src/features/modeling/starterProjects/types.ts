@@ -1,4 +1,4 @@
-import type { DfdFlow, DfdNode, EntityRole, PrimitiveType, Relationship } from "../types.ts";
+import type { DfdFlow, DfdNode, EntityRole, PrimitiveType, Relationship, VolumeEstimate } from "../types.ts";
 
 export type StarterProjectLevel = "Simple" | "Intermediate" | "Advanced";
 
@@ -15,6 +15,7 @@ export type FieldSpec = {
   primaryKey?: boolean;
   required?: boolean;
   unique?: boolean;
+  estimatedAverageSizeBytes?: number;
 };
 
 export type ModelSpec = {
@@ -24,6 +25,7 @@ export type ModelSpec = {
   role: EntityRole;
   dependent?: boolean;
   privacy?: boolean;
+  volumeEstimate: VolumeEstimate;
   fields: FieldSpec[];
 };
 

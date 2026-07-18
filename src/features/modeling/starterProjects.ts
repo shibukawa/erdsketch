@@ -87,7 +87,8 @@ function makeFields(modelId: string, specs: FieldSpec[], domains: DataDomain[], 
     important: spec.primaryKey ?? false,
     domainId: domains.find((domain) => domain.name === spec.domain)?.id,
     required: spec.required ?? false,
-    unique: spec.unique ?? false
+    unique: spec.unique ?? false,
+    estimatedAverageSizeBytes: spec.estimatedAverageSizeBytes
   }));
 }
 
@@ -101,6 +102,7 @@ function makeModels(specs: ModelSpec[], domains: DataDomain[], entries: Vocabula
     x: 80 + (index % 3) * 360,
     y: 60 + Math.floor(index / 3) * 270,
     role: spec.role,
+    volumeEstimate: structuredClone(spec.volumeEstimate),
     dependency: spec.dependent ? "dependent" : "independent",
     hasPrivacy: spec.privacy ?? false,
     maturedLevel: 0.5,

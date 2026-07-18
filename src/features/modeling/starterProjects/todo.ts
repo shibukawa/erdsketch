@@ -18,24 +18,24 @@ export const todoSpec = {
     { name: "Color Code", primitiveType: "varchar", length: 7 }
   ],
   models: [
-    { id: "user", name: "User", description: "Person who owns lists and labels.", role: "master", privacy: true, fields: [
+    { id: "user", name: "User", description: "Person who owns lists and labels.", role: "master", privacy: true, volumeEstimate: { initialRecordCount: 50_000, growthRate: { amount: 120, period: "day" } }, fields: [
       { name: "User Identifier", domain: "Identifier", primaryKey: true, required: true },
       { name: "Email Address", domain: "Email Address", required: true, unique: true },
       { name: "Display Name", domain: "Display Name", required: true },
       { name: "Created At", domain: "Timestamp", required: true }
     ] },
-    { id: "todo-list", name: "Todo List", description: "Named collection of todo items.", role: "master", fields: [
+    { id: "todo-list", name: "Todo List", description: "Named collection of todo items.", role: "master", volumeEstimate: { initialRecordCount: 160_000, growthRate: { amount: 500, period: "day" } }, fields: [
       { name: "Todo List Identifier", domain: "Identifier", primaryKey: true, required: true },
       { name: "User Identifier", domain: "Identifier", required: true },
       { name: "Title", domain: "Title", required: true },
-      { name: "Description", domain: "Description" },
+      { name: "Description", domain: "Description", estimatedAverageSizeBytes: 500 },
       { name: "Created At", domain: "Timestamp", required: true }
     ] },
-    { id: "todo-item", name: "Todo Item", description: "A unit of work with ordering and completion state.", role: "transaction", dependent: true, fields: [
+    { id: "todo-item", name: "Todo Item", description: "A unit of work with ordering and completion state.", role: "transaction", dependent: true, volumeEstimate: { initialRecordCount: 1_200_000, growthRate: { amount: 15_000, period: "day" }, retentionPeriod: { value: 3, unit: "year" } }, fields: [
       { name: "Todo Item Identifier", domain: "Identifier", primaryKey: true, required: true },
       { name: "Todo List Identifier", domain: "Identifier", required: true },
       { name: "Title", domain: "Title", required: true },
-      { name: "Description", domain: "Description" },
+      { name: "Description", domain: "Description", estimatedAverageSizeBytes: 800 },
       { name: "Todo Status", domain: "Todo Status", required: true },
       { name: "Due At", domain: "Timestamp" },
       { name: "Completed At", domain: "Timestamp" },
@@ -43,13 +43,13 @@ export const todoSpec = {
       { name: "Created At", domain: "Timestamp", required: true },
       { name: "Updated At", domain: "Timestamp", required: true }
     ] },
-    { id: "label", name: "Label", description: "Reusable user-owned classification label.", role: "master", fields: [
+    { id: "label", name: "Label", description: "Reusable user-owned classification label.", role: "master", volumeEstimate: { initialRecordCount: 250_000, growthRate: { amount: 700, period: "day" } }, fields: [
       { name: "Label Identifier", domain: "Identifier", primaryKey: true, required: true },
       { name: "User Identifier", domain: "Identifier", required: true },
       { name: "Name", domain: "Display Name", required: true },
       { name: "Color Code", domain: "Color Code", required: true }
     ] },
-    { id: "todo-item-label", name: "Todo Item Label", description: "Many-to-many assignment of labels to todo items.", role: "transaction", dependent: true, fields: [
+    { id: "todo-item-label", name: "Todo Item Label", description: "Many-to-many assignment of labels to todo items.", role: "transaction", dependent: true, volumeEstimate: { initialRecordCount: 2_400_000, growthRate: { amount: 25_000, period: "day" }, retentionPeriod: { value: 3, unit: "year" } }, fields: [
       { name: "Todo Item Identifier", domain: "Identifier", primaryKey: true, required: true },
       { name: "Label Identifier", domain: "Identifier", primaryKey: true, required: true },
       { name: "Created At", domain: "Timestamp", required: true }

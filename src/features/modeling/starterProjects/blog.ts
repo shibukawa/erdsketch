@@ -18,23 +18,23 @@ export const blogSpec = {
     { name: "Timestamp", primitiveType: "datetime_with_timezone" }
   ],
   models: [
-    { id: "user", name: "User", description: "Publishing account and post author.", role: "master", privacy: true, fields: [
+    { id: "user", name: "User", description: "Publishing account and post author.", role: "master", privacy: true, volumeEstimate: { initialRecordCount: 10_000, growthRate: { amount: 60, period: "day" } }, fields: [
       { name: "User Identifier", domain: "Identifier", primaryKey: true, required: true }, { name: "Email Address", domain: "Email Address", required: true, unique: true }, { name: "Display Name", domain: "Display Name", required: true }, { name: "Created At", domain: "Timestamp", required: true }
     ] },
-    { id: "blog", name: "Blog", description: "Publishing site owned by a user.", role: "master", fields: [
+    { id: "blog", name: "Blog", description: "Publishing site owned by a user.", role: "master", volumeEstimate: { initialRecordCount: 2_000, growthRate: { amount: 10, period: "day" } }, fields: [
       { name: "Blog Identifier", domain: "Identifier", primaryKey: true, required: true }, { name: "Owner User Identifier", domain: "Identifier", required: true }, { name: "Title", domain: "Title", required: true }, { name: "Slug", domain: "Slug", required: true, unique: true }, { name: "Created At", domain: "Timestamp", required: true }
     ] },
-    { id: "post", name: "Post", description: "Authored publication with draft and published states.", role: "transaction", fields: [
-      { name: "Post Identifier", domain: "Identifier", primaryKey: true, required: true }, { name: "Blog Identifier", domain: "Identifier", required: true }, { name: "Author User Identifier", domain: "Identifier", required: true }, { name: "Title", domain: "Title", required: true }, { name: "Slug", domain: "Slug", required: true }, { name: "Body", domain: "Content", required: true }, { name: "Post Status", domain: "Post Status", required: true }, { name: "Published At", domain: "Timestamp" }, { name: "Created At", domain: "Timestamp", required: true }, { name: "Updated At", domain: "Timestamp", required: true }
+    { id: "post", name: "Post", description: "Authored publication with draft and published states.", role: "transaction", volumeEstimate: { initialRecordCount: 250_000, growthRate: { amount: 800, period: "day" }, retentionPeriod: { value: 7, unit: "year" } }, fields: [
+      { name: "Post Identifier", domain: "Identifier", primaryKey: true, required: true }, { name: "Blog Identifier", domain: "Identifier", required: true }, { name: "Author User Identifier", domain: "Identifier", required: true }, { name: "Title", domain: "Title", required: true }, { name: "Slug", domain: "Slug", required: true }, { name: "Body", domain: "Content", required: true, estimatedAverageSizeBytes: 4_000 }, { name: "Post Status", domain: "Post Status", required: true }, { name: "Published At", domain: "Timestamp" }, { name: "Created At", domain: "Timestamp", required: true }, { name: "Updated At", domain: "Timestamp", required: true }
     ] },
-    { id: "category", name: "Category", description: "Reusable post category.", role: "master", fields: [
+    { id: "category", name: "Category", description: "Reusable post category.", role: "master", volumeEstimate: { initialRecordCount: 500, growthRate: { amount: 10, period: "month" } }, fields: [
       { name: "Category Identifier", domain: "Identifier", primaryKey: true, required: true }, { name: "Name", domain: "Display Name", required: true }, { name: "Slug", domain: "Slug", required: true, unique: true }
     ] },
-    { id: "post-category", name: "Post Category", description: "Many-to-many post category membership.", role: "transaction", dependent: true, fields: [
+    { id: "post-category", name: "Post Category", description: "Many-to-many post category membership.", role: "transaction", dependent: true, volumeEstimate: { initialRecordCount: 600_000, growthRate: { amount: 1_800, period: "day" }, retentionPeriod: { value: 7, unit: "year" } }, fields: [
       { name: "Post Identifier", domain: "Identifier", primaryKey: true, required: true }, { name: "Category Identifier", domain: "Identifier", primaryKey: true, required: true }
     ] },
-    { id: "comment", name: "Comment", description: "Reader response awaiting moderation.", role: "transaction", dependent: true, privacy: true, fields: [
-      { name: "Comment Identifier", domain: "Identifier", primaryKey: true, required: true }, { name: "Post Identifier", domain: "Identifier", required: true }, { name: "Author Name", domain: "Display Name", required: true }, { name: "Author Email Address", domain: "Email Address", required: true }, { name: "Body", domain: "Content", required: true }, { name: "Comment Status", domain: "Comment Status", required: true }, { name: "Created At", domain: "Timestamp", required: true }
+    { id: "comment", name: "Comment", description: "Reader response awaiting moderation.", role: "transaction", dependent: true, privacy: true, volumeEstimate: { initialRecordCount: 2_000_000, growthRate: { amount: 9_000, period: "day" }, retentionPeriod: { value: 3, unit: "year" } }, fields: [
+      { name: "Comment Identifier", domain: "Identifier", primaryKey: true, required: true }, { name: "Post Identifier", domain: "Identifier", required: true }, { name: "Author Name", domain: "Display Name", required: true }, { name: "Author Email Address", domain: "Email Address", required: true }, { name: "Body", domain: "Content", required: true, estimatedAverageSizeBytes: 800 }, { name: "Comment Status", domain: "Comment Status", required: true }, { name: "Created At", domain: "Timestamp", required: true }
     ] }
   ],
   relationships: [
