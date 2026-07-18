@@ -11,13 +11,13 @@ trigger:
   source: data:vocabulary-binding
   condition: any_segment_match_kind_alias
 semantics:
-  alias: discouraged_or_incorrect_term
+  alias: recognized_synonym_or_alternate_wording
   preferred_term: data:vocabulary-entry business_name
   readiness: same_as_unregistered
 usage_state:
   projection: data:vocabulary-usage
   status: correction_required
-  color: red
+  color: purple
 guidance:
   show:
     - matched_alias
@@ -34,13 +34,15 @@ action:
       - unaffected_segment_order
   after: requirement:vocabulary-cache-maintenance alias_correction_applied
 constraints:
+  - Purple belongs to the source usage containing the alias, never the preferred dictionary entry row.
   - Alias matching may derive system and physical previews from the matched entry.
   - Preview output never makes alias use complete or valid.
   - Correction is never applied automatically.
   - One action replaces only the selected alias occurrence.
   - Unmatched text keeps unmatched precedence while alias guidance remains available.
 acceptance:
-  - Alias use in a table, field, or domain name is shown as red correction-required usage.
+  - Alias use in a table, field, or domain name is shown as purple correction-required usage.
+  - The preferred Word list entry is not marked Alias used merely because one of its aliases was matched.
   - The row identifies both the used alias and preferred business name.
   - Clicking replacement updates only the selected occurrence in the model source name.
   - Dismissing guidance leaves the source name unchanged and not complete.

@@ -75,6 +75,19 @@ test("table type and model stage terminology use canonical display labels", () =
   assert.equal(translateText(getModelStageLabel(0.5), "ja"), "完成モデル");
 });
 
+test("language-sensitive collaboration and ERD card labels use canonical sources", async () => {
+  const cowork = await readFile(new URL("../src/components/collaboration/CoworkParticipantSummary.tsx", import.meta.url), "utf8");
+  assert.match(cowork, /translateText\("Co-work", locale\)/);
+  assert.match(cowork, /translateText\(online \? "Connected" : "Disconnected", locale\)/);
+  const workspaceHeader = await readFile(new URL("../src/components/layout/WorkspaceHeader.tsx", import.meta.url), "utf8");
+  const dfdHeader = await readFile(new URL("../src/components/dfd/DfdWorkspaceHeader.tsx", import.meta.url), "utf8");
+  assert.match(workspaceHeader, /translateText\(connected \? "Connected" : "Connecting", locale\)/);
+  assert.match(dfdHeader, /translateText\(connected \? "Connected" : "Connecting", locale\)/);
+  const modelCard = await readFile(new URL("../src/components/diagram/ModelSeedCard.tsx", import.meta.url), "utf8");
+  assert.match(modelCard, /translateText\(tag === seed\.dependency \? dependencyLabels\[seed\.dependency\] : tag, locale\)/);
+  assert.doesNotMatch(modelCard, />\{tag\}<\/span>/);
+});
+
 test("ERD sidebar sections and maturity guidance use Japanese product labels", () => {
   assert.equal(translateText("Edit", "ja"), "編集");
   assert.equal(translateText("Validation", "ja"), "バリデーション");

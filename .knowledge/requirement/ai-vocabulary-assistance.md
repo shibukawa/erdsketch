@@ -28,22 +28,23 @@ ai_input:
   - small_relevant_subset_of_confirmed_entries
   - containing data:entity
   - nearby data:attribute names
+  - data:vocabulary-ai-settings
 ai_output:
   schema: data:vocabulary-suggestion
   structured: true
-  fills:
-    - system_name
-    - physical_name
+  streaming:
+    granularity: one_entry_result
+    render: append_candidates_to_matching_row
 interaction:
-  alternatives_visible: true
+  surface: ui:vocabulary-view word-list
+  chat_window: forbidden
+  batch_trigger: AI suggest
+  alternatives_visible_in_each_row: true
   rationale_visible: true
   confidence_use: candidate_order_only
   actions:
     accept:
-      interaction: click_suggestion
-      result: confirmed data:vocabulary-entry
-      reusable_without_ai: true
-    edit_then_accept:
+      interaction: accept_candidate
       result: confirmed data:vocabulary-entry
       reusable_without_ai: true
     reject:
@@ -55,12 +56,16 @@ runtime:
   send_entire_catalog: false
 constraints:
   - Known mappings and naming rules run before AI.
+  - Target system_name or physical_name and naming rules come from data:vocabulary-ai-settings.
+  - Structured output streams incrementally rather than waiting for the full batch.
   - AI never silently overwrites confirmed names.
   - Missing on-device AI never blocks vocabulary editing or DDL preparation.
   - Only accepted suggestions are promoted into reusable vocabulary.
   - Suggestions remain visually distinct until clicked.
 acceptance:
   - An incomplete business name can receive system and physical name candidates.
+  - A user chooses system or physical naming and naming rules before starting a batch.
+  - Suggestions appear progressively in their vocabulary rows with accept and reject actions.
   - Context distinguishes identical words used for different domain meanings.
   - Users can inspect alternatives and rationale before approval.
   - Repeated accepted mappings resolve without invoking AI.

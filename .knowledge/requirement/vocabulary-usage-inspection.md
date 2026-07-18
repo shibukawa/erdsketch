@@ -24,11 +24,14 @@ navigation:
 rows:
   item: data:vocabulary-usage
   editable: false
-  status:
-    unmatched: red_error_icon
-    correction_required: red_correction_icon
-    incomplete: yellow_warning_icon
-    complete: green_success_icon
+  primary_indicator:
+    max_visible: 1
+    priority:
+      - unregistered: red
+      - missing_system_name: orange_squiggle
+      - missing_physical_name: yellow_squiggle
+      - alias_match: purple
+      - complete: green_success_icon
 actions:
   unmatched_row:
     open: ui:vocabulary-registration-dialog
@@ -40,8 +43,10 @@ acceptance:
   - Selecting domains shows the domain list.
   - Unregistered text remains visible in red rows.
   - System and physical previews show unmatched spans in red without snake_case conversion.
-  - Alias use remains a red row and guides replacement with the preferred business name.
-  - Yellow rows identify matched entries missing system or physical names.
+  - Alias matches are purple and guide replacement with the preferred business name.
+  - Missing system names use orange squiggles.
+  - Missing physical names use yellow squiggles.
+  - Each row shows exactly one highest-priority indicator.
   - Green rows have complete business, system, and physical output.
   - No usage row permits direct editing.
 ```

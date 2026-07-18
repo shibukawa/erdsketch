@@ -15,7 +15,7 @@ flow:
     - id: defer-technical-names
       action: leave system_name and physical_name empty when undecided
     - id: complete-entry
-      action: edit names, meaning, memo, and aliases later
+      action: edit names, meaning, notes, and aliases later
     - id: bind-model-name
       action: apply rule:vocabulary-resolution to create data:vocabulary-binding
     - id: inspect-coverage

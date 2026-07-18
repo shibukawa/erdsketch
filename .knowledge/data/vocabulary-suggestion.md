@@ -8,12 +8,15 @@ Vocabulary suggestion is a transient candidate for completing one data:vocabular
 
 ```yaml
 fields:
-  - name: system_name
-    type: text
-  - name: physical_name
-    type: text
-  - name: alternatives
-    type: name_pair_list
+  - name: entry_id
+    type: data:vocabulary-entry identifier
+  - name: target
+    type: enum
+    values:
+      - system_name
+      - physical_name
+  - name: candidates
+    type: text_list
   - name: rationale
     type: text
   - name: confidence
@@ -29,5 +32,6 @@ fields:
 constraints:
   - confidence ranks candidates and is not a calibrated probability.
   - A suggestion is not catalog authority.
+  - Each streamed item validates against the structured output schema before display.
   - Rejection leaves data:vocabulary-entry unchanged.
 ```

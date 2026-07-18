@@ -4,6 +4,8 @@ import { WorkspaceProjectNavigation } from "./WorkspaceProjectNavigation";
 import { CoworkParticipantSummary } from "../collaboration/CoworkParticipantSummary";
 import { GuidedTourButton } from "../guidedTour/GuidedTourButton";
 import { CollaboratorNameEditor } from "../collaboration/CollaboratorNameEditor";
+import { useI18n } from "../../i18n/I18nProvider";
+import { translateText } from "../../i18n/translations";
 
 type WorkspaceHeaderProps = {
   me: Collaborator;
@@ -26,6 +28,7 @@ type WorkspaceHeaderProps = {
 };
 
 export function WorkspaceHeader({ me, users, connected, canvasName, onRename, onOpenCanvasSelector, onOpenModelCatalog, onOpenCrudMatrix, onShareWork, onLeaveSession, isHost, recoveryReady, persistentStorage, recoveryError, activeProject, onOpenProjectManager, onOpenExport }: WorkspaceHeaderProps) {
+  const { locale } = useI18n();
   return (
     <header className="z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-7 py-4 shadow-sm">
       <WorkspaceProjectNavigation isHost={isHost} recoveryReady={recoveryReady} persistentStorage={persistentStorage} recoveryError={recoveryError} activeProject={activeProject} canvasName={canvasName} onOpenProjectManager={onOpenProjectManager} onOpenCanvasSelector={onOpenCanvasSelector} />
@@ -36,7 +39,7 @@ export function WorkspaceHeader({ me, users, connected, canvasName, onRename, on
         <CoworkParticipantSummary me={me} users={users} connected={connected} isHost={isHost} onOpenCowork={onShareWork} onLeaveSession={onLeaveSession} />
         <span
           className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-amber-500"}`}
-          title={connected ? "Connected" : "Connecting"}
+          title={translateText(connected ? "Connected" : "Connecting", locale)}
         />
         <CollaboratorNameEditor me={me} onRename={onRename} />
         <button type="button" className="btn btn-error btn-sm gap-2 text-white" onClick={onOpenExport}><FileOutput size={16} />Export</button>
