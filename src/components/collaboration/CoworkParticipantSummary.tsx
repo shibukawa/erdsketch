@@ -1,4 +1,4 @@
-import { Share2, UsersRound } from "lucide-react";
+import { LogOut, Share2, UsersRound } from "lucide-react";
 import type { Collaborator } from "../../collaboration";
 
 type CoworkParticipantSummaryProps = {
@@ -7,10 +7,11 @@ type CoworkParticipantSummaryProps = {
   connected: boolean;
   isHost: boolean;
   onOpenCowork: () => void;
+  onLeaveSession?: () => void;
   iconSize?: number;
 };
 
-export function CoworkParticipantSummary({ me, users, connected, isHost, onOpenCowork, iconSize = 16 }: CoworkParticipantSummaryProps) {
+export function CoworkParticipantSummary({ me, users, connected, isHost, onOpenCowork, onLeaveSession, iconSize = 16 }: CoworkParticipantSummaryProps) {
   const participants = [me, ...users.filter((user) => user.id !== me.id)];
   const otherUsers = participants.filter((user) => user.id !== me.id);
   const visibleUsers = otherUsers.slice(0, 4);
@@ -40,6 +41,7 @@ export function CoworkParticipantSummary({ me, users, connected, isHost, onOpenC
             </li>;
           })}
         </ul>
+        {onLeaveSession && <button type="button" className="btn btn-ghost btn-sm mt-2 w-full justify-start gap-2 text-amber-700" onClick={onLeaveSession}><LogOut size={15} />Leave this tab session</button>}
       </div>
     </div>
   </div>;

@@ -12,6 +12,8 @@ import { PersistenceClient, type CatalogView, type OpfsProject, type Persistence
 import { useWebRtcSharing } from "./collaboration/webrtc/useWebRtcSharing";
 import { clearParticipantCheckpoint, saveParticipantCheckpoint, type ParticipantRecoveryCandidate } from "./collaboration/webrtc/participantCheckpoint";
 import { ensureStateTimestamps, MonotonicTimer, timestampDurableOperation } from "./collaboration/timestamp";
+import { LocalTabSession } from "./collaboration/localTabSession";
+import { projectAlreadyOpenId } from "./persistence/persistenceClient";
 
 export type { Collaborator } from "./collaboration/types";
 
@@ -119,6 +121,8 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   const [hasParticipantSnapshot, setHasParticipantSnapshot] = useState(Boolean(options.initialParticipantRecovery?.checkpoint));
   const [participantRecoveryResolved, setParticipantRecoveryResolved] = useState(false);
   const [participantSnapshotReadOnly, setParticipantSnapshotReadOnly] = useState(false);
+  const [isLocalTabParticipant, setIsLocalTabParticipant] = useState(false);
+  const [localTabConnectionError, setLocalTabConnectionError] = useState<string>();
   const [nativeFileSystemAvailable, setNativeFileSystemAvailable] = useState(false);
   const [projects, setProjects] = useState<OpfsProject[]>([]);
   const [activeProject, setActiveProject] = useState<OpfsProject | null>(null);
@@ -141,6 +145,8 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   const pendingCursorRef = useRef<{ x: number; y: number } | undefined>(undefined);
   const webRtcAvailableRef = useRef(false);
   const webRtcSendRef = useRef<(message: Omit<RelayMessage<T>, "senderId">) => Promise<boolean>>(async () => false);
+  const localTabSessionRef = useRef<LocalTabSession<T> | null>(null);
+  const localTabAvailableRef = useRef(false);
   const timestampTimerRef = useRef(new MonotonicTimer());
 
   const replaceVisibleState = useCallback((next: CollaborationState<T>) => {
@@ -162,6 +168,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     confirmedStateRef.current = next;
     replaceVisibleState(next);
     replaceProjectCatalogView(session);
+    if (localTabAvailableRef.current && roleRef.current === "host") localTabSessionRef.current?.host(session.activeProject.projectId);
     startTransition(() => setRecoveryStatus({
       ready: true,
       recoveredOperations: session.recoveredOperations,
@@ -172,13 +179,14 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   }, [replaceProjectCatalogView, replaceVisibleState]);
 
   const sendRelay = useCallback(async (message: Omit<RelayMessage<T>, "senderId">) => {
+    const localTabSent = localTabAvailableRef.current && (localTabSessionRef.current?.send(message) ?? false);
     const webRtcSent = await webRtcSendRef.current(message).catch(() => false);
     let relaySent = false;
     if (relayAvailableRef.current) {
       const response = await post("/api/relay/message", { clientId: me.id, message }).catch(() => undefined);
       relaySent = response?.ok ?? false;
     }
-    return webRtcSent || relaySent || roleRef.current === "host";
+    return localTabSent || webRtcSent || relaySent || roleRef.current === "host";
   }, [me.id]);
 
   const publishState = useCallback(async (kind: "operation_accepted" | "state_snapshot", requestId?: string, targetId?: string) => {
@@ -249,7 +257,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     if (participantSnapshotReadOnlyRef.current) return false;
     const requestId = crypto.randomUUID();
     if (roleRef.current === "host") return commitHost(operation, requestId, me.id);
-    if (!connected || (!relayAvailableRef.current && !webRtcAvailableRef.current)) return false;
+    if (!connected || (!relayAvailableRef.current && !webRtcAvailableRef.current && !localTabAvailableRef.current)) return false;
     const accepted = new Promise<boolean>((resolve) => {
       const timer = window.setTimeout(() => {
         pendingRequestsRef.current.delete(requestId);
@@ -366,6 +374,24 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
 
   useEffect(() => {
     let cancelled = false;
+    let localTabSession: LocalTabSession<T> | null = null;
+    const createLocalTabSession = () => {
+      if (localTabSession) return localTabSession;
+      localTabSession = new LocalTabSession<T>(me.id, handleRelayMessage, () => {
+        localTabAvailableRef.current = false;
+        participantSnapshotReadOnlyRef.current = true;
+        for (const resolve of pendingRequestsRef.current.values()) resolve(false);
+        pendingRequestsRef.current.clear();
+        startTransition(() => {
+          setConnected(false);
+          setIsLocalTabParticipant(false);
+          setParticipantSnapshotReadOnly(true);
+          setLocalTabConnectionError("The host tab closed or stopped responding. Reload to reopen the project after its editing lock is released.");
+        });
+      });
+      localTabSessionRef.current = localTabSession;
+      return localTabSession;
+    };
     const join = async () => {
       if (options.initialInvitationToken || options.initialParticipantRecovery) {
         relayAvailableRef.current = false;
@@ -408,11 +434,50 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
         try {
           if (!(await initializeHost([me], () => cancelled))) return;
           if (cancelled) return;
+          const projectId = activeProjectRef.current?.projectId;
+          if (!projectId) throw new Error("Active OPFS project is not ready");
+          try {
+            const local = createLocalTabSession();
+            local.host(projectId);
+            localTabAvailableRef.current = true;
+          } catch {
+            localTabAvailableRef.current = false;
+          }
+          setIsLocalTabParticipant(false);
+          setLocalTabConnectionError(undefined);
           setConnected(true);
         } catch (error) {
           if (cancelled) return;
-          setRecoveryStatus({ ready: false, recoveredOperations: 0, ignoredTailRecords: 0, persistentStorage: false, error: error instanceof Error ? error.message : String(error) });
-          setConnected(false);
+          const openProjectId = projectAlreadyOpenId(error);
+          if (openProjectId) {
+            persistenceRef.current?.dispose();
+            persistenceRef.current = null;
+            let joined = false;
+            try {
+              joined = await createLocalTabSession().join(openProjectId, me);
+            } catch {
+              error = new Error("This browser cannot connect tabs for shared local editing. Close the other tab before opening this project.");
+            }
+            if (cancelled) return;
+            if (joined) {
+              localTabAvailableRef.current = true;
+              roleRef.current = "participant";
+              startTransition(() => {
+                setIsHost(false);
+                setConnected(true);
+                setIsLocalTabParticipant(true);
+                setLocalTabConnectionError(undefined);
+                setNativeFileSystemAvailable(false);
+                setRecoveryStatus({ ready: true, recoveredOperations: 0, ignoredTailRecords: 0, persistentStorage: false });
+              });
+              return;
+            }
+            if (!(error instanceof Error) || projectAlreadyOpenId(error)) error = new Error("This project has an editing owner, but its host tab did not respond. Retry after the host finishes loading, or close the other tab.");
+          }
+          startTransition(() => {
+            setRecoveryStatus({ ready: false, recoveredOperations: 0, ignoredTailRecords: 0, persistentStorage: false, error: error instanceof Error ? error.message : String(error) });
+            setConnected(false);
+          });
         }
       }
     };
@@ -422,9 +487,22 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
       eventSourceRef.current?.close();
       persistenceRef.current?.dispose();
       persistenceRef.current = null;
+      localTabAvailableRef.current = false;
+      localTabSession?.close();
+      if (localTabSessionRef.current === localTabSession) localTabSessionRef.current = null;
       if (cursorFrameRef.current !== undefined) cancelAnimationFrame(cursorFrameRef.current);
     };
   }, [initializeHost, me.id, options.initialInvitationToken, options.initialParticipantRecovery, publishState, replaceVisibleState, sendRelay]);
+
+  useEffect(() => {
+    if (!isLocalTabParticipant) return;
+    const confirmLeave = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = true;
+    };
+    window.addEventListener("beforeunload", confirmLeave);
+    return () => window.removeEventListener("beforeunload", confirmLeave);
+  }, [isLocalTabParticipant]);
 
   const participantRecovery = !participantRecoveryResolved
     ? options.initialParticipantRecovery
@@ -552,9 +630,51 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     try {
       return await activateProjectNow(projectId);
     } catch (error) {
+      const openProjectId = projectAlreadyOpenId(error);
+      const local = localTabSessionRef.current;
+      if (openProjectId && local) {
+        const previousProjectId = activeProjectRef.current?.projectId;
+        localTabAvailableRef.current = false;
+        local.leaveProject();
+        if (await local.join(openProjectId, me)) {
+          persistenceRef.current?.dispose();
+          persistenceRef.current = null;
+          localTabAvailableRef.current = true;
+          roleRef.current = "participant";
+          startTransition(() => {
+            setIsHost(false);
+            setConnected(true);
+            setIsLocalTabParticipant(true);
+            setLocalTabConnectionError(undefined);
+            setNativeFileSystemAvailable(false);
+            setRecoveryStatus({ ready: true, recoveredOperations: 0, ignoredTailRecords: 0, persistentStorage: false });
+          });
+          return true;
+        }
+        if (previousProjectId) {
+          local.host(previousProjectId);
+          localTabAvailableRef.current = true;
+        }
+        return failProjectTask(new Error("This project has an editing owner, but its host tab did not respond. Retry after the host finishes loading, or close the other tab."));
+      }
       return failProjectTask(error);
     }
-  }), [activateProjectNow, failProjectTask, runProjectTask]);
+  }), [activateProjectNow, failProjectTask, me, runProjectTask]);
+
+  function leaveLocalTabSession() {
+    if (!localTabSessionRef.current?.isParticipant()) return false;
+    localTabSessionRef.current.leaveProject();
+    localTabAvailableRef.current = false;
+    participantSnapshotReadOnlyRef.current = true;
+    for (const resolve of pendingRequestsRef.current.values()) resolve(false);
+    pendingRequestsRef.current.clear();
+    startTransition(() => {
+      setConnected(false);
+      setIsLocalTabParticipant(false);
+      setParticipantSnapshotReadOnly(true);
+    });
+    return true;
+  }
 
   const createOpfsProject = useCallback((displayName: string) => runProjectTask(async () => {
     const persistence = persistenceRef.current;
@@ -752,6 +872,9 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     sharing,
     participantRecovery,
     participantSnapshotReadOnly,
+    isLocalTabParticipant,
+    localTabConnectionError,
+    leaveLocalTabSession,
     viewParticipantSnapshot,
     abandonParticipantRecovery,
     loadOpfsProject,

@@ -37,15 +37,18 @@ export type PersistenceResponse = {
     code: string;
     retryable: boolean;
     message: string;
+    projectId?: string;
   };
 };
 
 export function persistenceError(error: unknown): NonNullable<PersistenceResponse["error"]> {
   const name = error instanceof DOMException ? error.name : error instanceof Error ? error.name : "PersistenceError";
   const message = error instanceof Error ? error.message : String(error);
+  const projectId = typeof error === "object" && error !== null && "projectId" in error && typeof error.projectId === "string" ? error.projectId : undefined;
   return {
     code: name || "PersistenceError",
     retryable: !["DataError", "NotAllowedError", "SecurityError", "TypeError"].includes(name),
-    message
+    message,
+    ...(projectId ? { projectId } : {})
   };
 }

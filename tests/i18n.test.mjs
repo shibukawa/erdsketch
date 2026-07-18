@@ -104,6 +104,15 @@ test("workspace start panel terminology is localized", () => {
   assert.equal(translateText("Resume", "ja"), "再開");
 });
 
+test("local tab session and recovery guidance are localized", () => {
+  assert.equal(translateText("Leave this editing session?", "ja"), "この編集セッションから退出しますか？");
+  assert.equal(translateText("You are editing Demo project through its host tab.", "ja"), "Demo project をホストタブ経由で編集中です。");
+  assert.equal(
+    translateText("Recovery storage error: The host tab closed or stopped responding. Reload to reopen the project after its editing lock is released.", "ja"),
+    "リカバリストレージエラー: ホストタブが閉じたか応答しなくなりました。編集ロックが解放された後、再読み込みしてプロジェクトを開き直してください。"
+  );
+});
+
 test("draw.io export controls and project context are localized", () => {
   assert.equal(translateText("Editable draw.io diagrams", "ja"), "編集可能な draw.io 図");
   assert.equal(translateText("Select all", "ja"), "すべて選択");

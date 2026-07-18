@@ -3,6 +3,7 @@ import { durableState, type CollaborationState, type DurableOperation, type Dura
 import { ProjectCatalog, type OpfsProject } from "./projectCatalog";
 import { decodeProjectArchive, encodeProjectArchive, loadNativeProject, loadProjectDirectory, saveNativeProject, saveProjectDirectory } from "./projectDocument";
 import { RecoveryStore, type RecoveryResult } from "./recoveryStore";
+import { ProjectAlreadyOpenError } from "./persistenceErrors";
 
 type PersistedModel = { id: string; x?: number; y?: number };
 
@@ -35,7 +36,7 @@ async function acquireProjectLock(projectId: string): Promise<LockLease> {
   if (!locks) return { release() {} };
   return new Promise<LockLease>((resolve, reject) => {
     void locks.request(`erdsketch:project:${projectId}`, { mode: "exclusive", ifAvailable: true }, async (lock) => {
-      if (!lock) throw new Error("This project is already open for editing in another tab");
+      if (!lock) throw new ProjectAlreadyOpenError(projectId);
       await new Promise<void>((release) => resolve({ release }));
     }).catch(reject);
   });

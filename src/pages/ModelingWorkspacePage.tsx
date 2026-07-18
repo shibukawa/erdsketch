@@ -41,6 +41,7 @@ import { CoworkReadOnlySnapshotNotice } from "../components/collaboration/Cowork
 import { ExportDialog } from "../components/layout/ExportDialog";
 import { GuidedTourTrigger } from "../components/guidedTour/GuidedTourTrigger";
 import { defaultModelDescription } from "../features/modeling/maturity";
+import { LocalSessionLeaveDialog } from "../components/collaboration/LocalSessionLeaveDialog";
 
 type ModelingWorkspacePageProps = { initialInvitationToken?: string; initialParticipantRecovery?: ParticipantRecoveryCandidate<ModelSeed> };
 
@@ -70,6 +71,9 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
     sharing,
     participantRecovery,
     participantSnapshotReadOnly,
+    isLocalTabParticipant,
+    localTabConnectionError,
+    leaveLocalTabSession,
     viewParticipantSnapshot,
     abandonParticipantRecovery,
     loadOpfsProject,
@@ -122,6 +126,7 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
   const fileSystemAvailable = typeof window !== "undefined" && typeof window.showDirectoryPicker === "function";
   const [query, setQuery] = useState("");
   const [coworkClosed, setCoworkClosed] = useState(false);
+  const [localLeaveDialogOpen, setLocalLeaveDialogOpen] = useState(false);
   const [workspaceMode, setWorkspaceMode] = useState<"erd" | "dfd">("erd");
   const [workspaceStarted, setWorkspaceStarted] = useState(() => Boolean(initialInvitationToken || initialParticipantRecovery));
   const [startDialogOpen, setStartDialogOpen] = useState(() => !initialInvitationToken && !initialParticipantRecovery);
@@ -147,6 +152,12 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const historyRef = useRef<Record<string, { x: number; y: number }>[] >([]);
   const { cache: vocabularyCache, indexing: vocabularyIndexing } = useVocabularyMatchCache(seeds, domains, vocabularyEntries, namingPolicy);
+
+  useEffect(() => {
+    if (!isLocalTabParticipant || !activeProject) return;
+    setWorkspaceStarted(true);
+    setStartDialogOpen(false);
+  }, [activeProject, isLocalTabParticipant]);
 
   const activePlacements = useMemo(() => placements.filter((placement) => placement.canvasId === activeCanvasId), [activeCanvasId, placements]);
   const canvasSeeds = useMemo(() => activePlacements.flatMap((placement) => {
@@ -1089,6 +1100,19 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
     window.setTimeout(() => window.close(), 0);
   }, [abandonParticipantRecovery]);
 
+  function askLeaveLocalSession() {
+    setLocalLeaveDialogOpen(true);
+  }
+  function stayInLocalSession() {
+    setLocalLeaveDialogOpen(false);
+  }
+  function confirmLeaveLocalSession() {
+    if (!leaveLocalTabSession()) return;
+    setLocalLeaveDialogOpen(false);
+    setCoworkClosed(true);
+    window.setTimeout(() => window.close(), 0);
+  }
+
   if (coworkClosed) return <CoworkClosedScreen />;
 
   const coworkRecoveryDialog = participantRecovery && <CoworkDisconnectionDialog
@@ -1111,11 +1135,13 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
     onOpenLocalProject={startFromNativeFile}
     onManageProjects={openProjectManager}
   />;
+  const localLeaveDialog = localLeaveDialogOpen && <LocalSessionLeaveDialog projectName={activeProject?.displayName} onStay={stayInLocalSession} onLeave={confirmLeaveLocalSession} />;
+  const localConnectionNotice = localTabConnectionError && <div className="fixed left-1/2 top-3 z-[110] max-w-xl -translate-x-1/2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 shadow-lg" role="alert">{localTabConnectionError}</div>;
 
   if (workspaceMode === "dfd") {
     return <>
       {workspaceStarted && !startDialogOpen && !canvasSelectionRequired && <GuidedTourTrigger tour="dfd" />}
-      <DfdWorkspace dfd={dfd} erdCanvases={canvases} activeCanvasId={activeDfdCanvasId} models={seeds} me={me} users={users} connected={connected} isHost={isHost} recoveryReady={recoveryStatus.ready} persistentStorage={recoveryStatus.persistentStorage} recoveryError={recoveryStatus.error} activeProject={activeProject ?? undefined} onOpenProjectManager={openProjectManager} onOpenExport={openExportDialog} onSetLocalDfd={setLocalDfd} onSaveDfd={saveDfd} onSaveCatalogModel={saveCatalogSeed} onSetLocalModels={setLocalSeeds} relationships={relationships} relationshipReferences={relationshipReferences} domains={domains} domainCategories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} onLockModel={lock} onUnlockModel={unlock} onUpdateRelationshipReference={(relationshipId, patch) => void updateRelationshipReference(relationshipId, patch)} onDeleteRelationship={(relationshipId) => { const relationship = relationships.find((item) => item.id === relationshipId); if (relationship) void deleteRelationship(relationship); }} onCreateDomain={(name) => void createDomain(name)} onOpenDomainDictionary={openDomainDictionary} onApplyRefinement={applyRefinement} onActiveCanvasChange={setActiveDfdCanvasId} onSelectErdCanvas={selectErdCanvas} onCreateProjectCanvas={createProjectCanvas} onRenameProjectCanvas={renameProjectCanvas} onOpenCrudMatrix={openCrudMatrix} onShareWork={sharing.openHostDialog} annotations={annotations} onSetLocalAnnotations={setLocalAnnotations} onSaveAnnotation={saveAnnotation} onUpdateAnnotationPresence={updateAnnotationPresence} onMoveCursor={moveCursor} onChangeCanvasPresence={changeCanvas} />
+      <DfdWorkspace dfd={dfd} erdCanvases={canvases} activeCanvasId={activeDfdCanvasId} models={seeds} me={me} users={users} connected={connected} isHost={isHost} recoveryReady={recoveryStatus.ready} persistentStorage={recoveryStatus.persistentStorage} recoveryError={localTabConnectionError ?? recoveryStatus.error} activeProject={activeProject ?? undefined} onOpenProjectManager={openProjectManager} onOpenExport={openExportDialog} onSetLocalDfd={setLocalDfd} onSaveDfd={saveDfd} onSaveCatalogModel={saveCatalogSeed} onSetLocalModels={setLocalSeeds} relationships={relationships} relationshipReferences={relationshipReferences} domains={domains} domainCategories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} onLockModel={lock} onUnlockModel={unlock} onUpdateRelationshipReference={(relationshipId, patch) => void updateRelationshipReference(relationshipId, patch)} onDeleteRelationship={(relationshipId) => { const relationship = relationships.find((item) => item.id === relationshipId); if (relationship) void deleteRelationship(relationship); }} onCreateDomain={(name) => void createDomain(name)} onOpenDomainDictionary={openDomainDictionary} onApplyRefinement={applyRefinement} onActiveCanvasChange={setActiveDfdCanvasId} onSelectErdCanvas={selectErdCanvas} onCreateProjectCanvas={createProjectCanvas} onRenameProjectCanvas={renameProjectCanvas} onOpenCrudMatrix={openCrudMatrix} onShareWork={sharing.openHostDialog} onLeaveSession={isLocalTabParticipant ? askLeaveLocalSession : undefined} annotations={annotations} onSetLocalAnnotations={setLocalAnnotations} onSaveAnnotation={saveAnnotation} onUpdateAnnotationPresence={updateAnnotationPresence} onMoveCursor={moveCursor} onChangeCanvasPresence={changeCanvas} />
       {projectManagerOpen && <ProjectManagerDialog projects={projects} activeProjectId={activeProject?.projectId} isHost={isHost} recoveryReady={recoveryStatus.ready} recoveryError={recoveryStatus.error} fileSystemAvailable={fileSystemAvailable} starters={starterProjects} onCreateStarter={startFromTemplate} onCreate={createOpfsProject} onSaveAs={saveOpfsProjectAs} onLoad={loadOpfsProject} onRename={renameOpfsProject} onDelete={deleteOpfsProject} onOpenFileSystem={openProject} onSaveFileSystem={saveProject} onExport={exportProject} onImport={importProject} onClose={closeProjectManager} />}
       {crudMatrixOpen && <CrudMatrixDialog dfd={dfd} models={seeds} domains={domains} onChange={updateProjectDfd} onClose={closeCrudMatrix} />}
       {exportDialog && <ExportDialog canonicalProjectJSON={exportDialog.snapshot} projectName={activeProject?.displayName ?? "ERDSketch project"} exportSettings={exportSettings} onChangeExportSettings={(settings) => void saveExportSettings(settings)} onClose={closeExportDialog} />}
@@ -1123,6 +1149,8 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
       <ShareWorkDialog sharing={sharing} />
       <JoinSharedWorkDialog sharing={sharing} />
       {coworkRecoveryDialog}
+      {localLeaveDialog}
+      {localConnectionNotice}
       {participantSnapshotReadOnly && <CoworkReadOnlySnapshotNotice />}
     </>;
   }
@@ -1159,10 +1187,11 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
             onOpenModelCatalog={() => setModelCatalogOpen(true)}
             onOpenCrudMatrix={openCrudMatrix}
             onShareWork={sharing.openHostDialog}
+            onLeaveSession={isLocalTabParticipant ? askLeaveLocalSession : undefined}
             isHost={isHost}
             recoveryReady={recoveryStatus.ready}
             persistentStorage={recoveryStatus.persistentStorage}
-            recoveryError={recoveryStatus.error}
+            recoveryError={localTabConnectionError ?? recoveryStatus.error}
             activeProject={activeProject ?? undefined}
             onOpenProjectManager={openProjectManager}
             onOpenExport={openErdExportDialog}
@@ -1275,6 +1304,8 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
       <ShareWorkDialog sharing={sharing} />
       <JoinSharedWorkDialog sharing={sharing} />
       {coworkRecoveryDialog}
+      {localLeaveDialog}
+      {localConnectionNotice}
       {participantSnapshotReadOnly && <CoworkReadOnlySnapshotNotice />}
     </main></VocabularyNavigationProvider>
   );

@@ -52,6 +52,7 @@ authority:
   mutate_catalog: actor:session-host
   execute_catalog_and_project_io: system:persistence-worker
   participant: request_host_action_or_read_host_snapshot
+multi_tab_open: requirement:same-origin-multi-tab-project-editing
 surface:
   dialog: ui:project-management-dialog
   tab: origin-private-storage
@@ -64,6 +65,6 @@ acceptance:
   - Renaming does not change recovery identity or journal ownership.
   - Deleting a project removes its checkpoint and journal only after confirmation.
   - OPFS names do not imply real filesystem paths or cross-origin visibility.
-  - Writable open is serialized across tabs for the same origin and project ID.
+  - Writable open follows flow:open-origin-project-across-tabs for the same origin and project ID.
   - Named and temporary project actions are available from the Origin Private Storage tab.
 ```
