@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from "vite";
-import react from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, ".", "");
@@ -10,7 +11,7 @@ export default defineConfig(({ mode }) => {
     desktop: "desktop/frontend/dist"
   }[runtimeMode];
   return {
-    plugins: [react()],
+    plugins: [react(), babel({ presets: [reactCompilerPreset()] })],
     base: runtimeMode === "static" ? env.VITE_BASE_PATH || "/" : runtimeMode === "desktop" ? "./" : "/",
     define: {
       __ERDSKETCH_RUNTIME_MODE__: JSON.stringify(runtimeMode)
