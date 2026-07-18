@@ -181,12 +181,14 @@ export type RefinementInput = {
 };
 
 export type RefinementResult = {
+  sourceSeedId: string;
   seeds: ModelSeed[];
   relationships: Relationship[];
   relationshipReferences: RelationshipReference[];
   domains: DataDomain[];
   affectedSeedIds: string[];
   createdSeedIds: string[];
+  createdPlacements: CanvasModelPlacement[];
   summary: string[];
 };
 

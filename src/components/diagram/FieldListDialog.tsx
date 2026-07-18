@@ -14,7 +14,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { reorderFields } from "../../features/modeling/fieldOrder";
-import type { DataDomain, DomainCategory, ModelField, ModelSeed, NameDisplayMode, NameSet, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
+import type { DataDomain, DomainCategory, ErdCanvas, ModelField, ModelSeed, NameDisplayMode, NameSet, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
 import { getDisplayName, sortFieldListItems, updateNameSet } from "../../features/modeling/utils";
 import { FieldListRow } from "./FieldListRow";
 import { RelationshipReferenceRow } from "./RelationshipReferenceRow";
@@ -52,14 +52,16 @@ type FieldListDialogProps = {
   onDeleteReference: (relationshipId: string) => void;
   onCreateDomain: (name: string) => void;
   onOpenDomainDictionary: (fieldId?: string) => void;
-  onApplyRefinement: (result: RefinementResult) => Promise<boolean>;
+  refinementPlacementCanvases?: ErdCanvas[];
+  refinementDefaultCanvasId?: string;
+  onApplyRefinement: (result: RefinementResult, targetCanvasId?: string) => Promise<boolean>;
 };
 
 function replaceField(fields: ModelField[], fieldId: string, patch: Partial<ModelField>) {
   return fields.map((field) => (field.id === fieldId ? { ...field, ...patch } : field));
 }
 
-export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDisplayMode, vocabularyCache, modelMaturedLevel, fields, domains, domainCategories, relationshipReferences, seeds, allRelationships, allRelationshipReferences, canEdit, onChange, onModelChange, onClose, onUpdateReference, onDeleteReference, onCreateDomain, onOpenDomainDictionary, onApplyRefinement }: FieldListDialogProps) {
+export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDisplayMode, vocabularyCache, modelMaturedLevel, fields, domains, domainCategories, relationshipReferences, seeds, allRelationships, allRelationshipReferences, canEdit, onChange, onModelChange, onClose, onUpdateReference, onDeleteReference, onCreateDomain, onOpenDomainDictionary, refinementPlacementCanvases, refinementDefaultCanvasId, onApplyRefinement }: FieldListDialogProps) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const quickEntryRef = useRef<HTMLInputElement | null>(null);
   const fieldsRef = useRef(fields);
@@ -203,8 +205,8 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
   const handleRefinementTab = useCallback(() => {
     setSideTab("refinement");
   }, []);
-  const handleApplyRefinement = useCallback(async (result: RefinementResult) => {
-    const applied = await onApplyRefinement(result);
+  const handleApplyRefinement = useCallback(async (result: RefinementResult, targetCanvasId?: string) => {
+    const applied = await onApplyRefinement(result, targetCanvasId);
     if (applied) onClose();
     return applied;
   }, [onApplyRefinement, onClose]);
@@ -448,7 +450,7 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
             </ul>
           )}
         </div>
-        <aside className="flex min-h-0 w-[370px] shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-slate-50"><div role="tablist" className="tabs tabs-lift tabs-sm mx-3 mt-3 shrink-0 flex-nowrap whitespace-nowrap bg-slate-100"><button type="button" role="tab" aria-selected={sideTab === "definition"} className={`tab min-w-0 flex-1 text-xs ${sideTab === "definition" ? "tab-active bg-white" : "bg-slate-100"}`} onClick={handleDefinitionTab}>Definition</button><button type="button" role="tab" aria-selected={sideTab === "domains"} className={`tab min-w-0 flex-1 text-xs ${sideTab === "domains" ? "tab-active bg-white" : "bg-slate-100"}`} onClick={handleDomainsTab}>Domains</button><button type="button" role="tab" aria-selected={sideTab === "refinement"} className={`tab min-w-0 flex-1 text-xs ${sideTab === "refinement" ? "tab-active bg-white" : "bg-slate-100"}`} onClick={handleRefinementTab}>Refinement</button></div><div className="flex min-h-0 flex-1 overflow-hidden">{sideTab === "definition" ? <FieldDefinitionPanel field={fields.find((field) => field.id === editingFieldId)} domains={domains} canEdit={canEdit} onChange={handleFieldDefinitionChange}/> : sideTab === "domains" ? <DomainDictionaryPanel domains={domains} categories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} canEdit={canEdit} onCreate={onCreateDomain} onOpen={() => onOpenDomainDictionary(editingFieldId ?? undefined)} /> : <RefinementPanel source={seeds.find((seed) => seed.id === modelId)!} seeds={seeds} relationships={allRelationships} relationshipReferences={allRelationshipReferences} domains={domains} selectedFieldIds={selectedRefinementFieldIds} selectedRelationshipIds={selectedRefinementRelationshipIds} canEdit={canEdit} onApply={handleApplyRefinement}/>}</div></aside>
+        <aside className="flex min-h-0 w-[370px] shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-slate-50"><div role="tablist" className="tabs tabs-lift tabs-sm mx-3 mt-3 shrink-0 flex-nowrap whitespace-nowrap bg-slate-100"><button type="button" role="tab" aria-selected={sideTab === "definition"} className={`tab min-w-0 flex-1 text-xs ${sideTab === "definition" ? "tab-active bg-white" : "bg-slate-100"}`} onClick={handleDefinitionTab}>Definition</button><button type="button" role="tab" aria-selected={sideTab === "domains"} className={`tab min-w-0 flex-1 text-xs ${sideTab === "domains" ? "tab-active bg-white" : "bg-slate-100"}`} onClick={handleDomainsTab}>Domains</button><button type="button" role="tab" aria-selected={sideTab === "refinement"} className={`tab min-w-0 flex-1 text-xs ${sideTab === "refinement" ? "tab-active bg-white" : "bg-slate-100"}`} onClick={handleRefinementTab}>Refinement</button></div><div className="flex min-h-0 flex-1 overflow-hidden">{sideTab === "definition" ? <FieldDefinitionPanel field={fields.find((field) => field.id === editingFieldId)} domains={domains} canEdit={canEdit} onChange={handleFieldDefinitionChange}/> : sideTab === "domains" ? <DomainDictionaryPanel domains={domains} categories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} canEdit={canEdit} onCreate={onCreateDomain} onOpen={() => onOpenDomainDictionary(editingFieldId ?? undefined)} /> : <RefinementPanel source={seeds.find((seed) => seed.id === modelId)!} seeds={seeds} relationships={allRelationships} relationshipReferences={allRelationshipReferences} domains={domains} selectedFieldIds={selectedRefinementFieldIds} selectedRelationshipIds={selectedRefinementRelationshipIds} canEdit={canEdit} placementCanvasOptions={refinementPlacementCanvases} defaultPlacementCanvasId={refinementDefaultCanvasId} onApply={handleApplyRefinement}/>}</div></aside>
         </div>
       </div>
       {advancedDialog === "indexes" && <IndexDefinitionDialog fields={fields} domains={domains} relationshipReferences={relationshipReferences} initial={seeds.find((seed) => seed.id === modelId)?.indexes ?? []} canEdit={canEdit} onSave={handleSaveIndexes} onClose={handleCloseAdvanced}/>}

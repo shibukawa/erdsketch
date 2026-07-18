@@ -128,7 +128,6 @@ function applyDurableOperationCore<T extends { id: string; x?: number; y?: numbe
     case "placement": {
       const keyMatches = (item: CanvasModelPlacement) => item.canvasId === operation.placement.canvasId && item.seedId === operation.placement.seedId;
       const index = state.placements.findIndex(keyMatches);
-      if (validate && index >= 0 && !operation.create) requireLocks(state, actorID, [operation.placement.seedId]);
       if (operation.create && index >= 0) throw new OperationError("placement already exists");
       if (!operation.create && index < 0) throw new OperationError("placement not found");
       const placements = index < 0 ? [...state.placements, operation.placement] : state.placements.map((item, itemIndex) => itemIndex === index ? { ...operation.placement, accessMode: item.accessMode } : item);
@@ -174,9 +173,20 @@ function applyDurableOperationCore<T extends { id: string; x?: number; y?: numbe
     }
     case "refinement": {
       if (validate) requireLocks(state, actorID, operation.result.affectedSeedIds);
+      const createdSeedIds = new Set(operation.result.createdSeedIds);
+      if (operation.result.createdPlacements.length !== createdSeedIds.size) throw new OperationError("every refined model requires one owner placement");
+      const placementSeedIds = new Set<string>();
+      for (const placement of operation.result.createdPlacements) {
+        if (!createdSeedIds.has(placement.seedId) || placementSeedIds.has(placement.seedId)) throw new OperationError("invalid refined model placement");
+        if (placement.accessMode !== "owner") throw new OperationError("refined model placement must be owner");
+        if (!state.canvases.some((canvas) => canvas.id === placement.canvasId)) throw new OperationError("refined model canvas not found");
+        if (state.placements.some((current) => current.seedId === placement.seedId)) throw new OperationError("refined model placement already exists");
+        placementSeedIds.add(placement.seedId);
+      }
       return {
         ...state,
         seeds: structuredClone(operation.result.seeds) as unknown as T[],
+        placements: [...state.placements, ...structuredClone(operation.result.createdPlacements)],
         relationships: structuredClone(normalizeRelationshipGraph(operation.result.relationships)),
         relationshipReferences: structuredClone(operation.result.relationshipReferences),
         domains: structuredClone(operation.result.domains)

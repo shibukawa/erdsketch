@@ -41,6 +41,7 @@ import { CoworkReadOnlySnapshotNotice } from "../components/collaboration/Cowork
 import { ExportDialog } from "../components/layout/ExportDialog";
 import { GuidedTourTrigger } from "../components/guidedTour/GuidedTourTrigger";
 import { defaultModelDescription } from "../features/modeling/maturity";
+import { buildRefinementPlacements } from "../features/modeling/refinement";
 import { LocalSessionLeaveDialog } from "../components/collaboration/LocalSessionLeaveDialog";
 import { AiAssistantProvider } from "../components/ai/AiAssistantProvider";
 
@@ -818,7 +819,7 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
     });
   }, [canvasSeeds]);
 
-  const applyRefinement = useCallback(async (result: RefinementResult) => {
+  const applyRefinement = useCallback(async (result: RefinementResult, targetCanvasId?: string) => {
     const existingSeedIds = new Set(seeds.map((seed) => seed.id));
     const existingRelationshipIds = new Set(relationships.map((item) => item.id));
     const requiredLocks = new Set(result.seeds.filter((seed) => existingSeedIds.has(seed.id) && JSON.stringify(seed) !== JSON.stringify(seeds.find((item) => item.id === seed.id))).map((seed) => seed.id));
@@ -831,14 +832,25 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
       for (const seedId of [current.sourceId, current.targetId, item.sourceId, item.targetId]) if (existingSeedIds.has(seedId)) requiredLocks.add(seedId);
     }
     if (requiredLocks.size > 0 && !(await lockAll([...requiredLocks]))) return false;
-    if (!(await saveRefinement(result))) return false;
+    const sourceOwner = placements.find((placement) => placement.seedId === result.sourceSeedId && placement.accessMode === "owner");
+    const ownerCanvasId = sourceOwner?.canvasId ?? targetCanvasId;
+    if (result.createdSeedIds.length > 0 && !ownerCanvasId) {
+      window.alert("Select an ERD canvas that will own the new model.");
+      return false;
+    }
+    const appliedResult = {
+      ...result,
+      createdPlacements: ownerCanvasId ? buildRefinementPlacements(result, ownerCanvasId, placements) : []
+    };
+    if (!(await saveRefinement(appliedResult))) return false;
     startTransition(() => {
-      setLocalSeeds(result.seeds);
-      setLocalRelationships(result.relationships, result.relationshipReferences);
-      setLocalDomains(result.domains);
+      setLocalSeeds(appliedResult.seeds);
+      setLocalPlacements([...placements, ...appliedResult.createdPlacements]);
+      setLocalRelationships(appliedResult.relationships, appliedResult.relationshipReferences);
+      setLocalDomains(appliedResult.domains);
     });
     return true;
-  }, [lockAll, relationships, saveRefinement, seeds, setLocalDomains, setLocalRelationships, setLocalSeeds]);
+  }, [lockAll, placements, relationships, saveRefinement, seeds, setLocalDomains, setLocalPlacements, setLocalRelationships, setLocalSeeds]);
 
   const createVocabularyEntry = useCallback(async (entry: VocabularyEntry) => {
     if (!(await saveVocabularyEntry(entry, { create: true }))) {
@@ -1041,7 +1053,8 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
   const placeExistingModel = useCallback(async (seedId: string) => {
     if (placements.some((placement) => placement.canvasId === activeCanvasId && placement.seedId === seedId)) return;
     const offset = activePlacements.length * 28;
-    const placement: CanvasModelPlacement = { canvasId: activeCanvasId, seedId, x: 140 + offset, y: 120 + offset, accessMode: "readonly" };
+    const hasOwnerPlacement = placements.some((placement) => placement.seedId === seedId && placement.accessMode === "owner");
+    const placement: CanvasModelPlacement = { canvasId: activeCanvasId, seedId, x: 140 + offset, y: 120 + offset, accessMode: hasOwnerPlacement ? "readonly" : "owner" };
     if (!(await savePlacement(placement, true))) {
       window.alert("The model could not be placed on this canvas.");
       return;
@@ -1158,7 +1171,7 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
   if (workspaceMode === "dfd") {
     return <AiAssistantProvider workspace={aiWorkspace}><>
       {workspaceStarted && !startDialogOpen && !canvasSelectionRequired && <GuidedTourTrigger tour="dfd" />}
-      <DfdWorkspace dfd={dfd} erdCanvases={canvases} activeCanvasId={activeDfdCanvasId} models={seeds} me={me} users={users} connected={connected} isHost={isHost} recoveryReady={recoveryStatus.ready} persistentStorage={recoveryStatus.persistentStorage} recoveryError={localTabConnectionError ?? recoveryStatus.error} activeProject={activeProject ?? undefined} onOpenProjectManager={openProjectManager} onOpenExport={openExportDialog} onSetLocalDfd={setLocalDfd} onSaveDfd={saveDfd} onSaveCatalogModel={saveCatalogSeed} onSetLocalModels={setLocalSeeds} relationships={relationships} relationshipReferences={relationshipReferences} domains={domains} domainCategories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} onLockModel={lock} onUnlockModel={unlock} onUpdateRelationshipReference={(relationshipId, patch) => void updateRelationshipReference(relationshipId, patch)} onDeleteRelationship={(relationshipId) => { const relationship = relationships.find((item) => item.id === relationshipId); if (relationship) void deleteRelationship(relationship); }} onCreateDomain={(name) => void createDomain(name)} onOpenDomainDictionary={openDomainDictionary} onApplyRefinement={applyRefinement} onActiveCanvasChange={setActiveDfdCanvasId} onSelectErdCanvas={selectErdCanvas} onCreateProjectCanvas={createProjectCanvas} onRenameProjectCanvas={renameProjectCanvas} onOpenCrudMatrix={openCrudMatrix} onShareWork={sharing.openHostDialog} onLeaveSession={isLocalTabParticipant ? askLeaveLocalSession : undefined} annotations={annotations} onSetLocalAnnotations={setLocalAnnotations} onSaveAnnotation={saveAnnotation} onUpdateAnnotationPresence={updateAnnotationPresence} onMoveCursor={moveCursor} onChangeCanvasPresence={changeCanvas} />
+      <DfdWorkspace dfd={dfd} erdCanvases={canvases} erdPlacements={placements} activeCanvasId={activeDfdCanvasId} models={seeds} me={me} users={users} connected={connected} isHost={isHost} recoveryReady={recoveryStatus.ready} persistentStorage={recoveryStatus.persistentStorage} recoveryError={localTabConnectionError ?? recoveryStatus.error} activeProject={activeProject ?? undefined} onOpenProjectManager={openProjectManager} onOpenExport={openExportDialog} onSetLocalDfd={setLocalDfd} onSaveDfd={saveDfd} onSaveCatalogModel={saveCatalogSeed} onSetLocalModels={setLocalSeeds} relationships={relationships} relationshipReferences={relationshipReferences} domains={domains} domainCategories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} onLockModel={lock} onUnlockModel={unlock} onUpdateRelationshipReference={(relationshipId, patch) => void updateRelationshipReference(relationshipId, patch)} onDeleteRelationship={(relationshipId) => { const relationship = relationships.find((item) => item.id === relationshipId); if (relationship) void deleteRelationship(relationship); }} onCreateDomain={(name) => void createDomain(name)} onOpenDomainDictionary={openDomainDictionary} onApplyRefinement={applyRefinement} onActiveCanvasChange={setActiveDfdCanvasId} onSelectErdCanvas={selectErdCanvas} onCreateProjectCanvas={createProjectCanvas} onRenameProjectCanvas={renameProjectCanvas} onOpenCrudMatrix={openCrudMatrix} onShareWork={sharing.openHostDialog} onLeaveSession={isLocalTabParticipant ? askLeaveLocalSession : undefined} annotations={annotations} onSetLocalAnnotations={setLocalAnnotations} onSaveAnnotation={saveAnnotation} onUpdateAnnotationPresence={updateAnnotationPresence} onMoveCursor={moveCursor} onChangeCanvasPresence={changeCanvas} />
       {projectManagerOpen && <ProjectManagerDialog projects={projects} activeProjectId={activeProject?.projectId} isHost={isHost} recoveryReady={recoveryStatus.ready} recoveryError={recoveryStatus.error} fileSystemAvailable={fileSystemAvailable} starters={starterProjects} onCreateStarter={startFromTemplate} onCreate={createOpfsProject} onSaveAs={saveOpfsProjectAs} onLoad={loadOpfsProject} onRename={renameOpfsProject} onDelete={deleteOpfsProject} onOpenFileSystem={openProject} onSaveFileSystem={saveProject} onExport={exportProject} onImport={importProject} onClose={closeProjectManager} />}
       {crudMatrixOpen && <CrudMatrixDialog dfd={dfd} models={seeds} domains={domains} onChange={updateProjectDfd} onClose={closeCrudMatrix} />}
       {exportDialog && <ExportDialog canonicalProjectJSON={exportDialog.snapshot} projectName={activeProject?.displayName ?? "ERDSketch project"} exportSettings={exportSettings} onChangeExportSettings={(settings) => void saveExportSettings(settings)} onClose={closeExportDialog} />}

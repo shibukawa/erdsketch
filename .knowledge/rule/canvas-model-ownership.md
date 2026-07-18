@@ -8,12 +8,21 @@ Canvas ownership communicates the primary responsibility boundary for a model an
 
 ```yaml
 rules:
+  placed_model:
+    owner_canvas_count: one
+    applies_to_roles:
+      - master
+      - transaction
+      - summary
+      - history
+      - work
   ordinary_non_master_model:
     default_owner_canvas_count: one
     placement_on_other_canvas: readonly
   master_model:
     may_appear_on_multiple_canvases: true
-    exclusive_owner_required: false
+    owner_canvas_count_when_placed: one
+    placement_on_other_canvas: readonly
   shared_boundary_model:
     purpose_examples:
       - cross_application_work_table
@@ -22,6 +31,7 @@ rules:
   readonly_placement:
     reads_shared_definition: true
     can_change_local_position: true
+    position_change_requires_model_lock: false
     can_change_model_definition: false
     visual_tag: readonly
   ownership_transfer:

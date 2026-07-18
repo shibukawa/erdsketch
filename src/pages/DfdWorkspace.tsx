@@ -1,6 +1,6 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import type { Collaborator } from "../collaboration";
-import type { CardDisplayMode, DataDomain, DfdFlow, DfdGroup, DfdNode, DfdState, DomainCategory, ErdCanvas, ModelField, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference, Viewport } from "../features/modeling/types";
+import type { CanvasModelPlacement, CardDisplayMode, DataDomain, DfdFlow, DfdGroup, DfdNode, DfdState, DomainCategory, ErdCanvas, ModelField, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference, Viewport } from "../features/modeling/types";
 import { DFD_NODE_SIZE, centerDfdViewport, dfdWarnings, endpointBounds, endpointClass, findDfdNodePlacement, groupAfterOverlapWithRestoration, normalizeDfdCrud, ungroupDfd, validEndpointPair, withModelCrud, type DfdGroupFlowRestoration, type DfdWarning } from "../features/dfd/dfd";
 import { DfdCanvas } from "../components/dfd/DfdCanvas";
 import { DfdModelPickerDialog } from "../components/dfd/DfdModelPickerDialog";
@@ -19,6 +19,7 @@ import { useCanvasAnnotations } from "../features/annotations/useCanvasAnnotatio
 type DfdWorkspaceProps = {
   dfd: DfdState;
   erdCanvases: ErdCanvas[];
+  erdPlacements: CanvasModelPlacement[];
   activeCanvasId: string;
   models: ModelSeed[];
   me: Collaborator;
@@ -47,7 +48,7 @@ type DfdWorkspaceProps = {
   onDeleteRelationship: (relationshipId: string) => void;
   onCreateDomain: (name: string) => void;
   onOpenDomainDictionary: (modelId: string, fieldId?: string) => void;
-  onApplyRefinement: (result: RefinementResult) => Promise<boolean>;
+  onApplyRefinement: (result: RefinementResult, targetCanvasId?: string) => Promise<boolean>;
   onActiveCanvasChange: (canvasId: string) => void;
   onSelectErdCanvas: (canvasId: string) => void;
   onCreateProjectCanvas: (kind: ProjectCanvasKind, name: string) => Promise<boolean>;
@@ -85,7 +86,7 @@ const dailyTips = [
   "Overlap same-class nodes to replace repeated lines with one grouped flow."
 ];
 
-export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, users, connected, isHost, recoveryReady, persistentStorage, recoveryError, activeProject, onOpenProjectManager, onOpenExport, onSetLocalDfd, onSaveDfd, onSaveCatalogModel, onSetLocalModels, relationships, relationshipReferences, domains, domainCategories, nameDisplayMode, vocabularyCache, onLockModel, onUnlockModel, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, onApplyRefinement, onActiveCanvasChange, onSelectErdCanvas, onCreateProjectCanvas, onRenameProjectCanvas, onOpenCrudMatrix, onShareWork, onLeaveSession, annotations, onSetLocalAnnotations, onSaveAnnotation, onUpdateAnnotationPresence, onMoveCursor, onChangeCanvasPresence }: DfdWorkspaceProps) {
+export function DfdWorkspace({ dfd, erdCanvases, erdPlacements, activeCanvasId, models, me, users, connected, isHost, recoveryReady, persistentStorage, recoveryError, activeProject, onOpenProjectManager, onOpenExport, onSetLocalDfd, onSaveDfd, onSaveCatalogModel, onSetLocalModels, relationships, relationshipReferences, domains, domainCategories, nameDisplayMode, vocabularyCache, onLockModel, onUnlockModel, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, onApplyRefinement, onActiveCanvasChange, onSelectErdCanvas, onCreateProjectCanvas, onRenameProjectCanvas, onOpenCrudMatrix, onShareWork, onLeaveSession, annotations, onSetLocalAnnotations, onSaveAnnotation, onUpdateAnnotationPresence, onMoveCursor, onChangeCanvasPresence }: DfdWorkspaceProps) {
   const [viewport, setViewport] = useState<Viewport>({ x: 250, y: 130, scale: 1 });
   const [cardDisplayMode, setCardDisplayMode] = useState<CardDisplayMode>("description");
   const [selectedEndpointId, setSelectedEndpointId] = useState<string>();
@@ -121,6 +122,7 @@ export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, use
   const selectedFlow = useMemo(() => activeFlows.find((flow) => flow.id === selectedFlowId), [activeFlows, selectedFlowId]);
   const selectedModel = useMemo(() => models.find((model) => model.id === selectedNode?.modelId), [models, selectedNode?.modelId]);
   const fieldEditorModel = useMemo(() => models.find((model) => model.id === fieldEditorModelId), [fieldEditorModelId, models]);
+  const fieldEditorOwnerCanvasId = useMemo(() => erdPlacements.find((placement) => placement.seedId === fieldEditorModelId && placement.accessMode === "owner")?.canvasId, [erdPlacements, fieldEditorModelId]);
   const warnings = useMemo(() => dfdWarnings(dfd, activeCanvasId, models), [activeCanvasId, dfd, models]);
   const tip = dailyTips[Math.floor(Date.now() / 86_400_000) % dailyTips.length];
 
@@ -482,6 +484,6 @@ export function DfdWorkspace({ dfd, erdCanvases, activeCanvasId, models, me, use
     {nodeDialog && <DfdNodeDialog mode={nodeDialog.mode} initial={nodeDialog.initial} title={nodeDialog.title} connectionReason={nodeDialog.connectionReason} existingExternalDefinitions={externalDefinitions} onSave={saveNodeDialog} onClose={() => setNodeDialog(undefined)} />}
     {modelPickerOpen && <DfdModelPickerDialog models={models} placedModelIds={placedModelIds} onPlace={placeModel} onCreate={createModel} onClose={() => setModelPickerOpen(false)} />}
     {canvasSelectorOpen && <ProjectCanvasSelectorDialog erdCanvases={erdCanvases} dfdCanvases={dfd.canvases} active={{ kind: "dfd", id: activeCanvasId }} onSelect={selectProjectCanvas} onCreate={onCreateProjectCanvas} onRename={onRenameProjectCanvas} onClose={() => setCanvasSelectorOpen(false)} />}
-    {fieldEditorModel && <FieldListDialog modelId={fieldEditorModel.id} modelTitle={fieldEditorModel.title} modelNames={fieldEditorModel.names} initialNameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} modelMaturedLevel={fieldEditorModel.maturedLevel} fields={fieldEditorModel.fields} domains={domains} domainCategories={domainCategories} relationshipReferences={projectedReferences} seeds={models} allRelationships={relationships} allRelationshipReferences={relationshipReferences} canEdit onChange={changeModelFields} onModelChange={changeModelDefinition} onClose={closeModelFields} onUpdateReference={onUpdateRelationshipReference} onDeleteReference={onDeleteRelationship} onCreateDomain={onCreateDomain} onOpenDomainDictionary={(fieldId) => onOpenDomainDictionary(fieldEditorModel.id, fieldId)} onApplyRefinement={onApplyRefinement} />}
+    {fieldEditorModel && <FieldListDialog modelId={fieldEditorModel.id} modelTitle={fieldEditorModel.title} modelNames={fieldEditorModel.names} initialNameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} modelMaturedLevel={fieldEditorModel.maturedLevel} fields={fieldEditorModel.fields} domains={domains} domainCategories={domainCategories} relationshipReferences={projectedReferences} seeds={models} allRelationships={relationships} allRelationshipReferences={relationshipReferences} canEdit onChange={changeModelFields} onModelChange={changeModelDefinition} onClose={closeModelFields} onUpdateReference={onUpdateRelationshipReference} onDeleteReference={onDeleteRelationship} onCreateDomain={onCreateDomain} onOpenDomainDictionary={(fieldId) => onOpenDomainDictionary(fieldEditorModel.id, fieldId)} refinementPlacementCanvases={erdCanvases} refinementDefaultCanvasId={fieldEditorOwnerCanvasId} onApplyRefinement={onApplyRefinement} />}
   </main>;
 }

@@ -1,4 +1,4 @@
-import type { DataDomain, ModelField, ModelSeed, RefinementInput, RefinementPatternId, RefinementResult, Relationship, RelationshipReference } from "./types";
+import type { CanvasModelPlacement, DataDomain, ModelField, ModelSeed, RefinementInput, RefinementPatternId, RefinementResult, Relationship, RelationshipReference } from "./types";
 
 export type RefinementContext = {
   seeds: ModelSeed[];
@@ -185,5 +185,27 @@ export function buildRefinement(input: RefinementInput, context: RefinementConte
     summary.push(`Create model ${target.title}`, `Move ${selected.length} selected field(s)`, `Connect ${source.title} to ${target.title}`);
   }
   const affectedSeedIds = seeds.filter((seed) => context.seeds.some((current) => current.id === seed.id && JSON.stringify(current) !== JSON.stringify(seed))).map((seed) => seed.id);
-  return { seeds, relationships, relationshipReferences: references, domains, affectedSeedIds, createdSeedIds, summary };
+  return { sourceSeedId: source.id, seeds, relationships, relationshipReferences: references, domains, affectedSeedIds, createdSeedIds, createdPlacements: [], summary };
+}
+
+export function buildRefinementPlacements(result: RefinementResult, canvasId: string, currentPlacements: CanvasModelPlacement[]) {
+  const source = result.seeds.find((seed) => seed.id === result.sourceSeedId);
+  if (!source) throw new Error("Refinement source model no longer exists.");
+  const sourceOwner = currentPlacements.find((placement) => placement.seedId === source.id && placement.accessMode === "owner");
+  const targetPlacements = currentPlacements.filter((placement) => placement.canvasId === canvasId);
+  const fallbackOffset = targetPlacements.length * 28;
+  const anchor = sourceOwner?.canvasId === canvasId
+    ? { x: sourceOwner.x, y: sourceOwner.y }
+    : { x: 140 + fallbackOffset, y: 120 + fallbackOffset };
+  return result.createdSeedIds.map((seedId) => {
+    const seed = result.seeds.find((candidate) => candidate.id === seedId);
+    if (!seed) throw new Error("A refined model no longer exists.");
+    return {
+      canvasId,
+      seedId,
+      x: anchor.x + seed.x - source.x,
+      y: anchor.y + seed.y - source.y,
+      accessMode: "owner" as const
+    };
+  });
 }

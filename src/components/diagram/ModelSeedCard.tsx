@@ -39,7 +39,7 @@ type ModelSeedCardProps = {
   onCreateDomain: (name: string) => void;
   onOpenDomainDictionary: (seedId: string, fieldId?: string) => void;
   seeds: ModelSeed[];
-  onApplyRefinement: (result: RefinementResult) => Promise<boolean>;
+  onApplyRefinement: (result: RefinementResult, targetCanvasId?: string) => Promise<boolean>;
 };
 
 export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayMode, nameDisplayMode, vocabularyCache, owner, me, accessMode, titleFocusRequested, onTitleFocusHandled, onPointerDown, onUpdate, onEditingChange, remoteEditor, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, domains, domainCategories, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, seeds, onApplyRefinement }: ModelSeedCardProps) {
