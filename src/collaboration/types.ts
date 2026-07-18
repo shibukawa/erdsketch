@@ -1,5 +1,5 @@
 import type { CanvasAnnotation, CanvasType } from "../features/annotations/types";
-import type { CanvasModelPlacement, DataDomain, DfdState, DomainCategory, ErdCanvas, NamingPolicy, RefinementResult, Relationship, RelationshipReference, VocabularyEntry } from "../features/modeling/types";
+import type { CanvasModelPlacement, DataDomain, DfdState, DomainCategory, ErdCanvas, ExportSettings, NamingPolicy, RefinementResult, Relationship, RelationshipReference, VocabularyEntry } from "../features/modeling/types";
 
 export type Timestamped = { timestamp?: string };
 
@@ -26,6 +26,7 @@ export type CollaborationState<T> = {
   domains: DataDomain[];
   domainCategories: DomainCategory[];
   namingPolicy: NamingPolicy;
+  exportSettings: ExportSettings;
   vocabularyEntries: VocabularyEntry[];
   dfd: DfdState;
   users: Collaborator[];
@@ -46,6 +47,7 @@ export type DurableOperation<T> =
   | { type: "domain"; domain: DataDomain; create: boolean; delete: boolean }
   | { type: "domain_category"; category: DomainCategory; create: boolean }
   | { type: "naming_policy"; policy: NamingPolicy }
+  | { type: "export_settings"; settings: ExportSettings }
   | { type: "vocabulary"; entry: VocabularyEntry; create: boolean; delete: boolean }
   | { type: "relationship"; relationship: Relationship; reference: RelationshipReference; create: boolean; delete: boolean }
   | { type: "refinement"; result: RefinementResult }

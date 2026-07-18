@@ -163,6 +163,12 @@ function createEmptyState(): DurableState<ModelSeed> {
     domains: initialDomains.map((domain) => structuredClone(domain)),
     domainCategories: initialDomainCategories.map((category) => structuredClone(category)),
     namingPolicy: structuredClone(namingPolicy),
+    exportSettings: {
+      nameDisplayMode: "business",
+      cardDisplayMode: "description",
+      crudOrientation: "processes_rows",
+      sqlDialect: "postgresql"
+    },
     vocabularyEntries: [],
     dfd: {
       canvases: [{ id: "dfd-main", name: "Main data flow" }],
@@ -192,6 +198,12 @@ function createState(spec: ProjectSpec): DurableState<ModelSeed> {
       { id: "starter-domains", name: "Starter Domains" }
     ],
     namingPolicy: structuredClone(namingPolicy),
+    exportSettings: {
+      nameDisplayMode: "business",
+      cardDisplayMode: "description",
+      crudOrientation: "processes_rows",
+      sqlDialect: "postgresql"
+    },
     vocabularyEntries: entries,
     dfd: makeDfd(spec, models),
     annotations: []

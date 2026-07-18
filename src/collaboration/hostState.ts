@@ -160,6 +160,8 @@ function applyDurableOperationCore<T extends { id: string; x?: number; y?: numbe
       return { ...state, domainCategories: applyCategory(state.domainCategories, operation.category, operation.create) };
     case "naming_policy":
       return { ...state, namingPolicy: operation.policy };
+    case "export_settings":
+      return { ...state, exportSettings: operation.settings };
     case "vocabulary":
       return { ...state, vocabularyEntries: applyVocabulary(state.vocabularyEntries, operation.entry, operation.create, operation.delete) };
     case "relationship": {
