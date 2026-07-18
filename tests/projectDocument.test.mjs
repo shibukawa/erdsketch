@@ -15,6 +15,7 @@ function projectState() {
     domains: [],
     domainCategories: [],
     namingPolicy: { tablePluralization: "singular", tableJoinMode: "separator", tableSeparator: "_", fieldJoinMode: "separator", fieldSeparator: "_", domainJoinMode: "concatenate", domainSeparator: "_" },
+    exportSettings: { nameDisplayMode: "business", cardDisplayMode: "description", crudOrientation: "processes_rows", sqlDialect: "postgresql" },
     vocabularyEntries: [],
     dfd: { canvases: [{ id: "dfd-id", name: "Flow" }], nodes: [], flows: [], groups: [], crudMatrix: { orientation: "processes_rows", processOrder: [], modelOrder: [] } },
     annotations: [{

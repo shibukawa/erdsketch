@@ -127,6 +127,8 @@ export function timestampDurableOperation<T extends { id: string }>(state: Colla
       return { ...operation, category: operation.create ? created(operation.category, timer) : existingOrCreated(operation.category, state.domainCategories, timer) };
     case "vocabulary":
       return { ...operation, entry: operation.create ? created(operation.entry, timer) : existingOrCreated(operation.entry, state.vocabularyEntries, timer) };
+    case "export_settings":
+      return operation;
     case "relationship":
       return {
         ...operation,

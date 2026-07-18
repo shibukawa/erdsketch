@@ -1,5 +1,5 @@
 import { AlignLeft, Braces, Database, KeyRound, Languages } from "lucide-react";
-import { useCallback, type MouseEvent } from "react";
+import type { MouseEvent } from "react";
 import type { CardDisplayMode, NameDisplayMode } from "../../features/modeling/types";
 
 type CanvasDisplayControlsProps = {
@@ -17,15 +17,15 @@ export function CanvasDisplayControls({
   onDisplayModeChange,
   onNameDisplayModeChange
 }: CanvasDisplayControlsProps) {
-  const handleDisplayMode = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+  function handleDisplayMode(event: MouseEvent<HTMLButtonElement>) {
     onDisplayModeChange(event.currentTarget.dataset.mode as CardDisplayMode);
     event.currentTarget.blur();
-  }, [onDisplayModeChange]);
+  }
 
-  const handleNameDisplayMode = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+  function handleNameDisplayMode(event: MouseEvent<HTMLButtonElement>) {
     onNameDisplayModeChange?.(event.currentTarget.dataset.mode as NameDisplayMode);
     event.currentTarget.blur();
-  }, [onNameDisplayModeChange]);
+  }
 
   return (
     <div className="absolute bottom-5 left-24 z-30 flex items-end gap-2.5" data-no-pan="true">

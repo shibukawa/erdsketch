@@ -1,4 +1,4 @@
 interface:
   display_name: "React Frontend Conventions"
-  short_description: "Apply this repository’s React frontend standards"
-  default_prompt: "Use $react-frontend-conventions to refactor this React frontend according to the repository standards."
+  short_description: "Apply React Compiler-first frontend standards"
+  default_prompt: "Use $react-frontend-conventions to refactor this frontend with React Compiler-first conventions."

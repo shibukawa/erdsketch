@@ -1,5 +1,5 @@
 import { Database, HardDrive } from "lucide-react";
-import { useCallback, useMemo, type ChangeEvent } from "react";
+import type { ChangeEvent } from "react";
 import { defaultVolumeEstimate, estimateCapacity, formatBytes, indexStructureCount, normalizeTransactionRetention, projectionHorizonsForModel, retentionValueMax } from "../../features/modeling/capacity";
 import type { DataDomain, DurationUnit, EstimatePeriod, ModelSeed, VolumeEstimate } from "../../features/modeling/types";
 
@@ -11,33 +11,31 @@ type CapacityEstimatePanelProps = {
 };
 
 export function CapacityEstimatePanel({ model, domains, canEdit, onChange }: CapacityEstimatePanelProps) {
-  const estimate = useMemo(() => {
-    const value = structuredClone(model.volumeEstimate ?? defaultVolumeEstimate(model.role));
-    return { ...value, retentionPeriod: normalizeTransactionRetention(model.role, value.retentionPeriod) };
-  }, [model.role, model.volumeEstimate]);
-  const projectionModel = useMemo(() => ({ ...model, volumeEstimate: estimate }), [estimate, model]);
-  const horizons = useMemo(() => projectionHorizonsForModel(projectionModel), [projectionModel]);
-  const projections = useMemo(() => horizons.map((horizon) => estimateCapacity(projectionModel, domains, horizon)), [domains, horizons, projectionModel]);
-  const indexStructures = useMemo(() => indexStructureCount(model), [model]);
-  const missingDomainFields = useMemo(() => [...new Set(projections.flatMap((projection) => projection.missingDomainFieldNames))], [projections]);
-  const incompleteDomainFields = useMemo(() => [...new Set(projections.flatMap((projection) => projection.incompleteDomainFieldNames))], [projections]);
-  const missingAverageSizeFields = useMemo(() => [...new Set(projections.flatMap((projection) => projection.missingAverageSizeFieldNames))], [projections]);
+  const value = structuredClone(model.volumeEstimate ?? defaultVolumeEstimate(model.role));
+  const estimate = { ...value, retentionPeriod: normalizeTransactionRetention(model.role, value.retentionPeriod) };
+  const projectionModel = { ...model, volumeEstimate: estimate };
+  const horizons = projectionHorizonsForModel(projectionModel);
+  const projections = horizons.map((horizon) => estimateCapacity(projectionModel, domains, horizon));
+  const indexStructures = indexStructureCount(model);
+  const missingDomainFields = [...new Set(projections.flatMap((projection) => projection.missingDomainFieldNames))];
+  const incompleteDomainFields = [...new Set(projections.flatMap((projection) => projection.incompleteDomainFieldNames))];
+  const missingAverageSizeFields = [...new Set(projections.flatMap((projection) => projection.missingAverageSizeFieldNames))];
   const hasIncompleteEstimate = missingDomainFields.length > 0 || incompleteDomainFields.length > 0 || missingAverageSizeFields.length > 0;
-  const update = useCallback((patch: Partial<VolumeEstimate>) => {
+  function update(patch: Partial<VolumeEstimate>) {
     onChange({ ...estimate, ...patch });
-  }, [estimate, onChange]);
-  const handleInitialCountChange = useCallback((event: ChangeEvent<HTMLInputElement>) => update({ initialRecordCount: Math.max(0, Number(event.target.value)) }), [update]);
-  const handleGrowthAmountChange = useCallback((event: ChangeEvent<HTMLInputElement>) => update({ growthRate: { ...estimate.growthRate, amount: Math.max(0, Number(event.target.value)) } }), [estimate.growthRate, update]);
-  const handleGrowthPeriodChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => update({ growthRate: { ...estimate.growthRate, period: event.target.value as EstimatePeriod } }), [estimate.growthRate, update]);
-  const handleRetentionValueChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+  }
+  const handleInitialCountChange = (event: ChangeEvent<HTMLInputElement>) => update({ initialRecordCount: Math.max(0, Number(event.target.value)) });
+  const handleGrowthAmountChange = (event: ChangeEvent<HTMLInputElement>) => update({ growthRate: { ...estimate.growthRate, amount: Math.max(0, Number(event.target.value)) } });
+  const handleGrowthPeriodChange = (event: ChangeEvent<HTMLSelectElement>) => update({ growthRate: { ...estimate.growthRate, period: event.target.value as EstimatePeriod } });
+  function handleRetentionValueChange(event: ChangeEvent<HTMLInputElement>) {
     const unit = estimate.retentionPeriod?.unit ?? "year";
     update({ retentionPeriod: { value: Math.min(retentionValueMax(unit), Math.max(1, Math.round(Number(event.target.value)))), unit } });
-  }, [estimate.retentionPeriod?.unit, update]);
-  const handleRetentionUnitChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
+  }
+  function handleRetentionUnitChange(event: ChangeEvent<HTMLSelectElement>) {
     const unit = event.target.value as DurationUnit;
     update({ retentionPeriod: { value: Math.min(retentionValueMax(unit), estimate.retentionPeriod?.value ?? 3), unit } });
-  }, [estimate.retentionPeriod?.value, update]);
-  const handleMaximumCountChange = useCallback((event: ChangeEvent<HTMLInputElement>) => update({ maximumRecordCount: event.target.value === "" ? undefined : Math.max(0, Number(event.target.value)) }), [update]);
+  }
+  const handleMaximumCountChange = (event: ChangeEvent<HTMLInputElement>) => update({ maximumRecordCount: event.target.value === "" ? undefined : Math.max(0, Number(event.target.value)) });
 
   return (
     <div className="grid min-h-full grid-cols-[320px_1fr]">

@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, LocateFixed, Move, Plus, Sprout, X, ZoomIn, ZoomOut } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 type Props = {
   scale: number;
@@ -12,20 +12,20 @@ export function CanvasTips({ scale, onResetView, onUpdateScale, dailyTip }: Prop
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(0);
 
-  const handleToggle = useCallback(() => {
+  function handleToggle() {
     setOpen((current) => !current);
-  }, []);
+  }
 
-  const handlePrevious = useCallback(() => {
+  function handlePrevious() {
     setPage((current) => (current + 1) % 2);
-  }, []);
+  }
 
-  const handleNext = useCallback(() => {
+  function handleNext() {
     setPage((current) => (current + 1) % 2);
-  }, []);
+  }
 
-  const handleZoomOut = useCallback(() => onUpdateScale(scale * 0.85), [onUpdateScale, scale]);
-  const handleZoomIn = useCallback(() => onUpdateScale(scale * 1.15), [onUpdateScale, scale]);
+  const handleZoomOut = () => onUpdateScale(scale * 0.85);
+  const handleZoomIn = () => onUpdateScale(scale * 1.15);
 
   return (
     <div className="absolute bottom-5 right-5 z-30 flex flex-col items-end gap-3" data-no-pan="true">
