@@ -59,6 +59,7 @@ test("model roles use familiar Japanese loanwords", () => {
 
 test("privacy terminology is presented as personal information in Japanese", () => {
   assert.equal(translateText("Privacy", "ja"), "個人情報");
+  assert.equal(translateText("privacy", "ja"), "個人情報");
   assert.equal(
     translateText("Mark this model as containing privacy-sensitive information.", "ja"),
     "このモデルに個人情報が含まれることを示します。"
@@ -92,7 +93,13 @@ test("workspace start panel terminology is localized", () => {
   assert.equal(translateText("Create new", "ja"), "新規作成");
   assert.equal(translateText("Recent projects", "ja"), "最近のプロジェクト");
   assert.equal(translateText("View all projects", "ja"), "すべてのプロジェクトを表示");
-  assert.equal(translateText("Upload project file", "ja"), "プロジェクトファイルをアップロード");
+  assert.equal(
+    translateText("Upload a portable ZIP project archive. Direct local access is available only after you choose a project folder.", "ja"),
+    "ポータブルな ZIP 形式のプロジェクトアーカイブをアップロードします。ローカルへの直接アクセスは、プロジェクトフォルダを選択した後にのみ利用できます。",
+  );
+  assert.equal(translateText("Upload project archive", "ja"), "プロジェクトアーカイブをアップロード");
+  assert.equal(translateText("Open project folder", "ja"), "プロジェクトフォルダを開く");
+  assert.equal(translateText("Manage projects", "ja"), "プロジェクトを管理");
   assert.equal(translateText("5 models", "ja"), "5 モデル");
   assert.equal(translateText("Resume", "ja"), "再開");
 });
