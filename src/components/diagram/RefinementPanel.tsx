@@ -1,7 +1,7 @@
 import { ArrowRight, Check, GitBranch, Info, Sparkles, X } from "lucide-react";
 import { useCallback, useMemo, useState, type ChangeEvent } from "react";
 import { dependencyLabels } from "../../features/modeling/constants";
-import type { DataDomain, ModelSeed, RefinementInput, RefinementPatternId, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
+import type { DataDomain, ErdCanvas, ModelSeed, RefinementInput, RefinementPatternId, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
 import { buildRefinement, findSimilarFieldGroups, getFieldCodeSet, refinementPatterns, refinementUnavailableReason } from "../../features/modeling/refinement";
 import { getFieldEffectiveName } from "../../features/modeling/utils";
 
@@ -14,7 +14,9 @@ type RefinementPanelProps = {
   selectedFieldIds: string[];
   selectedRelationshipIds: string[];
   canEdit: boolean;
-  onApply: (result: RefinementResult) => Promise<boolean>;
+  placementCanvasOptions?: ErdCanvas[];
+  defaultPlacementCanvasId?: string;
+  onApply: (result: RefinementResult, targetCanvasId?: string) => Promise<boolean>;
 };
 
 function initialInput(patternId: RefinementPatternId, source: ModelSeed, selectedFieldIds: string[], selectedRelationshipIds: string[], domains: DataDomain[]): RefinementInput {
@@ -50,20 +52,21 @@ function previewDisplaySeed(seed: ModelSeed, result: RefinementResult, domains: 
   return inherited.length ? { ...seed, fields: [...seed.fields, ...inherited] } : seed;
 }
 
-export function RefinementPanel({ source, seeds, relationships, relationshipReferences, domains, selectedFieldIds, selectedRelationshipIds, canEdit, onApply }: RefinementPanelProps) {
+export function RefinementPanel({ source, seeds, relationships, relationshipReferences, domains, selectedFieldIds, selectedRelationshipIds, canEdit, placementCanvasOptions, defaultPlacementCanvasId, onApply }: RefinementPanelProps) {
   const selectedFields = useMemo(() => source.fields.filter((field) => selectedFieldIds.includes(field.id)), [selectedFieldIds, source.fields]);
   const selectedCodeSetEntries = useMemo(() => [...new Map(selectedFields.flatMap((field) => getFieldCodeSet(field, domains)?.codeSetEntries ?? []).map((entry) => [entry.id, entry])).values()], [domains, selectedFields]);
   const similarGroups = useMemo(() => findSimilarFieldGroups(source, selectedFieldIds, seeds), [seeds, selectedFieldIds, source]);
   const [input, setInput] = useState<RefinementInput | null>(null);
   const [error, setError] = useState("");
   const [applying, setApplying] = useState(false);
+  const [placementCanvasId, setPlacementCanvasId] = useState(defaultPlacementCanvasId ?? "");
   const preview = useMemo(() => {
     if (!input) return null;
     try { return buildRefinement(input, { seeds, relationships, relationshipReferences, domains }, (() => { let count = 0; return () => `preview-${input.patternId}-${count++}`; })()); }
     catch (reason) { return reason instanceof Error ? reason : new Error("Preview could not be generated."); }
   }, [domains, input, relationshipReferences, relationships, seeds]);
   const validPreview = preview && !(preview instanceof Error) ? preview : null;
-  const open = useCallback((patternId: RefinementPatternId) => { setError(""); setInput(initialInput(patternId, source, selectedFieldIds, selectedRelationshipIds, domains)); }, [domains, selectedFieldIds, selectedRelationshipIds, source]);
+  const open = useCallback((patternId: RefinementPatternId) => { setError(""); setPlacementCanvasId(defaultPlacementCanvasId ?? ""); setInput(initialInput(patternId, source, selectedFieldIds, selectedRelationshipIds, domains)); }, [defaultPlacementCanvasId, domains, selectedFieldIds, selectedRelationshipIds, source]);
   const close = useCallback(() => { if (!applying) setInput(null); }, [applying]);
   const textChange = useCallback((key: keyof RefinementInput) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setInput((current) => current ? { ...current, [key]: event.target.value } : current), []);
   const boolChange = useCallback((key: keyof RefinementInput) => (event: ChangeEvent<HTMLInputElement>) => setInput((current) => current ? { ...current, [key]: event.target.checked } : current), []);
@@ -76,10 +79,14 @@ export function RefinementPanel({ source, seeds, relationships, relationshipRefe
     setApplying(true); setError("");
     try {
       const result = buildRefinement(input, { seeds, relationships, relationshipReferences, domains });
-      if (await onApply(result)) setInput(null); else setError("The refinement could not be saved. Check model locks and try again.");
+      if (result.createdSeedIds.length > 0 && placementCanvasOptions && !placementCanvasId) {
+        setError("Select an ERD canvas that will own the new model.");
+        return;
+      }
+      if (await onApply(result, placementCanvasId || defaultPlacementCanvasId)) setInput(null); else setError("The refinement could not be saved. Check model locks and try again.");
     } catch (reason) { setError(reason instanceof Error ? reason.message : "The refinement could not be applied."); }
     finally { setApplying(false); }
-  }, [domains, input, onApply, preview, relationshipReferences, relationships, seeds]);
+  }, [defaultPlacementCanvasId, domains, input, onApply, placementCanvasId, placementCanvasOptions, preview, relationshipReferences, relationships, seeds]);
 
   return <div className="h-full min-h-0 overflow-y-auto border-l border-slate-200 bg-slate-50 p-3">
     <div className="mb-3 flex items-center gap-2"><Sparkles size={15} className="text-violet-600"/><div><h3 className="text-sm font-bold">Refinement patterns</h3><p className="text-[10px] text-slate-500">Select fields, then preview a safe transformation.</p></div></div>
@@ -95,6 +102,7 @@ export function RefinementPanel({ source, seeds, relationships, relationshipRefe
         <div className="grid min-h-0 flex-1 grid-cols-[330px_1fr] overflow-hidden">
           <form className="overflow-y-auto border-r border-slate-200 p-5" onSubmit={(event) => { event.preventDefault(); void apply(); }}>
             {input.patternId !== "extract-domain" && input.patternId !== "split-code-set" && <label className="form-control mb-4"><span className="mb-1 text-xs font-bold">New model name</span><input className="input input-bordered input-sm" value={input.modelName} onChange={textChange("modelName")} required/></label>}
+            {validPreview && validPreview.createdSeedIds.length > 0 && placementCanvasOptions && !defaultPlacementCanvasId && <label className="form-control mb-4"><span className="mb-1 text-xs font-bold">Owner ERD canvas</span><select aria-label="Owner ERD canvas" className="select select-bordered select-sm" value={placementCanvasId} onChange={(event) => setPlacementCanvasId(event.target.value)} required><option value="">Select a canvas</option>{placementCanvasOptions.map((canvas) => <option data-i18n-skip key={canvas.id} value={canvas.id}>{canvas.name}</option>)}</select><span className="mt-1 text-[10px] text-slate-500">New models need one owner canvas before they can be moved or transferred.</span></label>}
             {input.patternId === "extract-domain" && <label className="form-control mb-4"><span className="mb-1 text-xs font-bold">Domain name</span><input className="input input-bordered input-sm" value={input.domainName} onChange={textChange("domainName")} required/></label>}
             {input.patternId === "extract-domain" && <fieldset className="mb-4 rounded-lg border border-slate-200 p-3"><legend className="px-1 text-xs font-bold">Similar fields</legend><label className="flex items-start gap-2 text-xs"><input type="checkbox" checked disabled/><span><strong data-i18n-skip>{source.title}</strong><small data-i18n-skip className="block text-slate-500">{selectedFields.map((field) => field.name).join(", ")}</small></span></label>{similarGroups.length === 0 && <p className="mt-2 text-[10px] text-slate-500">No similar field groups found.</p>}{similarGroups.map((group) => <label key={group.seed.id} className="mt-2 flex items-start gap-2 text-xs"><input type="checkbox" checked={input.similarModelIds.includes(group.seed.id)} onChange={() => toggleSimilarModel(group.seed.id)}/><span><strong data-i18n-skip>{group.seed.title}</strong><small data-i18n-skip className="block text-slate-500">{group.fields.map((field) => field.name).join(", ")}</small></span></label>)}</fieldset>}
             {["extract-master","multiple-items","extract-optional","extract-one-to-one"].includes(input.patternId) && <fieldset className="mb-4 rounded-lg border border-slate-200 p-3"><legend className="px-1 text-xs font-bold">Primary key</legend><label className="flex items-center gap-2 text-xs"><input type="radio" checked={input.keyMode === "selected"} onChange={() => setInput({ ...input, keyMode: "selected" })}/>Use selected fields</label>{input.keyMode === "selected" && <div className="ml-5 mt-2 space-y-1">{selectedFields.map((field) => <label key={field.id} className="flex items-center gap-2 text-xs"><input type="checkbox" checked={input.keyFieldIds.includes(field.id)} onChange={() => toggleKeyField(field.id)}/><span data-i18n-skip>{field.name}</span></label>)}</div>}<label className="mt-2 flex items-center gap-2 text-xs"><input type="radio" checked={input.keyMode === "new"} onChange={() => setInput({ ...input, keyMode: "new" })}/>Create new key</label>{input.keyMode === "new" && <><input className="input input-bordered input-sm mt-2 w-full" value={input.newKeyName} onChange={textChange("newKeyName")}/><select aria-label="New key domain" className="select select-bordered select-sm mt-2 w-full" value={input.newKeyDomainId ?? ""} onChange={textChange("newKeyDomainId")}><option value="">No domain</option>{domains.map((domain) => <option data-i18n-skip key={domain.id} value={domain.id}>{domain.name}</option>)}</select></>}</fieldset>}

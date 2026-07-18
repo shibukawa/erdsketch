@@ -26,6 +26,26 @@ application:
   preserves_unaffected_order: true
   generated_names_must_be_unique: true
   invalid_submission: blocked_with_inline_reason
+generated_model_placement:
+  applies_to:
+    - data:extract-master-pattern
+    - data:create-history-pattern
+    - data:multiple-items-pattern
+    - data:extract-optional-model-pattern
+    - data:extract-one-to-one-pattern
+    - data:split-by-code-set-pattern
+    - data:create-work-pattern
+  excludes:
+    - data:extract-domain-pattern
+  each_created_model:
+    placement: data:canvas-model-placement
+    canvas: source model owner canvas
+    access_mode: owner
+    position: generated preview position near source
+  commit: atomic with model transformation
+  dfd_invocation_without_source_erd_owner:
+    behavior: require target ERD canvas before apply
+    forbidden_fallback: last active ERD canvas
 shared_key_input:
   modes:
     selected_fields:
@@ -48,4 +68,3 @@ related:
   - data:model-transformation
   - requirement:normalization-support
   - requirement:field-list-management
-

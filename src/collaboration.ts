@@ -14,6 +14,7 @@ import { clearParticipantCheckpoint, saveParticipantCheckpoint, type Participant
 import { ensureStateTimestamps, MonotonicTimer, timestampDurableOperation } from "./collaboration/timestamp";
 import { LocalTabSession } from "./collaboration/localTabSession";
 import { projectAlreadyOpenId } from "./persistence/persistenceClient";
+import { normalizePlacementOwnership } from "./features/modeling/placements";
 
 export type { Collaborator } from "./collaboration/types";
 
@@ -50,7 +51,7 @@ function defaultExportSettings() {
 }
 
 function normalizeDurableState<T extends { id: string; x?: number; y?: number }>(state: DurableState<T>): DurableState<T> {
-  return { ...state, exportSettings: state.exportSettings ?? defaultExportSettings(), dfd: state.dfd ?? defaultDfdState() };
+  return { ...state, placements: normalizePlacementOwnership(state.placements), exportSettings: state.exportSettings ?? defaultExportSettings(), dfd: state.dfd ?? defaultDfdState() };
 }
 
 function normalizeCollaborationState<T extends { id: string; x?: number; y?: number }>(state: DurableState<T>, users: Collaborator[], locks: Record<string, Collaborator> = {}): CollaborationState<T> {

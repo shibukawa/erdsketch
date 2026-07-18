@@ -143,7 +143,8 @@ export function timestampDurableOperation<T extends { id: string }>(state: Colla
           seeds: operation.result.seeds.map((item) => modelWithTimestamps(item, state.seeds as unknown as TimestampedModel[], timer)),
           relationships: operation.result.relationships.map((item) => existingOrCreated(item, state.relationships, timer)),
           relationshipReferences: operation.result.relationshipReferences.map((item) => existingOrCreated(item, state.relationshipReferences, timer)),
-          domains: operation.result.domains.map((item) => existingOrCreated(item, state.domains, timer))
+          domains: operation.result.domains.map((item) => existingOrCreated(item, state.domains, timer)),
+          createdPlacements: operation.result.createdPlacements.map((item) => created(item, timer))
         }
       };
     case "annotation":

@@ -59,7 +59,7 @@ type DiagramCanvasProps = {
   onDeleteRelationship: (relationshipId: string) => void;
   onCreateDomain: (name: string) => void;
   onOpenDomainDictionary: (seedId: string, fieldId?: string) => void;
-  onApplyRefinement: (result: RefinementResult) => Promise<boolean>;
+  onApplyRefinement: (result: RefinementResult, targetCanvasId?: string) => Promise<boolean>;
   annotationController: CanvasAnnotationController;
   annotationUsers: Collaborator[];
   resolveAnnotationAnchor: (anchor: AnnotationAnchor) => CanvasPoint;
