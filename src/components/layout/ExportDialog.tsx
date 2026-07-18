@@ -3,6 +3,8 @@ import { startTransition, useCallback, useState, type ChangeEvent, type MouseEve
 import { convertProjectToCodegenJSON, exportProjectDrawIO, exportProjectMarkdown, exportProjectSQL, type ExportDiagnostic, type SQLDialect } from "../../export/codegenWasm";
 import { createArtifactZip, downloadBlob } from "../../export/zip";
 import type { CardDisplayMode, CrudMatrixOrientation, ExportSettings, NameDisplayMode } from "../../features/modeling/types";
+import { GuidedTourButton } from "../guidedTour/GuidedTourButton";
+import { GuidedTourTrigger } from "../guidedTour/GuidedTourTrigger";
 
 type ExportMode = "diagram" | "document" | "json" | "sql";
 
@@ -112,20 +114,21 @@ export function ExportDialog({ canonicalProjectJSON, projectName, exportSettings
 
   const blocked = false;
   return (
-    <div className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="export-dialog-title">
+    <div data-tour="export-dialog" className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="export-dialog-title">
+      <GuidedTourTrigger tour="export" />
       <div className="modal-box flex h-[min(560px,calc(100dvh-2rem))] max-w-4xl flex-col overflow-hidden rounded-xl bg-white p-0 shadow-2xl">
         <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <div><p className="text-xs font-bold uppercase tracking-wide text-red-700">Project artifacts</p><h2 id="export-dialog-title" className="text-xl font-bold">Export</h2></div>
-          <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={onClose} aria-label="Close export dialog"><X size={18} /></button>
+          <div className="flex items-center gap-1"><GuidedTourButton tour="export" label="Export" compact /><button type="button" className="btn btn-ghost btn-sm btn-square" onClick={onClose} aria-label="Close export dialog"><X size={18} /></button></div>
         </header>
         <div className="flex min-h-0 flex-1">
-          <nav className="w-44 shrink-0 border-r border-slate-200 bg-slate-50 p-3" aria-label="Export format">
+          <nav data-tour="export-formats" className="w-44 shrink-0 border-r border-slate-200 bg-slate-50 p-3" aria-label="Export format">
             {modes.map((item) => {
               const Icon = item.icon;
               return <button key={item.id} type="button" data-mode={item.id} className={`btn mb-1 w-full justify-start gap-2 ${mode === item.id ? "btn-neutral" : "btn-ghost"}`} onClick={handleMode}><Icon size={16} />{item.label}</button>;
             })}
           </nav>
-          <section className="min-w-0 flex-1 overflow-y-auto p-6">
+          <section data-tour="export-options" className="min-w-0 flex-1 overflow-y-auto p-6">
             {mode === "diagram" && <DiagramExportPanel projectName={projectName} nameMode={nameMode} cardDisplayMode={cardDisplayMode} crudOrientation={crudOrientation} onNameMode={handleNameMode} onCardDisplayMode={handleCardMode} onCrudOrientation={handleCrudOrientation} />}
             {mode === "document" && <DocumentExportPanel nameMode={nameMode} cardDisplayMode={cardDisplayMode} onNameMode={handleNameMode} onCardDisplayMode={handleCardMode} />}
             {mode === "json" && <div><h3 className="font-bold">Code-generation JSON</h3><p className="mt-1 text-sm text-slate-600">Downloads normalized JSON only. JSON Schema bundle generation is not connected yet.</p></div>}
@@ -134,7 +137,7 @@ export function ExportDialog({ canonicalProjectJSON, projectName, exportSettings
             {diagnostics.length > 0 && <ExportDiagnostics diagnostics={diagnostics} />}
           </section>
         </div>
-        <footer className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-4">
+        <footer data-tour="export-actions" className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-4">
           <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button type="button" className="btn btn-error text-white" disabled={busy || blocked} onClick={handleExport}>{busy ? "Generating…" : "Export"}</button>
         </footer>

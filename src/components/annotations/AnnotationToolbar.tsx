@@ -27,7 +27,7 @@ export function AnnotationToolbar({ controller }: AnnotationToolbarProps) {
   const confirmGeometryEdit = useCallback(() => controller.confirmGeometryEdit(), [controller]);
   const deleteGeometryPart = useCallback(() => controller.deleteGeometryPart(), [controller]);
 
-  return <div data-annotation-control="true" className="absolute left-4 top-4 z-[80] flex items-center gap-1 rounded-xl border border-slate-200 bg-white/95 p-1.5 shadow-lg backdrop-blur" role="toolbar" aria-label="Canvas annotations">
+  return <div data-annotation-control="true" data-tour="annotation-toolbar" className="absolute left-4 top-4 z-[80] flex items-center gap-1 rounded-xl border border-slate-200 bg-white/95 p-1.5 shadow-lg backdrop-blur" role="toolbar" aria-label="Canvas annotations">
     <ToolButton active={controller.activeTool === "select"} label="Select annotation" onClick={chooseSelect}><MousePointer2 size={18} /></ToolButton>
     <ToolButton active={controller.activeTool === "sticky_note"} label="Place sticky note" onClick={chooseSticky}><StickyNote size={18} /></ToolButton>
     <ToolButton active={controller.activeTool === "arrow"} label="Draw annotation arrow" onClick={chooseArrow}><ArrowUpRight size={18} /></ToolButton>

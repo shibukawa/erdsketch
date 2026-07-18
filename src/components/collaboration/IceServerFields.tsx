@@ -28,7 +28,7 @@ export function IceServerFields({ value, onChange, disabled = false }: IceServer
     if (field === "urls" || field === "username" || field === "credential") onChange({ ...value, [field]: event.target.value });
   }, [onChange, value]);
 
-  return <fieldset className="space-y-3" disabled={disabled}>
+  return <fieldset data-tour="collaboration-ice" className="space-y-3" disabled={disabled}>
     <label className="form-control w-full">
       <span className="label-text mb-1 text-sm font-semibold">ICE servers</span>
       <select className="select select-bordered w-full" value={value.kind} onChange={handleKindChange}>
