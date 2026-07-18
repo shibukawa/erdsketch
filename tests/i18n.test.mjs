@@ -79,6 +79,12 @@ test("dictionary, navigation, and DFD terminology are localized", () => {
   assert.equal(translateText("User Defined", "ja"), "ユーザー定義");
   assert.equal(translateText("Enter", "ja"), "Enter");
   assert.equal(translateText("Key fields", "ja"), "主要項目");
+  assert.equal(translateText("Insert a data node for process collaboration", "ja"), "プロセス間連携にデータノードを挿入");
+  assert.equal(translateText("Insert process between data entities", "ja"), "データエンティティ間にプロセスを挿入");
+  assert.equal(translateText("Why this dialog appeared", "ja"), "このダイアログが表示された理由");
+  assert.equal(translateText("DFD data entity nodes (files, tables, and queues) cannot connect directly to each other.", "ja"), "DFDではデータエンティティノード同士（ファイル、テーブル、キュー）を直接接続することはできません。");
+  assert.equal(translateText("DFD process nodes (batch and UI) cannot connect directly to each other.", "ja"), "DFDではプロセスノード同士（バッチ、UI）を直接接続することはできません。");
+  assert.equal(translateText("When multiple processes work together, represent them as physical processes within a node.", "ja"), "複数プロセスが連携している場合は、ノード内の物理プロセスとして表現してください。");
 });
 
 test("workspace start panel terminology is localized", () => {
