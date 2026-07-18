@@ -183,6 +183,23 @@ export function groupBounds(group: DfdGroup, nodes: DfdNode[]): DfdBounds {
   return { x: minX - 22, y: minY - 30, width: maxX - minX + 44, height: maxY - minY + 52 };
 }
 
+export function centerDfdViewport(canvas: { width: number; height: number }, nodes: DfdNode[], groups: DfdGroup[]) {
+  const bounds = [
+    ...nodes.map(nodeBounds),
+    ...groups.map((group) => groupBounds(group, nodes))
+  ].filter((item) => item.width > 0 && item.height > 0);
+  if (canvas.width <= 0 || canvas.height <= 0 || bounds.length === 0) return { x: 250, y: 130, scale: 1 };
+  const minX = Math.min(...bounds.map((item) => item.x));
+  const minY = Math.min(...bounds.map((item) => item.y));
+  const maxX = Math.max(...bounds.map((item) => item.x + item.width));
+  const maxY = Math.max(...bounds.map((item) => item.y + item.height));
+  return {
+    x: canvas.width / 2 - (minX + maxX) / 2,
+    y: canvas.height / 2 - (minY + maxY) / 2,
+    scale: 1
+  };
+}
+
 export function endpointBounds(id: string, nodes: DfdNode[], groups: DfdGroup[]): DfdBounds | undefined {
   const node = nodes.find((item) => item.id === id);
   if (node) return nodeBounds(node);

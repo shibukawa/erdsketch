@@ -46,7 +46,7 @@ export function FieldDefinitionPanel({ field, domains, canEdit, onChange }: Fiel
     <div className="h-full min-h-0 space-y-4 overflow-y-auto p-4">
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-blue-600">Field definition</p>
-        <h3 className="mt-1 break-words font-mono text-sm font-bold text-slate-900">{field.name || "Untitled field"}</h3>
+        <h3 data-i18n-skip={Boolean(field.name)} className="mt-1 break-words font-mono text-sm font-bold text-slate-900">{field.name || "Untitled field"}</h3>
         <p className="mt-1 text-xs text-slate-500">Effective type: {primitiveType ?? "unresolved"}</p>
       </div>
 

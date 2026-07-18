@@ -13,6 +13,7 @@ import { AnnotationToolbar } from "../annotations/AnnotationToolbar";
 import { RemoteCursor } from "../diagram/RemoteCursor";
 import { CanvasTips } from "../diagram/CanvasTips";
 import { CanvasDisplayControls } from "../diagram/CanvasDisplayControls";
+import { CanvasAiChatButton } from "../ai/CanvasAiChatButton";
 
 type DfdCanvasProps = {
   canvasRef: RefObject<HTMLDivElement | null>;
@@ -21,6 +22,8 @@ type DfdCanvasProps = {
   flows: DfdFlow[];
   models: ModelSeed[];
   viewport: Viewport;
+  canvasId: string;
+  canvasTitle: string;
   selectedEndpointId?: string;
   selectedFlowId?: string;
   connectionSourceId?: string;
@@ -49,7 +52,7 @@ type DfdCanvasProps = {
   onUpdateScale: (scale: number) => void;
 };
 
-export function DfdCanvas({ canvasRef, nodes, groups, flows, models, viewport, selectedEndpointId, selectedFlowId, connectionSourceId, connectionDrag, connectionDropTargetId, tip, displayMode, onDisplayModeChange, onCanvasPointerDown, onCanvasPointerMove, onCanvasPointerUp, onNodePointerDown, onLinkPointerDown, onGroupLinkPointerDown, onEditModelFields, onUpdateNode, onUpdateModel, onSelectEndpoint, onSelectFlow, annotationController, annotationUsers, me, remoteUsers, resolveAnnotationAnchor, onResetView, onUpdateScale }: DfdCanvasProps) {
+export function DfdCanvas({ canvasRef, nodes, groups, flows, models, viewport, canvasId, canvasTitle, selectedEndpointId, selectedFlowId, connectionSourceId, connectionDrag, connectionDropTargetId, tip, displayMode, onDisplayModeChange, onCanvasPointerDown, onCanvasPointerMove, onCanvasPointerUp, onNodePointerDown, onLinkPointerDown, onGroupLinkPointerDown, onEditModelFields, onUpdateNode, onUpdateModel, onSelectEndpoint, onSelectFlow, annotationController, annotationUsers, me, remoteUsers, resolveAnnotationAnchor, onResetView, onUpdateScale }: DfdCanvasProps) {
   return <div data-tour="dfd-canvas" ref={canvasRef} className="erd-canvas relative min-h-0 flex-1 overflow-hidden cursor-grab" style={{ backgroundPosition: `${viewport.x}px ${viewport.y}px, ${viewport.x}px ${viewport.y}px, ${viewport.x}px ${viewport.y}px`, backgroundSize: `${24 * viewport.scale}px ${24 * viewport.scale}px, ${120 * viewport.scale}px ${120 * viewport.scale}px, ${120 * viewport.scale}px ${120 * viewport.scale}px` }} onPointerDown={onCanvasPointerDown} onPointerMove={onCanvasPointerMove} onPointerUp={onCanvasPointerUp} onPointerCancel={onCanvasPointerUp}>
     <div className="absolute left-0 top-0 origin-top-left" style={{ width: DFD_CANVAS_SIZE.width, height: DFD_CANVAS_SIZE.height, transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})` }}>
       <CanvasAnnotationLayer layer="background" controller={annotationController} users={annotationUsers} me={me} resolveAnchor={resolveAnnotationAnchor} width={DFD_CANVAS_SIZE.width} height={DFD_CANVAS_SIZE.height} />
@@ -64,6 +67,7 @@ export function DfdCanvas({ canvasRef, nodes, groups, flows, models, viewport, s
       {remoteUsers.map((user) => <RemoteCursor key={user.id} user={user} />)}
     </div>
     <AnnotationToolbar controller={annotationController} />
+    <CanvasAiChatButton surface={{ kind: "dfd-canvas", id: canvasId, title: canvasTitle, selectedModelIds: selectedEndpointId ? nodes.filter((node) => node.id === selectedEndpointId && node.modelId).map((node) => node.modelId!) : [], selectedProcessOrFlowIds: [selectedEndpointId, selectedFlowId].filter((id): id is string => Boolean(id)) }} />
     <CanvasDisplayControls displayMode={displayMode} contentLabel="Card content" onDisplayModeChange={onDisplayModeChange} />
     <CanvasTips scale={viewport.scale} onResetView={onResetView} onUpdateScale={onUpdateScale} dailyTip={tip} />
   </div>;

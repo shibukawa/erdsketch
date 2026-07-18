@@ -13,10 +13,15 @@ experience_principles:
   - present_options_as_inspiration
   - make_human_feel_like_they_discovered_the_idea
 review_areas:
+  type_selection:
+    checks:
+      - recommend_primitive_or_domain_type
+      - explain_size_precision_and_nullability_tradeoffs
   normalization:
     checks:
       - detect_multivalued_attributes
       - detect_duplicate_attributes
+      - suggest_model_split
   lifecycle:
     checks:
       - detect_retention_conflicts
@@ -65,4 +70,7 @@ inputs:
   - data:snapshot-reference
   - data:correction-pattern
   - data:reconciliation-pattern
+delivery:
+  initial: flow:request-ai-design-advice
+  future_change_application: requirement:ai-assisted-model-change
 ```

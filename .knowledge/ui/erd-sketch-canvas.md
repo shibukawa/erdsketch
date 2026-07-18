@@ -41,6 +41,7 @@ ui:
     quick_create: ui:modeling-quick-create
     link_handle: ui:diagram-link-handle
     annotation_toolbar: ui:canvas-annotation-toolbar
+    ai_assistant: ui:canvas-ai-chat-button
     visual_language:
       card_renderer: roughjs
       card_shape: roughjs_rectangle

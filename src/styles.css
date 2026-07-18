@@ -54,8 +54,21 @@ body {
 }
 
 button,
-input {
+input,
+textarea,
+select {
   font: inherit;
+}
+
+.ai-dialog-surface {
+  position: relative;
+}
+
+.ai-dialog-chat-entry {
+  position: absolute;
+  top: 0.75rem;
+  right: 3.5rem;
+  z-index: 60;
 }
 
 .intent-add {

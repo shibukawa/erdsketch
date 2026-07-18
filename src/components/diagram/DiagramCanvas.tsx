@@ -17,6 +17,7 @@ import type { CanvasAnnotationController } from "../../features/annotations/useC
 import { CanvasAnnotationLayer } from "../annotations/CanvasAnnotationLayer";
 import { AnnotationToolbar } from "../annotations/AnnotationToolbar";
 import { CanvasDisplayControls } from "./CanvasDisplayControls";
+import { CanvasAiChatButton } from "../ai/CanvasAiChatButton";
 
 type DiagramCanvasProps = {
   canvasRef: RefObject<HTMLDivElement | null>;
@@ -27,6 +28,7 @@ type DiagramCanvasProps = {
   projectSeeds: ModelSeed[];
   placements: CanvasModelPlacement[];
   activeCanvasId: string;
+  canvasTitle: string;
   titleFocusSeedId: string | null;
   relationships: Relationship[];
   relationshipReferences: RelationshipReference[];
@@ -74,6 +76,7 @@ export function DiagramCanvas({
   projectSeeds,
   placements,
   activeCanvasId,
+  canvasTitle,
   titleFocusSeedId,
   relationships,
   relationshipReferences,
@@ -190,6 +193,7 @@ export function DiagramCanvas({
         <CanvasAnnotationLayer layer="foreground" controller={annotationController} users={annotationUsers} me={me} resolveAnchor={resolveAnnotationAnchor} />
       </div>
       <AnnotationToolbar controller={annotationController} />
+      <CanvasAiChatButton surface={{ kind: "erd-canvas", id: activeCanvasId, title: canvasTitle, selectedModelIds: selectedId ? [selectedId] : [] }} />
       <CanvasDisplayControls displayMode={displayMode} nameDisplayMode={nameDisplayMode} onDisplayModeChange={onDisplayModeChange} onNameDisplayModeChange={onNameDisplayModeChange} />
       <CanvasTips scale={viewport.scale} onResetView={onResetView} onUpdateScale={onUpdateScale} />
     </div>

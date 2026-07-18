@@ -12,7 +12,7 @@ export function RemoteCursor({ user }: RemoteCursorProps) {
       style={{ left: user.x, top: user.y, color: user.color }}
     >
       <MousePointer2 size={24} fill="currentColor" strokeWidth={1.5} />
-      <span style={{ backgroundColor: user.color }}>{user.name}</span>
+      <span data-i18n-skip style={{ backgroundColor: user.color }}>{user.name}</span>
     </div>
   );
 }

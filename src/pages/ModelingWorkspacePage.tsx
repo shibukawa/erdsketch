@@ -42,6 +42,7 @@ import { ExportDialog } from "../components/layout/ExportDialog";
 import { GuidedTourTrigger } from "../components/guidedTour/GuidedTourTrigger";
 import { defaultModelDescription } from "../features/modeling/maturity";
 import { LocalSessionLeaveDialog } from "../components/collaboration/LocalSessionLeaveDialog";
+import { AiAssistantProvider } from "../components/ai/AiAssistantProvider";
 
 type ModelingWorkspacePageProps = { initialInvitationToken?: string; initialParticipantRecovery?: ParticipantRecoveryCandidate<ModelSeed> };
 
@@ -1137,9 +1138,25 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
   />;
   const localLeaveDialog = localLeaveDialogOpen && <LocalSessionLeaveDialog projectName={activeProject?.displayName} onStay={stayInLocalSession} onLeave={confirmLeaveLocalSession} />;
   const localConnectionNotice = localTabConnectionError && <div className="fixed left-1/2 top-3 z-[110] max-w-xl -translate-x-1/2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 shadow-lg" role="alert">{localTabConnectionError}</div>;
+  const aiActiveCanvas = workspaceMode === "dfd"
+    ? { id: activeDfdCanvasId, name: dfd.canvases.find((canvas) => canvas.id === activeDfdCanvasId)?.name ?? "DFD canvas", kind: "dfd" as const }
+    : { id: activeCanvasId, name: canvases.find((canvas) => canvas.id === activeCanvasId)?.name ?? "ERD canvas", kind: "erd" as const };
+  const aiCanvasModelIds = workspaceMode === "dfd"
+    ? dfd.nodes.filter((node) => node.canvasId === activeDfdCanvasId && node.modelId).map((node) => node.modelId!)
+    : canvasSeeds.map((seed) => seed.id);
+  const aiWorkspace = {
+    project: { id: activeProject?.projectId, name: activeProject?.displayName ?? "ERDSketch project" },
+    activeCanvas: aiActiveCanvas,
+    canvasModelIds: [...new Set(aiCanvasModelIds)],
+    models: seeds,
+    domains,
+    relationships,
+    relationshipReferences,
+    dfd
+  };
 
   if (workspaceMode === "dfd") {
-    return <>
+    return <AiAssistantProvider workspace={aiWorkspace}><>
       {workspaceStarted && !startDialogOpen && !canvasSelectionRequired && <GuidedTourTrigger tour="dfd" />}
       <DfdWorkspace dfd={dfd} erdCanvases={canvases} activeCanvasId={activeDfdCanvasId} models={seeds} me={me} users={users} connected={connected} isHost={isHost} recoveryReady={recoveryStatus.ready} persistentStorage={recoveryStatus.persistentStorage} recoveryError={localTabConnectionError ?? recoveryStatus.error} activeProject={activeProject ?? undefined} onOpenProjectManager={openProjectManager} onOpenExport={openExportDialog} onSetLocalDfd={setLocalDfd} onSaveDfd={saveDfd} onSaveCatalogModel={saveCatalogSeed} onSetLocalModels={setLocalSeeds} relationships={relationships} relationshipReferences={relationshipReferences} domains={domains} domainCategories={domainCategories} nameDisplayMode={nameDisplayMode} vocabularyCache={vocabularyCache} onLockModel={lock} onUnlockModel={unlock} onUpdateRelationshipReference={(relationshipId, patch) => void updateRelationshipReference(relationshipId, patch)} onDeleteRelationship={(relationshipId) => { const relationship = relationships.find((item) => item.id === relationshipId); if (relationship) void deleteRelationship(relationship); }} onCreateDomain={(name) => void createDomain(name)} onOpenDomainDictionary={openDomainDictionary} onApplyRefinement={applyRefinement} onActiveCanvasChange={setActiveDfdCanvasId} onSelectErdCanvas={selectErdCanvas} onCreateProjectCanvas={createProjectCanvas} onRenameProjectCanvas={renameProjectCanvas} onOpenCrudMatrix={openCrudMatrix} onShareWork={sharing.openHostDialog} onLeaveSession={isLocalTabParticipant ? askLeaveLocalSession : undefined} annotations={annotations} onSetLocalAnnotations={setLocalAnnotations} onSaveAnnotation={saveAnnotation} onUpdateAnnotationPresence={updateAnnotationPresence} onMoveCursor={moveCursor} onChangeCanvasPresence={changeCanvas} />
       {projectManagerOpen && <ProjectManagerDialog projects={projects} activeProjectId={activeProject?.projectId} isHost={isHost} recoveryReady={recoveryStatus.ready} recoveryError={recoveryStatus.error} fileSystemAvailable={fileSystemAvailable} starters={starterProjects} onCreateStarter={startFromTemplate} onCreate={createOpfsProject} onSaveAs={saveOpfsProjectAs} onLoad={loadOpfsProject} onRename={renameOpfsProject} onDelete={deleteOpfsProject} onOpenFileSystem={openProject} onSaveFileSystem={saveProject} onExport={exportProject} onImport={importProject} onClose={closeProjectManager} />}
@@ -1152,11 +1169,11 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
       {localLeaveDialog}
       {localConnectionNotice}
       {participantSnapshotReadOnly && <CoworkReadOnlySnapshotNotice />}
-    </>;
+    </></AiAssistantProvider>;
   }
 
   return (
-    <VocabularyNavigationProvider onOpen={openVocabularyAt}><main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
+    <AiAssistantProvider workspace={aiWorkspace}><VocabularyNavigationProvider onOpen={openVocabularyAt}><main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
       {workspaceStarted && !startDialogOpen && !canvasSelectionRequired && <GuidedTourTrigger tour="erd" />}
       <div className="flex h-full">
         <Sidebar
@@ -1205,6 +1222,7 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
             projectSeeds={seeds}
             placements={placements}
             activeCanvasId={activeCanvasId}
+            canvasTitle={canvases.find((canvas) => canvas.id === activeCanvasId)?.name ?? "ERD canvas"}
             titleFocusSeedId={titleFocusSeedId}
             relationships={canvasRelationships}
             relationshipReferences={relationshipReferences}
@@ -1307,6 +1325,6 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
       {localLeaveDialog}
       {localConnectionNotice}
       {participantSnapshotReadOnly && <CoworkReadOnlySnapshotNotice />}
-    </main></VocabularyNavigationProvider>
+    </main></VocabularyNavigationProvider></AiAssistantProvider>
   );
 }

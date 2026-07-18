@@ -55,7 +55,7 @@ export function WorkspaceStartDialog({ starters, projects, activeProjectId, reco
   const hasMoreProjects = projects.length > RECENT_PROJECT_LIMIT;
   const disabled = busy || !recoveryReady;
 
-  return <div className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="workspace-start-title">
+  return <div className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="workspace-start-title" data-ai-assistant-disabled>
     <div className="modal-box flex max-h-[92vh] max-w-6xl flex-col overflow-hidden rounded-2xl bg-slate-50 p-0 shadow-2xl">
       <header className="flex shrink-0 items-start justify-between gap-5 border-b border-slate-200 bg-white px-6 py-5"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">ERDSketch</p><h2 id="workspace-start-title" className="mt-1 text-2xl font-bold">Start or open a project</h2><p className="mt-1 text-sm text-slate-600">Choose project content first. You will select an ERD or DFD canvas next.</p></div><LanguageSwitcher /></header>
       <div className="min-h-0 flex-1 space-y-7 overflow-y-auto p-6">

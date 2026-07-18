@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { groupAfterOverlapWithRestoration, ungroupDfd } from "../src/features/dfd/dfd.ts";
+import { centerDfdViewport, groupAfterOverlapWithRestoration, ungroupDfd } from "../src/features/dfd/dfd.ts";
 
 function node(id, kind, x, y) {
   return { id, definitionId: id, canvasId: "canvas", kind, name: id, x, y };
@@ -15,6 +15,14 @@ function state(flows) {
     flows
   };
 }
+
+test("DFD viewport centers the visible nodes and group boundary instead of returning to the origin", () => {
+  const nodes = [node("process-a", "process", 1000, 500), node("model-a", "model", 1500, 900)];
+  const groups = [{ id: "group", canvasId: "canvas", kind: "data_entity", memberIds: ["process-a", "model-a"] }];
+
+  assert.deepEqual(centerDfdViewport({ width: 800, height: 600 }, nodes, groups), { x: -927, y: -450, scale: 1 });
+  assert.deepEqual(centerDfdViewport({ width: 800, height: 600 }, [], []), { x: 250, y: 130, scale: 1 });
+});
 
 test("ungroup restores the arrows from immediately before grouping when the expanded count is unchanged", () => {
   const original = state([{ id: "flow-a", canvasId: "canvas", sourceId: "process-a", destinationId: "model-a", label: "orders" }]);

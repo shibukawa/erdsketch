@@ -27,6 +27,7 @@ ui:
       - open_canvas_selector
       - pan_canvas
       - zoom_canvas
+      - center_visible_dfd_content
       - create_and_edit_shared_annotations
       - switch_card_content_from_bottom_left_speed_dial
     quick_create: ui:modeling-quick-create
@@ -96,6 +97,7 @@ ui:
     visual_language: rule:dfd-rough-rendering
     link_handle: ui:diagram-link-handle
     annotation_toolbar: ui:canvas-annotation-toolbar
+    ai_assistant: ui:canvas-ai-chat-button
     persistence:
       owner: data:project
       cardinality_per_project: many
@@ -124,6 +126,7 @@ constraints:
   - Model placement uses ui:dfd-model-picker-dialog.
   - A DFD model placement exposes the same field editor and data as its ERD placement.
   - DFD card content is selected from the bottom-left canvas FAB, not the sidebar.
+  - The center viewport action clears unintended internal canvas scroll, then uses the bounding box of visible nodes and group boundaries; it never resets non-empty content to a fixed origin coordinate.
   - Shared visual annotations follow requirement:collaborative-canvas-annotation.
   - DFD node movement and continuous inspector controls synchronize only after user confirmation under rule:collaborative-edit-commit.
   - Unchanged data-flow geometry retains the same rendered rough path during cursor movement and unrelated drag updates.
