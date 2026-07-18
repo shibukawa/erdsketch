@@ -12,6 +12,7 @@ func main() {
 	js.Global().Set("erdsketchConvertCodegenJSON", js.FuncOf(convertCodegenJSON))
 	js.Global().Set("erdsketchExportMarkdown", js.FuncOf(exportMarkdown))
 	js.Global().Set("erdsketchExportSQL", js.FuncOf(exportSQL))
+	js.Global().Set("erdsketchExportDrawIO", js.FuncOf(exportDrawIO))
 	select {}
 }
 
@@ -39,6 +40,10 @@ func exportMarkdown(_ js.Value, args []js.Value) any {
 
 func exportSQL(_ js.Value, args []js.Value) any {
 	return exportResult(args, "SQL", codegenjson.GenerateSQLJSON)
+}
+
+func exportDrawIO(_ js.Value, args []js.Value) any {
+	return exportResult(args, "draw.io", codegenjson.GenerateDrawIOJSON)
 }
 
 func exportResult(args []js.Value, format string, generate func([]byte, []byte) ([]byte, error)) any {

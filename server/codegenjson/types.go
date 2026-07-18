@@ -448,6 +448,12 @@ type SQLExportOptions struct {
 	ModelIDs []string `json:"modelIds"`
 }
 
+type DiagramExportOptions struct {
+	NameMode         string `json:"nameMode"`
+	ModelCardContent string `json:"modelCardContent"`
+	CRUDOrientation  string `json:"crudOrientation"`
+}
+
 type ExportArtifact struct {
 	Path      string `json:"path"`
 	MediaType string `json:"mediaType"`

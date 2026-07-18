@@ -59,11 +59,18 @@ export type SQLExportOptions = {
   modelIds?: string[];
 };
 
+export type DiagramExportOptions = {
+  nameMode: "business" | "system" | "physical";
+  modelCardContent: "description" | "primary_keys";
+  crudOrientation: "processes_rows" | "models_rows";
+};
+
 type ExportWasmGlobal = typeof globalThis & {
   Go?: TinyGoConstructor;
   erdsketchConvertCodegenJSON?: (canonicalProjectJSON: string) => ConversionResult;
   erdsketchExportMarkdown?: ExportFunction;
   erdsketchExportSQL?: ExportFunction;
+  erdsketchExportDrawIO?: ExportFunction;
 };
 
 let runtimePromise: Promise<void> | undefined;
@@ -96,7 +103,7 @@ function loadRuntimeScript() {
 async function waitForConverter() {
   const scope = globalThis as ExportWasmGlobal;
   for (let attempt = 0; attempt < 100; attempt += 1) {
-    if (scope.erdsketchConvertCodegenJSON && scope.erdsketchExportMarkdown && scope.erdsketchExportSQL) return;
+    if (scope.erdsketchConvertCodegenJSON && scope.erdsketchExportMarkdown && scope.erdsketchExportSQL && scope.erdsketchExportDrawIO) return;
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
   throw new Error("TinyGo export converter did not initialize");
@@ -133,10 +140,14 @@ export async function exportProjectSQL(canonicalProjectJSON: string, options: SQ
   return runExport(canonicalProjectJSON, options, "erdsketchExportSQL");
 }
 
+export async function exportProjectDrawIO(canonicalProjectJSON: string, options: DiagramExportOptions) {
+  return runExport(canonicalProjectJSON, options, "erdsketchExportDrawIO");
+}
+
 async function runExport(
   canonicalProjectJSON: string,
-  options: MarkdownExportOptions | SQLExportOptions,
-  functionName: "erdsketchExportMarkdown" | "erdsketchExportSQL"
+  options: MarkdownExportOptions | SQLExportOptions | DiagramExportOptions,
+  functionName: "erdsketchExportMarkdown" | "erdsketchExportSQL" | "erdsketchExportDrawIO"
 ): Promise<ExportResult> {
   runtimePromise ??= initializeRuntime();
   await runtimePromise;

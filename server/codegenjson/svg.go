@@ -610,7 +610,7 @@ func renderCRUDSVG(state ProjectState, options MarkdownOptions) string {
 	if state.DFD.CRUDMatrix.Orientation == "models_rows" {
 		rows, columns, processesRows = models, processes, false
 	}
-	const rowHeader, cellWidth, rowHeight, headerHeight = 220.0, 92.0, 38.0, 58.0
+	const rowHeader, cellWidth, rowHeight, headerHeight = 230.0, 80.0, 42.0, 176.0
 	width := rowHeader + math.Max(1, float64(len(columns)))*cellWidth
 	height := headerHeight + math.Max(1, float64(len(rows)))*rowHeight
 	bounds := svgBounds{}
@@ -622,10 +622,11 @@ func renderCRUDSVG(state ProjectState, options MarkdownOptions) string {
 	if !processesRows {
 		corner = "Model / Process"
 	}
-	fmt.Fprintf(&body, `<rect x="0" y="0" width="%s" height="%s" fill="#e2e8f0"/><text x="12" y="34" class="crud-header">%s</text>`, number(rowHeader), number(headerHeight), corner)
+	fmt.Fprintf(&body, `<rect x="0" y="0" width="%s" height="%s" fill="#e2e8f0"/><text x="12" y="%s" dominant-baseline="middle" class="crud-header">%s</text>`, number(rowHeader), number(headerHeight), number(headerHeight/2), corner)
 	for columnIndex, column := range columns {
 		x := rowHeader + float64(columnIndex)*cellWidth
-		fmt.Fprintf(&body, `<rect x="%s" y="0" width="%s" height="%s" fill="#f1f5f9" stroke="#cbd5e1"/><text x="%s" y="34" text-anchor="middle" class="crud-header">%s</text>`, number(x), number(cellWidth), number(headerHeight), number(x+cellWidth/2), xmlText(truncateRunes(column.label, 13)))
+		centerX, centerY := x+cellWidth/2, headerHeight/2
+		fmt.Fprintf(&body, `<rect x="%s" y="0" width="%s" height="%s" fill="#f1f5f9" stroke="#cbd5e1"/><text x="%s" y="%s" text-anchor="middle" dominant-baseline="middle" transform="rotate(-90 %s %s)" class="crud-header">%s</text>`, number(x), number(cellWidth), number(headerHeight), number(centerX), number(centerY), number(centerX), number(centerY), xmlText(truncateRunes(column.label, 24)))
 	}
 	for rowIndex, row := range rows {
 		y := headerHeight + float64(rowIndex)*rowHeight
@@ -686,28 +687,151 @@ func orderCRUDItems(items []crudItem, order []string) []crudItem {
 	return result
 }
 
+type crudMatrixCell struct {
+	allowed    map[string]bool
+	operations map[string]bool
+}
+
 func crudAssignments(state ProjectState) map[string]string {
-	sets := make(map[string]map[string]bool)
-	for _, flow := range state.DFD.Flows {
-		for _, assignment := range flow.CRUDAssignments {
-			key := assignment.ProcessUnitID + "\x00" + assignment.ModelID
-			if sets[key] == nil {
-				sets[key] = make(map[string]bool)
-			}
-			for _, operation := range assignment.Operations {
-				sets[key][operation] = true
-			}
-		}
-	}
-	result := make(map[string]string, len(sets))
-	for key, set := range sets {
+	cells := crudAssignmentCells(state)
+	result := make(map[string]string, len(cells))
+	for key, cell := range cells {
 		for _, operation := range []string{"C", "R", "U", "D"} {
-			if set[operation] {
+			if cell.allowed[operation] && cell.operations[operation] {
 				result[key] += operation
 			}
 		}
 	}
 	return result
+}
+
+func crudAssignmentCells(state ProjectState) map[string]*crudMatrixCell {
+	cells := make(map[string]*crudMatrixCell)
+	nodes := make(map[string]SourceDFDNode, len(state.DFD.Nodes))
+	groups := make(map[string]SourceDFDGroup, len(state.DFD.Groups))
+	for _, node := range state.DFD.Nodes {
+		nodes[node.ID] = node
+	}
+	for _, group := range state.DFD.Groups {
+		groups[group.ID] = group
+	}
+	for _, flow := range state.DFD.Flows {
+		existing := make(map[string]SourceCRUDAssignment, len(flow.CRUDAssignments))
+		for _, assignment := range flow.CRUDAssignments {
+			existing[assignment.ProcessUnitID+"\x00"+assignment.ModelID] = assignment
+		}
+		for _, spec := range crudFlowSpecs(flow, nodes, groups) {
+			key := spec.processUnitID + "\x00" + spec.modelID
+			cell := cells[key]
+			if cell == nil {
+				cell = &crudMatrixCell{allowed: make(map[string]bool), operations: make(map[string]bool)}
+				cells[key] = cell
+			}
+			for operation := range spec.allowed {
+				cell.allowed[operation] = true
+			}
+			operations := spec.defaults
+			if assignment, ok := existing[key]; ok {
+				operations = assignment.Operations
+			}
+			for _, operation := range operations {
+				cell.operations[operation] = true
+			}
+		}
+	}
+	return cells
+}
+
+type crudFlowSpec struct {
+	processUnitID string
+	modelID       string
+	allowed       map[string]bool
+	defaults      []string
+}
+
+func crudFlowSpecs(flow SourceDFDFlow, nodes map[string]SourceDFDNode, groups map[string]SourceDFDGroup) []crudFlowSpec {
+	specs := make(map[string]*crudFlowSpec)
+	addDirection := func(fromID, toID string) {
+		for _, from := range expandedCRUDEndpoint(fromID, nodes, groups) {
+			for _, to := range expandedCRUDEndpoint(toID, nodes, groups) {
+				var process SourceDFDNode
+				var modelID string
+				var allowed, defaults []string
+				switch {
+				case from.Kind == "process" && to.Kind == "model" && to.ModelID != "":
+					process, modelID = from, to.ModelID
+					allowed, defaults = []string{"C", "U", "D"}, []string{"C"}
+				case from.Kind == "model" && from.ModelID != "" && to.Kind == "process":
+					process, modelID = to, from.ModelID
+					allowed, defaults = []string{"R"}, []string{"R"}
+				default:
+					continue
+				}
+				for _, processUnitID := range crudProcessUnitIDs(process) {
+					key := processUnitID + "\x00" + modelID
+					spec := specs[key]
+					if spec == nil {
+						spec = &crudFlowSpec{processUnitID: processUnitID, modelID: modelID, allowed: make(map[string]bool)}
+						specs[key] = spec
+					}
+					for _, operation := range allowed {
+						spec.allowed[operation] = true
+					}
+					for _, operation := range defaults {
+						if !containsText(spec.defaults, operation) {
+							spec.defaults = append(spec.defaults, operation)
+						}
+					}
+				}
+			}
+		}
+	}
+	addDirection(flow.SourceID, flow.DestinationID)
+	if flow.Bidirectional {
+		addDirection(flow.DestinationID, flow.SourceID)
+	}
+	result := make([]crudFlowSpec, 0, len(specs))
+	for _, spec := range specs {
+		result = append(result, *spec)
+	}
+	return result
+}
+
+func expandedCRUDEndpoint(id string, nodes map[string]SourceDFDNode, groups map[string]SourceDFDGroup) []SourceDFDNode {
+	if node, ok := nodes[id]; ok {
+		return []SourceDFDNode{node}
+	}
+	group, ok := groups[id]
+	if !ok {
+		return nil
+	}
+	result := make([]SourceDFDNode, 0, len(group.MemberIDs))
+	for _, memberID := range group.MemberIDs {
+		if node, exists := nodes[memberID]; exists {
+			result = append(result, node)
+		}
+	}
+	return result
+}
+
+func crudProcessUnitIDs(node SourceDFDNode) []string {
+	if len(node.PhysicalProcesses) == 0 {
+		return []string{node.DefinitionID}
+	}
+	result := make([]string, 0, len(node.PhysicalProcesses))
+	for _, process := range node.PhysicalProcesses {
+		result = append(result, process.ID)
+	}
+	return result
+}
+
+func containsText(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 func canvasAnnotations(all []SourceCanvasAnnotation, canvasType, canvasID string) []SourceCanvasAnnotation {
