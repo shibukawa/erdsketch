@@ -15,6 +15,7 @@ type WorkspaceHeaderProps = {
   onOpenModelCatalog: () => void;
   onOpenCrudMatrix: () => void;
   onShareWork: () => void;
+  onLeaveSession?: () => void;
   isHost: boolean;
   recoveryReady: boolean;
   persistentStorage: boolean;
@@ -24,7 +25,7 @@ type WorkspaceHeaderProps = {
   onOpenExport: () => void;
 };
 
-export function WorkspaceHeader({ me, users, connected, canvasName, onRename, onOpenCanvasSelector, onOpenModelCatalog, onOpenCrudMatrix, onShareWork, isHost, recoveryReady, persistentStorage, recoveryError, activeProject, onOpenProjectManager, onOpenExport }: WorkspaceHeaderProps) {
+export function WorkspaceHeader({ me, users, connected, canvasName, onRename, onOpenCanvasSelector, onOpenModelCatalog, onOpenCrudMatrix, onShareWork, onLeaveSession, isHost, recoveryReady, persistentStorage, recoveryError, activeProject, onOpenProjectManager, onOpenExport }: WorkspaceHeaderProps) {
   return (
     <header className="z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-7 py-4 shadow-sm">
       <WorkspaceProjectNavigation isHost={isHost} recoveryReady={recoveryReady} persistentStorage={persistentStorage} recoveryError={recoveryError} activeProject={activeProject} canvasName={canvasName} onOpenProjectManager={onOpenProjectManager} onOpenCanvasSelector={onOpenCanvasSelector} />
@@ -32,7 +33,7 @@ export function WorkspaceHeader({ me, users, connected, canvasName, onRename, on
         <button data-tour="erd-models" type="button" className="btn btn-outline btn-sm gap-2" onClick={onOpenModelCatalog}><Search size={16} />Models</button>
         <button type="button" className="btn btn-outline btn-sm gap-2" onClick={onOpenCrudMatrix}><Grid3X3 size={16} />CRUD Matrix</button>
         <GuidedTourButton tour="erd" label="ERD" />
-        <CoworkParticipantSummary me={me} users={users} connected={connected} isHost={isHost} onOpenCowork={onShareWork} />
+        <CoworkParticipantSummary me={me} users={users} connected={connected} isHost={isHost} onOpenCowork={onShareWork} onLeaveSession={onLeaveSession} />
         <span
           className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-amber-500"}`}
           title={connected ? "Connected" : "Connecting"}

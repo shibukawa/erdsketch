@@ -1,5 +1,4 @@
 import { ChevronDown, Files, Layers3 } from "lucide-react";
-import { useMemo } from "react";
 
 type Props = {
   isHost: boolean;
@@ -13,14 +12,14 @@ type Props = {
 };
 
 export function WorkspaceProjectNavigation({ isHost, recoveryReady, persistentStorage, recoveryError, activeProject, canvasName, onOpenProjectManager, onOpenCanvasSelector }: Props) {
-  const status = useMemo(() => !isHost
-    ? "The host manages recovery and project files"
-    : recoveryError
+  const status = recoveryError
       ? `Recovery storage error: ${recoveryError}`
+      : !isHost
+        ? "The host manages recovery and project files"
       : recoveryReady
         ? persistentStorage ? "OPFS recovery ready (persistent storage granted)" : "OPFS recovery ready (browser may evict site data)"
-        : "Preparing OPFS recovery", [isHost, persistentStorage, recoveryError, recoveryReady]);
-  const statusColor = !isHost ? "bg-slate-400" : recoveryError ? "bg-red-500" : recoveryReady ? "bg-blue-500" : "bg-amber-500";
+        : "Preparing OPFS recovery";
+  const statusColor = recoveryError ? "bg-red-500" : !isHost ? "bg-slate-400" : recoveryReady ? "bg-blue-500" : "bg-amber-500";
 
   return <div className="flex min-w-0 items-stretch gap-2">
     <button

@@ -1,6 +1,7 @@
 import type { DurableOperation, DurableState } from "../collaboration/types";
 import type { OpfsProject } from "./projectCatalog";
 import { PersistenceService, type CatalogView, type PersistenceSession } from "./persistenceService";
+import { ProjectAlreadyOpenError } from "./persistenceErrors";
 import { PERSISTENCE_PROTOCOL_VERSION, type PersistenceOperation, type PersistenceRequest, type PersistenceResponse } from "./persistenceProtocol";
 import { createProjectDocumentSet, readProjectDocumentSet } from "./projectDocument";
 import { wailsApp } from "./wailsBridge";
@@ -8,7 +9,7 @@ import { wailsApp } from "./wailsBridge";
 type PersistedModel = { id: string; x?: number; y?: number };
 
 class PersistenceWorkerError extends Error {
-  constructor(message: string, readonly code: string, readonly retryable: boolean) {
+  constructor(message: string, readonly code: string, readonly retryable: boolean, readonly projectId?: string) {
     super(message);
     this.name = "PersistenceWorkerError";
   }
@@ -74,7 +75,7 @@ class WorkerBackend implements PersistenceBackend {
     } else if (response.status === "success") {
       pending.resolve(response.result);
     } else {
-      pending.reject(new PersistenceWorkerError(response.error?.message ?? "Persistence request failed", response.error?.code ?? "PersistenceError", response.error?.retryable ?? false));
+      pending.reject(new PersistenceWorkerError(response.error?.message ?? "Persistence request failed", response.error?.code ?? "PersistenceError", response.error?.retryable ?? false, response.error?.projectId));
     }
   }
 
@@ -225,6 +226,12 @@ export class PersistenceClient<T extends PersistedModel> {
   private call<R>(operation: PersistenceOperation, payload?: unknown, transfer?: Transferable[]) {
     return this.backend.invoke(operation, payload, transfer) as Promise<R>;
   }
+}
+
+export function projectAlreadyOpenId(error: unknown) {
+  if (error instanceof ProjectAlreadyOpenError) return error.projectId;
+  if (error instanceof PersistenceWorkerError && error.code === "ProjectAlreadyOpen") return error.projectId;
+  return undefined;
 }
 
 export type { CatalogView, OpfsProject, PersistenceSession };
