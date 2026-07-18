@@ -37,6 +37,13 @@ export type NamingPolicy = {
   domainSeparator: string;
 };
 
+export type ExportSettings = {
+  nameDisplayMode: NameDisplayMode;
+  cardDisplayMode: CardDisplayMode;
+  crudOrientation: "processes_rows" | "models_rows";
+  sqlDialect: "mysql" | "postgresql" | "sqlite" | "duckdb" | "bigquery";
+};
+
 export type VocabularyEntry = {
   id: string;
   timestamp?: string;

@@ -2,16 +2,15 @@ import { AlertTriangle, FileArchive, FileCode2, FileJson2, Network, X } from "lu
 import { startTransition, useCallback, useState, type ChangeEvent, type MouseEvent } from "react";
 import { convertProjectToCodegenJSON, exportProjectDrawIO, exportProjectMarkdown, exportProjectSQL, type ExportDiagnostic, type SQLDialect } from "../../export/codegenWasm";
 import { createArtifactZip, downloadBlob } from "../../export/zip";
-import type { CardDisplayMode, CrudMatrixOrientation, NameDisplayMode } from "../../features/modeling/types";
+import type { CardDisplayMode, CrudMatrixOrientation, ExportSettings, NameDisplayMode } from "../../features/modeling/types";
 
 type ExportMode = "diagram" | "document" | "json" | "sql";
 
 type Props = {
   canonicalProjectJSON: string;
   projectName: string;
-  initialNameMode: NameDisplayMode;
-  initialCardDisplayMode: CardDisplayMode;
-  initialCrudOrientation: CrudMatrixOrientation;
+  exportSettings: ExportSettings;
+  onChangeExportSettings: (settings: ExportSettings) => void;
   onClose: () => void;
 };
 
@@ -31,12 +30,12 @@ function presentationOptionClass(selected: boolean) {
   return `btn join-item btn-sm border-slate-300 ${selected ? "btn-neutral text-white" : "bg-white text-slate-700 hover:bg-slate-100"}`;
 }
 
-export function ExportDialog({ canonicalProjectJSON, projectName, initialNameMode, initialCardDisplayMode, initialCrudOrientation, onClose }: Props) {
-  const [mode, setMode] = useState<ExportMode>("document");
-  const [nameMode, setNameMode] = useState<NameDisplayMode>(initialNameMode);
-  const [cardDisplayMode, setCardDisplayMode] = useState<CardDisplayMode>(initialCardDisplayMode);
-  const [crudOrientation, setCrudOrientation] = useState<CrudMatrixOrientation>(initialCrudOrientation);
-  const [selectedDialects, setSelectedDialects] = useState<SQLDialect[]>(["postgresql"]);
+export function ExportDialog({ canonicalProjectJSON, projectName, exportSettings, onChangeExportSettings, onClose }: Props) {
+  const [mode, setMode] = useState<ExportMode>("diagram");
+  const [nameMode, setNameMode] = useState<NameDisplayMode>(exportSettings.nameDisplayMode);
+  const [cardDisplayMode, setCardDisplayMode] = useState<CardDisplayMode>(exportSettings.cardDisplayMode);
+  const [crudOrientation, setCrudOrientation] = useState<CrudMatrixOrientation>(exportSettings.crudOrientation);
+  const [selectedDialect, setSelectedDialect] = useState<SQLDialect>(exportSettings.sqlDialect);
   const [diagnostics, setDiagnostics] = useState<ExportDiagnostic[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -48,10 +47,26 @@ export function ExportDialog({ canonicalProjectJSON, projectName, initialNameMod
     setError(undefined);
   }, []);
 
-  const toggleDialect = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+  const handleDialect = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const dialect = event.currentTarget.dataset.dialect as SQLDialect;
-    setSelectedDialects((current) => current.includes(dialect) ? current.filter((item) => item !== dialect) : [...current, dialect]);
-  }, []);
+    setSelectedDialect(dialect);
+    onChangeExportSettings({ nameDisplayMode: nameMode, cardDisplayMode, crudOrientation, sqlDialect: dialect });
+  }, [cardDisplayMode, crudOrientation, nameMode, onChangeExportSettings]);
+
+  const handleNameMode = useCallback((mode: NameDisplayMode) => {
+    setNameMode(mode);
+    onChangeExportSettings({ nameDisplayMode: mode, cardDisplayMode, crudOrientation, sqlDialect: selectedDialect });
+  }, [cardDisplayMode, crudOrientation, onChangeExportSettings, selectedDialect]);
+
+  const handleCardMode = useCallback((mode: CardDisplayMode) => {
+    setCardDisplayMode(mode);
+    onChangeExportSettings({ nameDisplayMode: nameMode, cardDisplayMode: mode, crudOrientation, sqlDialect: selectedDialect });
+  }, [crudOrientation, nameMode, onChangeExportSettings, selectedDialect]);
+
+  const handleCrudOrientation = useCallback((orientation: CrudMatrixOrientation) => {
+    setCrudOrientation(orientation);
+    onChangeExportSettings({ nameDisplayMode: nameMode, cardDisplayMode, crudOrientation: orientation, sqlDialect: selectedDialect });
+  }, [cardDisplayMode, nameMode, onChangeExportSettings, selectedDialect]);
 
   const handleExport = useCallback(async () => {
     setBusy(true);
@@ -79,7 +94,7 @@ export function ExportDialog({ canonicalProjectJSON, projectName, initialNameMod
         const json = await convertProjectToCodegenJSON(canonicalProjectJSON);
         downloadBlob(new Blob([json], { type: "application/json" }), `${baseName}.codegen.json`);
       } else {
-        const result = await exportProjectSQL(canonicalProjectJSON, { dialects: selectedDialects });
+        const result = await exportProjectSQL(canonicalProjectJSON, { dialects: [selectedDialect] });
         startTransition(() => setDiagnostics(result.diagnostics));
         if (result.diagnostics.some((item) => item.severity === "error")) return;
         if (result.artifacts.length === 1) {
@@ -93,9 +108,9 @@ export function ExportDialog({ canonicalProjectJSON, projectName, initialNameMod
     } finally {
       startTransition(() => setBusy(false));
     }
-  }, [baseName, canonicalProjectJSON, cardDisplayMode, crudOrientation, mode, nameMode, selectedDialects]);
+  }, [baseName, canonicalProjectJSON, cardDisplayMode, crudOrientation, mode, nameMode, selectedDialect]);
 
-  const blocked = mode === "sql" && selectedDialects.length === 0;
+  const blocked = false;
   return (
     <div className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="export-dialog-title">
       <div className="modal-box flex h-[min(560px,calc(100dvh-2rem))] max-w-4xl flex-col overflow-hidden rounded-xl bg-white p-0 shadow-2xl">
@@ -111,10 +126,10 @@ export function ExportDialog({ canonicalProjectJSON, projectName, initialNameMod
             })}
           </nav>
           <section className="min-w-0 flex-1 overflow-y-auto p-6">
-            {mode === "diagram" && <DiagramExportPanel projectName={projectName} nameMode={nameMode} cardDisplayMode={cardDisplayMode} crudOrientation={crudOrientation} onNameMode={setNameMode} onCardDisplayMode={setCardDisplayMode} onCrudOrientation={setCrudOrientation} />}
-            {mode === "document" && <DocumentExportPanel nameMode={nameMode} cardDisplayMode={cardDisplayMode} onNameMode={setNameMode} onCardDisplayMode={setCardDisplayMode} />}
+            {mode === "diagram" && <DiagramExportPanel projectName={projectName} nameMode={nameMode} cardDisplayMode={cardDisplayMode} crudOrientation={crudOrientation} onNameMode={handleNameMode} onCardDisplayMode={handleCardMode} onCrudOrientation={handleCrudOrientation} />}
+            {mode === "document" && <DocumentExportPanel nameMode={nameMode} cardDisplayMode={cardDisplayMode} onNameMode={handleNameMode} onCardDisplayMode={handleCardMode} />}
             {mode === "json" && <div><h3 className="font-bold">Code-generation JSON</h3><p className="mt-1 text-sm text-slate-600">Downloads normalized JSON only. JSON Schema bundle generation is not connected yet.</p></div>}
-            {mode === "sql" && <SQLExportPanel selectedDialects={selectedDialects} onToggleDialect={toggleDialect} />}
+            {mode === "sql" && <SQLExportPanel selectedDialect={selectedDialect} onChangeDialect={handleDialect} />}
             {error && <p className="mt-5 rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>}
             {diagnostics.length > 0 && <ExportDiagnostics diagnostics={diagnostics} />}
           </section>
@@ -147,8 +162,8 @@ function DocumentExportPanel(props: PresentationProps) {
   return <div className="space-y-5"><div><h3 className="font-bold">Markdown document bundle</h3><p className="mt-1 text-sm text-slate-600">Downloads Markdown inventories, ERD/DFD/CRUD SVG files, and the manifest as one ZIP.</p></div><ExportPresentationControls {...props} /></div>;
 }
 
-function SQLExportPanel({ selectedDialects, onToggleDialect }: { selectedDialects: SQLDialect[]; onToggleDialect: (event: ChangeEvent<HTMLInputElement>) => void }) {
-  return <div className="space-y-4"><div><h3 className="font-bold">SQL DDL</h3><p className="mt-1 text-sm text-slate-600">Select one or more database dialects.</p></div><div className="grid gap-2 sm:grid-cols-2">{dialects.map((dialect) => <label key={dialect} className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 p-3"><input type="checkbox" data-dialect={dialect} className="checkbox checkbox-sm" checked={selectedDialects.includes(dialect)} onChange={onToggleDialect} /><span className="font-mono text-sm">{dialect}</span></label>)}</div></div>;
+function SQLExportPanel({ selectedDialect, onChangeDialect }: { selectedDialect: SQLDialect; onChangeDialect: (event: ChangeEvent<HTMLInputElement>) => void }) {
+  return <div className="space-y-4"><div><h3 className="font-bold">SQL DDL</h3><p className="mt-1 text-sm text-slate-600">Select one database dialect.</p></div><div className="grid gap-2 sm:grid-cols-2">{dialects.map((dialect) => <label key={dialect} className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 p-3"><input type="radio" name="sql-dialect" data-dialect={dialect} className="radio radio-sm" checked={selectedDialect === dialect} onChange={onChangeDialect} /><span className="font-mono text-sm">{dialect}</span></label>)}</div></div>;
 }
 
 function ExportDiagnostics({ diagnostics }: { diagnostics: ExportDiagnostic[] }) {

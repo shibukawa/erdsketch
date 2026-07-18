@@ -1,7 +1,7 @@
 import { startTransition, useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { normalizeFlowCrud } from "./features/dfd/dfd";
 import type { CanvasAnnotation, CanvasType, SaveAnnotation } from "./features/annotations/types";
-import type { CanvasModelPlacement, DataDomain, DfdState, DomainCategory, ErdCanvas, NamingPolicy, RefinementResult, Relationship, RelationshipReference, VocabularyEntry } from "./features/modeling/types";
+import type { CanvasModelPlacement, DataDomain, DfdState, DomainCategory, ErdCanvas, ExportSettings, NamingPolicy, RefinementResult, Relationship, RelationshipReference, VocabularyEntry } from "./features/modeling/types";
 import { applyAutomaticMaturityToState, applyDurableOperation, applyEphemeralOperation } from "./collaboration/hostState";
 import { durableState, isDurableOperation, type CollaborationState, type Collaborator, type DurableOperation, type DurableState, type Operation, type RelayJoinResult, type RelayMessage } from "./collaboration/types";
 import { chooseProjectDirectory } from "./persistence/projectDocument";
@@ -38,6 +38,23 @@ function normalizeDfdState(raw: DfdState): DfdState {
   return { canvases: raw.canvases, nodes, groups, flows: (raw.flows ?? []).map((flow) => normalizeFlowCrud(flow, nodes, groups)), crudMatrix: raw.crudMatrix ?? { orientation: "processes_rows", processOrder: [], modelOrder: [] } };
 }
 
+function defaultExportSettings() {
+  return {
+    nameDisplayMode: "business" as const,
+    cardDisplayMode: "description" as const,
+    crudOrientation: "processes_rows" as const,
+    sqlDialect: "postgresql" as const
+  };
+}
+
+function normalizeDurableState<T extends { id: string; x?: number; y?: number }>(state: DurableState<T>): DurableState<T> {
+  return { ...state, exportSettings: state.exportSettings ?? defaultExportSettings(), dfd: state.dfd ?? defaultDfdState() };
+}
+
+function normalizeCollaborationState<T extends { id: string; x?: number; y?: number }>(state: DurableState<T>, users: Collaborator[], locks: Record<string, Collaborator> = {}): CollaborationState<T> {
+  return { ...normalizeDurableState(state), users, locks };
+}
+
 function getIdentity() {
   let clientId = sessionStorage.getItem("erdsketch-client-id");
   if (!clientId) {
@@ -71,6 +88,12 @@ function initialState<T extends { id: string; x?: number; y?: number }>(me: Coll
       fieldJoinMode: "separator", fieldSeparator: "_",
       domainJoinMode: "concatenate", domainSeparator: "_"
     },
+    exportSettings: {
+      nameDisplayMode: "business",
+      cardDisplayMode: "description",
+      crudOrientation: "processes_rows",
+      sqlDialect: "postgresql"
+    },
     vocabularyEntries: [],
     dfd: defaultDfdState(),
     users: [me],
@@ -88,8 +111,8 @@ type CollaborationOptions<T> = {
 
 export function useCollaboration<T extends { id: string; x?: number; y?: number }>(initialSeeds: T[], initialRelationships: Relationship[] = [], initialReferences: RelationshipReference[] = [], initialDomains: DataDomain[] = [], initialDomainCategories: DomainCategory[] = [], options: CollaborationOptions<T> = {}) {
   const [me, setMe] = useState<Collaborator>(getIdentity);
-  const [state, setState] = useState(() => options.initialParticipantRecovery?.checkpoint?.state
-    ? structuredClone(options.initialParticipantRecovery.checkpoint.state)
+  const [state, setState] = useState<CollaborationState<T>>(() => options.initialParticipantRecovery?.checkpoint?.state
+    ? normalizeCollaborationState(structuredClone(options.initialParticipantRecovery.checkpoint.state), [me])
     : initialState(me, initialSeeds, initialRelationships, initialReferences, initialDomains, initialDomainCategories));
   const [connected, setConnected] = useState(false);
   const [isHost, setIsHost] = useState(false);
@@ -134,7 +157,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   }, []);
 
   const installPersistenceSession = useCallback((session: PersistenceSession<T>, users: Collaborator[]) => {
-    const next = applyAutomaticMaturityToState<T>({ ...session.state, users, locks: {} });
+    const next = applyAutomaticMaturityToState<T>(normalizeCollaborationState(session.state, users));
     sequenceRef.current = session.sequence;
     confirmedStateRef.current = next;
     replaceVisibleState(next);
@@ -491,6 +514,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   const saveDomain = useCallback((domain: DataDomain, options: { create?: boolean; delete?: boolean } = {}) => dispatch({ type: "domain", domain, create: options.create ?? false, delete: options.delete ?? false }), [dispatch]);
   const saveDomainCategory = useCallback((category: DomainCategory, create = false) => dispatch({ type: "domain_category", category, create }), [dispatch]);
   const saveNamingPolicy = useCallback((policy: NamingPolicy) => dispatch({ type: "naming_policy", policy }), [dispatch]);
+  const saveExportSettings = useCallback((settings: ExportSettings) => dispatch({ type: "export_settings", settings }), [dispatch]);
   const saveVocabularyEntry = useCallback((entry: VocabularyEntry, options: { create?: boolean; delete?: boolean } = {}) => dispatch({ type: "vocabulary", entry, create: options.create ?? false, delete: options.delete ?? false }), [dispatch]);
   const saveRelationship = useCallback((relationship: Relationship, reference: RelationshipReference, options: { create?: boolean; delete?: boolean } = {}) => dispatch({ type: "relationship", relationship, reference, create: options.create ?? false, delete: options.delete ?? false }), [dispatch]);
   const saveRefinement = useCallback((result: RefinementResult) => dispatch({ type: "refinement", result }), [dispatch]);
@@ -764,6 +788,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     saveDomain,
     saveDomainCategory,
     saveNamingPolicy,
+    saveExportSettings,
     saveVocabularyEntry,
     saveAnnotation,
     setLocalSeeds,

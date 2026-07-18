@@ -10,6 +10,7 @@ import type {
   DfdGroup,
   DfdNode,
   DomainCategory,
+  ExportSettings,
   ErdCanvas,
   ModelSeed,
   NamingPolicy,
@@ -33,6 +34,7 @@ type ProjectManifest = {
   format_version: typeof FORMAT_VERSION;
   project_id: string;
   naming_policy: NamingPolicy;
+  export_settings?: ExportSettings;
 };
 type Ordered<T> = T & { order: number };
 type PersistedRelationship = { relationship: Relationship; reference: RelationshipReference };
@@ -83,7 +85,7 @@ function storageId(value: { id?: string; timestamp?: string }) {
 export function createProjectDocumentSet<T>(projectId: string, state: DurableState<T>): ProjectDocumentSet {
   const project = state as unknown as DurableState<PersistedModel>;
   const documents: Record<string, string> = {};
-  documents["project.yaml"] = yaml({ format_version: FORMAT_VERSION, project_id: projectId, naming_policy: project.namingPolicy } satisfies ProjectManifest);
+  documents["project.yaml"] = yaml({ format_version: FORMAT_VERSION, project_id: projectId, naming_policy: project.namingPolicy, export_settings: project.exportSettings } satisfies ProjectManifest);
 
   const erdDirectories = new Map(project.canvases.map((canvas) => [canvas.id, `erd/erd-${storageId(canvas)}`]));
   const dfdDirectories = new Map(project.dfd.canvases.map((canvas) => [canvas.id, `dfd/dfd-${storageId(canvas)}`]));
@@ -162,6 +164,7 @@ export function readProjectDocumentSet<T>(documentSet: ProjectDocumentSet): Dura
     domains: orderedValues(matching<Ordered<DataDomain>>(documentSet.documents, /^domain\/domain-[^/]+\.yaml$/)),
     domainCategories: orderedValues(matching<Ordered<DomainCategory>>(documentSet.documents, /^domain\/category-[^/]+\.yaml$/)),
     namingPolicy: manifest.naming_policy,
+    exportSettings: manifest.export_settings ?? { nameDisplayMode: "business", cardDisplayMode: "description", crudOrientation: "processes_rows", sqlDialect: "postgresql" },
     vocabularyEntries: orderedValues(matching<Ordered<VocabularyEntry>>(documentSet.documents, /^vocabulary\/vocabulary-[^/]+\.yaml$/)),
     dfd: {
       canvases: orderedValues(matching<Ordered<DfdCanvas>>(documentSet.documents, /^dfd\/[^/]+\/canvas\.yaml$/)),
