@@ -29,6 +29,18 @@ func GenerateSQLJSON(input, optionsJSON []byte) ([]byte, error) {
 	return encodeExportResultJSON(result)
 }
 
+func GenerateDrawIOJSON(input, optionsJSON []byte) ([]byte, error) {
+	options, err := decodeDiagramExportOptions(bytes.NewReader(defaultOptionsJSON(optionsJSON)))
+	if err != nil {
+		return nil, fmt.Errorf("decode draw.io export options: %w", err)
+	}
+	result, err := GenerateDrawIO(input, options)
+	if err != nil {
+		return nil, err
+	}
+	return encodeExportResultJSON(result)
+}
+
 func encodeExportResultJSON(result ExportResult) ([]byte, error) {
 	var output bytes.Buffer
 	if err := writeExportResultJSON(&output, result); err != nil {

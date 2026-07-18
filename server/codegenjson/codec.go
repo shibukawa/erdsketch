@@ -28,6 +28,10 @@ func decodeSQLExportOptions(r io.Reader) (SQLExportOptions, error) {
 	return jsonbind.DecodeJSON[SQLExportOptions](r)
 }
 
+func decodeDiagramExportOptions(r io.Reader) (DiagramExportOptions, error) {
+	return jsonbind.DecodeJSON[DiagramExportOptions](r)
+}
+
 func writeExportResultJSON(w io.Writer, result ExportResult) error {
 	return jsonbind.EncodeJSON[ExportResult](w, result)
 }

@@ -15,6 +15,7 @@ func init() {
 	jsonbind.RegisterEncode[ExchangeDocument](encodeExchangeDocument)
 	jsonbind.RegisterDecode[MarkdownOptions](decodeMarkdownOptionsBytes)
 	jsonbind.RegisterDecode[SQLExportOptions](decodeSQLExportOptionsBytes)
+	jsonbind.RegisterDecode[DiagramExportOptions](decodeDiagramExportOptionsBytes)
 	jsonbind.RegisterEncode[ExportResult](encodeExportResult)
 }
 
@@ -2582,6 +2583,40 @@ func decodeSQLExportOptionsJSON(raw json.RawMessage) (SQLExportOptions, error) {
 			return out, err
 		}
 		out.ModelIDs = v
+	}
+	return out, nil
+}
+
+func decodeDiagramExportOptionsBytes(data []byte) (DiagramExportOptions, error) {
+	return decodeDiagramExportOptionsJSON(json.RawMessage(data))
+}
+
+func decodeDiagramExportOptionsJSON(raw json.RawMessage) (DiagramExportOptions, error) {
+	var out DiagramExportOptions
+	m, err := jsonbind.RawJSONMap(raw)
+	if err != nil {
+		return out, err
+	}
+	if raw, ok := m["nameMode"]; ok {
+		v, err := jsonbind.DecodeJSONString(raw)
+		if err != nil {
+			return out, jsonbind.FieldError("nameMode", "invalid string", err)
+		}
+		out.NameMode = v
+	}
+	if raw, ok := m["modelCardContent"]; ok {
+		v, err := jsonbind.DecodeJSONString(raw)
+		if err != nil {
+			return out, jsonbind.FieldError("modelCardContent", "invalid string", err)
+		}
+		out.ModelCardContent = v
+	}
+	if raw, ok := m["crudOrientation"]; ok {
+		v, err := jsonbind.DecodeJSONString(raw)
+		if err != nil {
+			return out, jsonbind.FieldError("cRUDOrientation", "invalid string", err)
+		}
+		out.CRUDOrientation = v
 	}
 	return out, nil
 }

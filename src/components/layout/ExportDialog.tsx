@@ -1,8 +1,8 @@
 import { AlertTriangle, FileArchive, FileCode2, FileJson2, Network, X } from "lucide-react";
 import { startTransition, useCallback, useState, type ChangeEvent, type MouseEvent } from "react";
-import { convertProjectToCodegenJSON, exportProjectMarkdown, exportProjectSQL, type ExportDiagnostic, type SQLDialect } from "../../export/codegenWasm";
+import { convertProjectToCodegenJSON, exportProjectDrawIO, exportProjectMarkdown, exportProjectSQL, type ExportDiagnostic, type SQLDialect } from "../../export/codegenWasm";
 import { createArtifactZip, downloadBlob } from "../../export/zip";
-import type { CardDisplayMode, NameDisplayMode } from "../../features/modeling/types";
+import type { CardDisplayMode, CrudMatrixOrientation, NameDisplayMode } from "../../features/modeling/types";
 
 type ExportMode = "diagram" | "document" | "json" | "sql";
 
@@ -11,6 +11,7 @@ type Props = {
   projectName: string;
   initialNameMode: NameDisplayMode;
   initialCardDisplayMode: CardDisplayMode;
+  initialCrudOrientation: CrudMatrixOrientation;
   onClose: () => void;
 };
 
@@ -30,10 +31,11 @@ function presentationOptionClass(selected: boolean) {
   return `btn join-item btn-sm border-slate-300 ${selected ? "btn-neutral text-white" : "bg-white text-slate-700 hover:bg-slate-100"}`;
 }
 
-export function ExportDialog({ canonicalProjectJSON, projectName, initialNameMode, initialCardDisplayMode, onClose }: Props) {
+export function ExportDialog({ canonicalProjectJSON, projectName, initialNameMode, initialCardDisplayMode, initialCrudOrientation, onClose }: Props) {
   const [mode, setMode] = useState<ExportMode>("document");
   const [nameMode, setNameMode] = useState<NameDisplayMode>(initialNameMode);
   const [cardDisplayMode, setCardDisplayMode] = useState<CardDisplayMode>(initialCardDisplayMode);
+  const [crudOrientation, setCrudOrientation] = useState<CrudMatrixOrientation>(initialCrudOrientation);
   const [selectedDialects, setSelectedDialects] = useState<SQLDialect[]>(["postgresql"]);
   const [diagnostics, setDiagnostics] = useState<ExportDiagnostic[]>([]);
   const [busy, setBusy] = useState(false);
@@ -41,22 +43,31 @@ export function ExportDialog({ canonicalProjectJSON, projectName, initialNameMod
   const baseName = safeFileName(projectName);
 
   const handleMode = useCallback((event: MouseEvent<HTMLButtonElement>) => {
-    const nextMode = event.currentTarget.dataset.mode as ExportMode;
-    setMode(nextMode);
+    setMode(event.currentTarget.dataset.mode as ExportMode);
     setDiagnostics([]);
     setError(undefined);
   }, []);
+
   const toggleDialect = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const dialect = event.currentTarget.dataset.dialect as SQLDialect;
     setSelectedDialects((current) => current.includes(dialect) ? current.filter((item) => item !== dialect) : [...current, dialect]);
   }, []);
+
   const handleExport = useCallback(async () => {
-    if (mode === "diagram") return;
     setBusy(true);
     setError(undefined);
     setDiagnostics([]);
     try {
-      if (mode === "document") {
+      if (mode === "diagram") {
+        const result = await exportProjectDrawIO(canonicalProjectJSON, {
+          nameMode,
+          modelCardContent: cardDisplayMode === "description" ? "description" : "primary_keys",
+          crudOrientation
+        });
+        const artifact = result.artifacts[0];
+        if (!artifact || result.artifacts.length !== 1) throw new Error("draw.io export did not return one document");
+        downloadBlob(new Blob([artifact.content], { type: artifact.mediaType }), `${baseName}.drawio`);
+      } else if (mode === "document") {
         const result = await exportProjectMarkdown(canonicalProjectJSON, {
           nameMode,
           modelCardContent: cardDisplayMode === "description" ? "description" : "primary_keys",
@@ -71,18 +82,51 @@ export function ExportDialog({ canonicalProjectJSON, projectName, initialNameMod
         const result = await exportProjectSQL(canonicalProjectJSON, { dialects: selectedDialects });
         startTransition(() => setDiagnostics(result.diagnostics));
         if (result.diagnostics.some((item) => item.severity === "error")) return;
-        if (result.artifacts.length === 1) downloadBlob(new Blob([result.artifacts[0].content], { type: result.artifacts[0].mediaType }), `${baseName}-${result.artifacts[0].path}`);
-        else downloadBlob(createArtifactZip(result.artifacts), `${baseName}-sql.zip`);
+        if (result.artifacts.length === 1) {
+          downloadBlob(new Blob([result.artifacts[0].content], { type: result.artifacts[0].mediaType }), `${baseName}-${result.artifacts[0].path}`);
+        } else {
+          downloadBlob(createArtifactZip(result.artifacts), `${baseName}-sql.zip`);
+        }
       }
     } catch (reason) {
       startTransition(() => setError(reason instanceof Error ? reason.message : String(reason)));
     } finally {
       startTransition(() => setBusy(false));
     }
-  }, [baseName, canonicalProjectJSON, cardDisplayMode, mode, nameMode, selectedDialects]);
+  }, [baseName, canonicalProjectJSON, cardDisplayMode, crudOrientation, mode, nameMode, selectedDialects]);
 
-  const blocked = mode === "diagram" || (mode === "sql" && selectedDialects.length === 0);
-  return <div className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="export-dialog-title"><div className="modal-box flex h-[min(460px,calc(100dvh-2rem))] max-w-4xl flex-col overflow-hidden rounded-xl bg-white p-0 shadow-2xl"><header className="flex items-center justify-between border-b border-slate-200 px-6 py-4"><div><p className="text-xs font-bold uppercase tracking-wide text-red-700">Project artifacts</p><h2 id="export-dialog-title" className="text-xl font-bold">Export</h2></div><button type="button" className="btn btn-ghost btn-sm btn-square" onClick={onClose} aria-label="Close export dialog"><X size={18} /></button></header><div className="flex min-h-0 flex-1"><nav className="w-44 shrink-0 border-r border-slate-200 bg-slate-50 p-3" aria-label="Export format">{modes.map((item) => { const Icon = item.icon; return <button key={item.id} type="button" data-mode={item.id} className={`btn mb-1 w-full justify-start gap-2 ${mode === item.id ? "btn-neutral" : "btn-ghost"}`} onClick={handleMode}><Icon size={16} />{item.label}</button>; })}</nav><section className="min-w-0 flex-1 overflow-y-auto p-6">{mode === "diagram" && <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900"><p className="font-bold">Editable draw.io export is not connected yet.</p><p className="mt-2">The shared Go generator must be added before this mode can download artifacts.</p></div>}{mode === "document" && <div className="space-y-5"><div><h3 className="font-bold">Markdown document bundle</h3><p className="mt-1 text-sm text-slate-600">Downloads Markdown inventories, ERD/DFD/CRUD SVG files, and the manifest as one ZIP.</p></div><ExportPresentationControls nameMode={nameMode} cardDisplayMode={cardDisplayMode} onNameMode={setNameMode} onCardDisplayMode={setCardDisplayMode} /></div>}{mode === "json" && <div><h3 className="font-bold">Code-generation JSON</h3><p className="mt-1 text-sm text-slate-600">Downloads normalized JSON only. JSON Schema bundle generation is not connected yet.</p></div>}{mode === "sql" && <div className="space-y-4"><div><h3 className="font-bold">SQL DDL</h3><p className="mt-1 text-sm text-slate-600">Select one or more database dialects.</p></div><div className="grid gap-2 sm:grid-cols-2">{dialects.map((dialect) => <label key={dialect} className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 p-3"><input type="checkbox" data-dialect={dialect} className="checkbox checkbox-sm" checked={selectedDialects.includes(dialect)} onChange={toggleDialect} /><span className="font-mono text-sm">{dialect}</span></label>)}</div></div>}{error && <p className="mt-5 rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>}{diagnostics.length > 0 && <div className="mt-5 space-y-2"><h3 className="flex items-center gap-2 font-bold"><AlertTriangle size={16} />Validation</h3>{diagnostics.map((item, index) => <article key={`${item.code}:${item.sourceId}:${index}`} className={`rounded-lg border p-3 text-sm ${item.severity === "error" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}><p className="font-bold">{item.code}</p><p>{item.message}</p>{item.suggestedFix && <p className="mt-1 text-xs">{item.suggestedFix}</p>}</article>)}</div>}</section></div><footer className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-4"><button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button><button type="button" className="btn btn-error text-white" disabled={busy || blocked} onClick={handleExport}>{busy ? "Generating…" : "Export"}</button></footer></div><button className="modal-backdrop" onClick={onClose} aria-label="Close export dialog" /></div>;
+  const blocked = mode === "sql" && selectedDialects.length === 0;
+  return (
+    <div className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="export-dialog-title">
+      <div className="modal-box flex h-[min(560px,calc(100dvh-2rem))] max-w-4xl flex-col overflow-hidden rounded-xl bg-white p-0 shadow-2xl">
+        <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <div><p className="text-xs font-bold uppercase tracking-wide text-red-700">Project artifacts</p><h2 id="export-dialog-title" className="text-xl font-bold">Export</h2></div>
+          <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={onClose} aria-label="Close export dialog"><X size={18} /></button>
+        </header>
+        <div className="flex min-h-0 flex-1">
+          <nav className="w-44 shrink-0 border-r border-slate-200 bg-slate-50 p-3" aria-label="Export format">
+            {modes.map((item) => {
+              const Icon = item.icon;
+              return <button key={item.id} type="button" data-mode={item.id} className={`btn mb-1 w-full justify-start gap-2 ${mode === item.id ? "btn-neutral" : "btn-ghost"}`} onClick={handleMode}><Icon size={16} />{item.label}</button>;
+            })}
+          </nav>
+          <section className="min-w-0 flex-1 overflow-y-auto p-6">
+            {mode === "diagram" && <DiagramExportPanel projectName={projectName} nameMode={nameMode} cardDisplayMode={cardDisplayMode} crudOrientation={crudOrientation} onNameMode={setNameMode} onCardDisplayMode={setCardDisplayMode} onCrudOrientation={setCrudOrientation} />}
+            {mode === "document" && <DocumentExportPanel nameMode={nameMode} cardDisplayMode={cardDisplayMode} onNameMode={setNameMode} onCardDisplayMode={setCardDisplayMode} />}
+            {mode === "json" && <div><h3 className="font-bold">Code-generation JSON</h3><p className="mt-1 text-sm text-slate-600">Downloads normalized JSON only. JSON Schema bundle generation is not connected yet.</p></div>}
+            {mode === "sql" && <SQLExportPanel selectedDialects={selectedDialects} onToggleDialect={toggleDialect} />}
+            {error && <p className="mt-5 rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>}
+            {diagnostics.length > 0 && <ExportDiagnostics diagnostics={diagnostics} />}
+          </section>
+        </div>
+        <footer className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-4">
+          <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn btn-error text-white" disabled={busy || blocked} onClick={handleExport}>{busy ? "Generating…" : "Export"}</button>
+        </footer>
+      </div>
+      <button className="modal-backdrop" onClick={onClose} aria-label="Close export dialog" />
+    </div>
+  );
 }
 
 type PresentationProps = {
@@ -91,6 +135,25 @@ type PresentationProps = {
   onNameMode: (mode: NameDisplayMode) => void;
   onCardDisplayMode: (mode: CardDisplayMode) => void;
 };
+
+function DiagramExportPanel({ projectName, crudOrientation, onCrudOrientation, ...presentation }: PresentationProps & { projectName: string; crudOrientation: CrudMatrixOrientation; onCrudOrientation: (orientation: CrudMatrixOrientation) => void }) {
+  const handleModelsAsColumns = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    onCrudOrientation(event.currentTarget.checked ? "processes_rows" : "models_rows");
+  }, [onCrudOrientation]);
+  return <div className="space-y-5"><div><h3 className="font-bold">Editable draw.io diagrams</h3><p className="mt-1 text-sm text-slate-600">{`All ERD, DFD, and CRUD diagrams from ${projectName} are exported in one draw.io file. Each diagram opens as a separate sheet.`}</p></div><ExportPresentationControls {...presentation} /><label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4"><input type="checkbox" className="checkbox checkbox-sm mt-0.5" checked={crudOrientation === "processes_rows"} onChange={handleModelsAsColumns} /><span><span className="block text-sm font-bold">Models as CRUD columns</span><span className="mt-1 block text-xs text-slate-600">Turn off to place processes in columns. The current CRUD Matrix orientation is selected initially.</span></span></label><div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900"><p className="font-bold">One file, multiple sheets</p><p className="mt-1">The downloaded .drawio file contains every project diagram.</p></div></div>;
+}
+
+function DocumentExportPanel(props: PresentationProps) {
+  return <div className="space-y-5"><div><h3 className="font-bold">Markdown document bundle</h3><p className="mt-1 text-sm text-slate-600">Downloads Markdown inventories, ERD/DFD/CRUD SVG files, and the manifest as one ZIP.</p></div><ExportPresentationControls {...props} /></div>;
+}
+
+function SQLExportPanel({ selectedDialects, onToggleDialect }: { selectedDialects: SQLDialect[]; onToggleDialect: (event: ChangeEvent<HTMLInputElement>) => void }) {
+  return <div className="space-y-4"><div><h3 className="font-bold">SQL DDL</h3><p className="mt-1 text-sm text-slate-600">Select one or more database dialects.</p></div><div className="grid gap-2 sm:grid-cols-2">{dialects.map((dialect) => <label key={dialect} className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 p-3"><input type="checkbox" data-dialect={dialect} className="checkbox checkbox-sm" checked={selectedDialects.includes(dialect)} onChange={onToggleDialect} /><span className="font-mono text-sm">{dialect}</span></label>)}</div></div>;
+}
+
+function ExportDiagnostics({ diagnostics }: { diagnostics: ExportDiagnostic[] }) {
+  return <div className="mt-5 space-y-2"><h3 className="flex items-center gap-2 font-bold"><AlertTriangle size={16} />Validation</h3>{diagnostics.map((item, index) => <article key={`${item.code}:${item.sourceId}:${index}`} className={`rounded-lg border p-3 text-sm ${item.severity === "error" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}><p className="font-bold">{item.code}</p><p>{item.message}</p>{item.suggestedFix && <p className="mt-1 text-xs">{item.suggestedFix}</p>}</article>)}</div>;
+}
 
 function ExportPresentationControls({ nameMode, cardDisplayMode, onNameMode, onCardDisplayMode }: PresentationProps) {
   const handleNameMode = useCallback((event: MouseEvent<HTMLButtonElement>) => onNameMode(event.currentTarget.dataset.nameMode as NameDisplayMode), [onNameMode]);

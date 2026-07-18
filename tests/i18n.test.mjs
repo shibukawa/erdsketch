@@ -104,6 +104,40 @@ test("workspace start panel terminology is localized", () => {
   assert.equal(translateText("Resume", "ja"), "再開");
 });
 
+test("draw.io export controls and project context are localized", () => {
+  assert.equal(translateText("Editable draw.io diagrams", "ja"), "編集可能な draw.io 図");
+  assert.equal(translateText("Select all", "ja"), "すべて選択");
+  assert.equal(translateText("Primary keys", "ja"), "主キー");
+  assert.equal(
+    translateText("Choose ERD, DFD, and CRUD diagrams from Todo starter. Every shape and connector remains editable.", "ja"),
+    "Todo starter の ERD・DFD・CRUD 図を選択します。すべての図形と接続線を編集できます。"
+  );
+  assert.equal(
+    translateText("All ERD, DFD, and CRUD diagrams from Todo starter are exported in one draw.io file. Each diagram opens as a separate sheet.", "ja"),
+    "Todo starter のすべての ERD・DFD・CRUD 図を1つの draw.io ファイルに出力します。各図は別シートで開きます。"
+  );
+  assert.equal(translateText("One file, multiple sheets", "ja"), "1ファイル、複数シート");
+  assert.equal(translateText("Models as CRUD columns", "ja"), "CRUDの列にモデルを配置");
+  assert.equal(
+    translateText("Turn off to place processes in columns. The current CRUD Matrix orientation is selected initially.", "ja"),
+    "オフにするとプロセスを列に配置します。現在の CRUD マトリクスの向きが初期選択されます。"
+  );
+});
+
+test("document, JSON, and SQL export descriptions are localized", () => {
+  assert.equal(translateText("Markdown document bundle", "ja"), "Markdown ドキュメント一式");
+  assert.equal(
+    translateText("Downloads Markdown inventories, ERD/DFD/CRUD SVG files, and the manifest as one ZIP.", "ja"),
+    "Markdown の一覧、ERD・DFD・CRUD の SVG ファイル、マニフェストを1つの ZIP としてダウンロードします。"
+  );
+  assert.equal(translateText("Code-generation JSON", "ja"), "コード生成用 JSON");
+  assert.equal(
+    translateText("Downloads normalized JSON only. JSON Schema bundle generation is not connected yet.", "ja"),
+    "正規化済み JSON のみをダウンロードします。JSON Schema 一式の生成は未対応です。"
+  );
+  assert.equal(translateText("Select one or more database dialects.", "ja"), "データベース方言を1つ以上選択してください。");
+});
+
 test("capacity inputs, projections, and estimate details are localized", () => {
   assert.equal(translateText("Expected inserts", "ja"), "想定追加件数");
   assert.equal(translateText("Expected net increase", "ja"), "想定純増件数");

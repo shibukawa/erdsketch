@@ -98,8 +98,10 @@ func TestGenerateMarkdownSVGUsesOriginalLayoutAndEscapesXML(t *testing.T) {
 		}
 	}
 	crud := artifacts["diagrams/crud-matrix.svg"].Content
-	if !strings.Contains(crud, ">CR<") || !strings.Contains(crud, "Create order") {
-		t.Fatalf("CRUD SVG is incomplete:\n%s", crud)
+	for _, want := range []string{">C<", "Create order", `width="80.000" height="176.000"`, `transform="rotate(-90 `, `dominant-baseline="middle"`} {
+		if !strings.Contains(crud, want) {
+			t.Fatalf("CRUD SVG missing %q:\n%s", want, crud)
+		}
 	}
 	for _, path := range []string{"diagrams/erd/main.svg", "diagrams/dfd/main.svg", "diagrams/crud-matrix.svg"} {
 		decoder := xml.NewDecoder(strings.NewReader(artifacts[path].Content))
@@ -132,6 +134,77 @@ func TestGenerateMarkdownSVGPreservesGroupedFreehandStrokes(t *testing.T) {
 	erd := artifactsByPath(result.Artifacts)["diagrams/erd/main.svg"].Content
 	if !strings.Contains(erd, `d="M10.000 20.000 L30.000 40.000 M50.000 60.000 L70.000 80.000"`) {
 		t.Fatalf("grouped freehand strokes were not preserved:\n%s", erd)
+	}
+}
+
+func TestGenerateDrawIOBuildsOneDocumentWithEditableERDDFDAndCRUDSheets(t *testing.T) {
+	state := validExportState()
+	delete(state["dfd"].(map[string]any)["flows"].([]any)[0].(map[string]any), "crudAssignments")
+	state["relationships"] = []any{map[string]any{
+		"id": "order-self", "name": "parent", "sourceId": "order", "targetId": "order",
+		"sourceMultiplicity": "1", "targetMultiplicity": "0..*", "direction": "source-to-target", "kind": "association",
+	}}
+	result, err := GenerateDrawIO(canonicalExportFixture(t, state), DiagramExportOptions{NameMode: "physical", ModelCardContent: "primary_keys", CRUDOrientation: "models_rows"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Artifacts) != 1 {
+		t.Fatalf("expected one draw.io artifact, got %#v", result.Artifacts)
+	}
+	artifact := result.Artifacts[0]
+	if artifact.Path != "diagrams.drawio" || artifact.MediaType != drawIOMediaType {
+		t.Fatalf("unexpected artifact metadata: %#v", artifact)
+	}
+	decoder := xml.NewDecoder(strings.NewReader(artifact.Content))
+	for {
+		_, decodeErr := decoder.Token()
+		if decodeErr == io.EOF {
+			break
+		}
+		if decodeErr != nil {
+			t.Fatalf("draw.io output is not valid XML: %v\n%s", decodeErr, artifact.Content)
+		}
+	}
+	for _, sheet := range []string{`name="ERD — Main ERD"`, `name="DFD — Main DFD"`, `name="CRUD matrix"`} {
+		if !strings.Contains(artifact.Content, sheet) {
+			t.Errorf("missing draw.io sheet %s", sheet)
+		}
+	}
+	if strings.Count(artifact.Content, `<diagram `) != 3 {
+		t.Fatalf("expected three sheets in one draw.io file:\n%s", artifact.Content)
+	}
+	if !strings.Contains(artifact.Content, `vertex="1"`) || !strings.Contains(artifact.Content, `edge="1"`) || !strings.Contains(artifact.Content, `orders`) || !strings.Contains(artifact.Content, `order_id`) {
+		t.Fatalf("ERD is not editable or does not use requested names/content:\n%s", artifact.Content)
+	}
+	if !strings.Contains(artifact.Content, `id="group-group-data"`) || !strings.Contains(artifact.Content, `id="flow-create-flow"`) {
+		t.Fatalf("DFD does not preserve groups and flows:\n%s", artifact.Content)
+	}
+	if !strings.Contains(artifact.Content, `html=1`) || !strings.Contains(artifact.Content, `background:#1d4ed8`) || !strings.Contains(artifact.Content, `Create order`) {
+		t.Fatalf("CRUD matrix is incomplete:\n%s", artifact.Content)
+	}
+	if !strings.Contains(artifact.Content, `id="crud-column-0" value="Create order"`) || !strings.Contains(artifact.Content, `horizontal=0`) || !strings.Contains(artifact.Content, `width="80.000" height="176.000"`) {
+		t.Fatalf("CRUD orientation or rotated compact column header is missing:\n%s", artifact.Content)
+	}
+}
+
+func TestCRUDExportUsesTheSameDefaultsAndAllowedOperationsAsTheDialog(t *testing.T) {
+	state := ProjectState{DFD: SourceDFDState{
+		Nodes: []SourceDFDNode{
+			{ID: "process-node", DefinitionID: "process", Kind: "process", Name: "Process"},
+			{ID: "model-node", Kind: "model", ModelID: "model", Name: "Model"},
+		},
+		Flows: []SourceDFDFlow{
+			{ID: "write", SourceID: "process-node", DestinationID: "model-node", CRUDAssignments: []SourceCRUDAssignment{{ProcessUnitID: "process", ModelID: "model", Operations: []string{"U"}}}},
+			{ID: "read", SourceID: "model-node", DestinationID: "process-node"},
+		},
+	}}
+	assignments := crudAssignments(state)
+	if got := assignments["process\x00model"]; got != "RU" {
+		t.Fatalf("expected explicit update plus default read, got %q", got)
+	}
+	label := drawIOCRUDCellLabel(crudAssignmentCells(state)["process\x00model"])
+	if !strings.Contains(label, `background:#1d4ed8`) || !strings.Contains(label, `>R</span>`) || !strings.Contains(label, `>U</span>`) || !strings.Contains(label, `background:#ffffff`) {
+		t.Fatalf("draw.io CRUD cell does not expose allowed and selected operations: %s", label)
 	}
 }
 
