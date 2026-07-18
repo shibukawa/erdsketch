@@ -273,7 +273,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
             title={lockedByMe ? "Click to unlock" : `Locked by ${owner.name}`}
           >
             <Lock size={11} />
-            {lockedByMe ? "You" : owner.name}
+            {lockedByMe ? "You" : <span data-i18n-skip>{owner.name}</span>}
           </button>
         )}
         <div className="flex items-start gap-3">
@@ -308,7 +308,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
         </div>
 
         <div key={displayMode} className="model-card-content relative mt-1.5" style={{ height: displayMode === "key-fields" ? summaryBodyHeight : 64 }}>
-          {remoteEditor && <span className="pointer-events-none absolute -top-7 right-0 z-20 flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold text-white shadow" style={{ backgroundColor: remoteEditor.color }}><Pencil className="cowork-pencil" size={11} />{remoteEditor.name} editing</span>}
+          {remoteEditor && <span className="pointer-events-none absolute -top-7 right-0 z-20 flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold text-white shadow" style={{ backgroundColor: remoteEditor.color }}><Pencil className="cowork-pencil" size={11} /><span data-i18n-skip>{remoteEditor.name}</span> editing</span>}
           {displayMode === "description" ? (
             <textarea
               data-no-drag="true"
@@ -332,7 +332,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
                   {primaryKeySummary && (
                     <li className="flex min-w-0 items-center gap-1.5 font-mono text-xs text-slate-700">
                       <KeyRound size={12} className="shrink-0 text-violet-700" aria-label="Primary key" />
-                      <span className="font-semibold">{primaryKeySummary}</span>
+                      <span data-i18n-skip className="font-semibold">{primaryKeySummary}</span>
                     </li>
                   )}
                   {favoriteFields.map((field) => (
@@ -344,13 +344,13 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
                   {partitionKeyFields.map((field) => (
                     <li key={`${field.fieldId}:${field.componentId ?? "scalar"}`} className="flex min-w-0 items-center gap-1.5 rounded bg-cyan-50 px-1 font-mono text-xs text-cyan-900">
                       <Columns3 size={12} className="shrink-0 text-cyan-700" aria-label="Partition key" />
-                      <span className="font-semibold">{field.name}</span>
+                      <span data-i18n-skip className="font-semibold">{field.name}</span>
                     </li>
                   ))}
                   {visibleRelationshipReferences.map(({ relationship }) => (
                     <li key={relationship.id} className="flex min-w-0 items-center gap-1.5 rounded bg-blue-50 px-1 font-mono text-xs text-blue-900">
                       <Link2 size={12} className="shrink-0 text-blue-700" aria-label="Relationship reference" />
-                      <span className="truncate font-semibold">{relationship.name}</span>
+                      <span data-i18n-skip className="truncate font-semibold">{relationship.name}</span>
                     </li>
                   ))}
                 </ul>

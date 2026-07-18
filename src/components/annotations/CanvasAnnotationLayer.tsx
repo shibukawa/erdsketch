@@ -27,7 +27,7 @@ function selectionStroke(annotation: CanvasAnnotation, controller: CanvasAnnotat
 }
 
 function RemoteEditingBadge({ editor, className }: { editor: Collaborator; className: string }) {
-  return <span className={`pointer-events-none flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold text-white ${className}`} style={{ background: editor.color }}><Pencil className="cowork-pencil" size={11} />{editor.name} editing</span>;
+  return <span className={`pointer-events-none flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold text-white ${className}`} style={{ background: editor.color }}><Pencil className="cowork-pencil" size={11} /><span data-i18n-skip>{editor.name}</span> editing</span>;
 }
 
 function useAnnotationTextDraft(annotation: CanvasAnnotation, controller: CanvasAnnotationController, me: Collaborator, remoteEditor?: Collaborator) {

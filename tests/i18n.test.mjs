@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { dependencyLabels } from "../src/features/modeling/constants.ts";
 import { getModelStageLabel } from "../src/features/modeling/utils.ts";
@@ -14,8 +15,39 @@ test("known interface text switches between Japanese and English", () => {
   assert.equal(translateText("Delete selected stroke", "ja"), "選択したストロークを削除");
 });
 
+test("AI assistant controls are localized", () => {
+  assert.equal(translateText("AI assistant", "ja"), "AIアシスタント");
+  assert.equal(translateText("Ask AI about this canvas", "ja"), "このキャンバスについてAIに質問");
+  assert.equal(translateText("Local OpenAI-compatible server", "ja"), "ローカルOpenAI互換サーバー");
+  assert.equal(translateText("Server URL", "ja"), "サーバーURL");
+  assert.equal(translateText("Test connection to load models", "ja"), "接続確認でモデルを取得");
+  assert.equal(translateText("Connected. Models loaded.", "ja"), "接続しました。モデル一覧を取得しました。");
+  assert.equal(translateText("Project context is sent only when you press Send.", "ja"), "プロジェクト情報は送信ボタンを押したときだけ送られます。");
+});
+
 test("unknown interface text falls back to its English source", () => {
   assert.equal(translateText("Future untranslated control", "ja"), "Future untranslated control");
+});
+
+test("authored content that collides with interface terms has explicit localization boundaries", async () => {
+  assert.equal(translateText("Display", "ja"), "表示");
+  assert.equal(translateText("Name", "ja"), "名前");
+  const boundaries = [
+    ["../src/components/diagram/SeedInspector.tsx", /data-i18n-skip[^>]*>\{seed\.title\}/],
+    ["../src/components/diagram/MaturityValidation.tsx", /data-i18n-skip[^>]*>\{issue\.label\}/],
+    ["../src/components/diagram/VocabularyDisplayName.tsx", /data-i18n-skip/],
+    ["../src/components/dfd/DfdNodeCard.tsx", /data-i18n-skip[^>]*>\{title\}/],
+    ["../src/components/layout/WorkspaceProjectNavigation.tsx", /data-i18n-skip[^>]*>\{canvasName\}/],
+    ["../src/components/layout/ProjectCanvasSelectorDialog.tsx", /data-i18n-skip[^>]*>\{canvas\.name\}/],
+    ["../src/components/collaboration/CoworkParticipantSummary.tsx", /data-i18n-skip[^>]*>\{user\.name\}/],
+    ["../src/components/ai/AiChatWindow.tsx", /data-i18n-skip[^>]*>\{message\.text\}/]
+  ];
+  for (const [path, pattern] of boundaries) {
+    const source = await readFile(new URL(path, import.meta.url), "utf8");
+    assert.match(source, pattern, path);
+  }
+  const provider = await readFile(new URL("../src/i18n/I18nProvider.tsx", import.meta.url), "utf8");
+  assert.match(provider, /root\.parentElement\?\.closest\("\[data-i18n-skip\]"\)/);
 });
 
 test("dynamic accessibility text preserves its runtime value", () => {
@@ -67,6 +99,9 @@ test("privacy terminology is presented as personal information in Japanese", () 
 });
 
 test("dictionary, navigation, and DFD terminology are localized", () => {
+  assert.equal(translateText("Business", "ja"), "ビジネス名");
+  assert.equal(translateText("Show business names", "ja"), "ビジネス名を表示");
+  assert.equal(translateText("Type business name and press Enter", "ja"), "ビジネス名を入力して Enter");
   assert.equal(translateText("ERD Sketch", "ja"), "ER図");
   assert.equal(translateText("Data Flow", "ja"), "データフロー図");
   assert.equal(translateText("External entity", "ja"), "外部エンティティ");

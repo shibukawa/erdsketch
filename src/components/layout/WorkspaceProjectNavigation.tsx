@@ -32,7 +32,7 @@ export function WorkspaceProjectNavigation({ isHost, recoveryReady, persistentSt
     >
       <span className={`h-2 w-2 shrink-0 rounded-full ${statusColor}`} aria-label={status} />
       <Files size={20} className="shrink-0" />
-      <span className="min-w-0 flex-1"><span className="block text-[10px] font-bold uppercase tracking-wide text-slate-500">Project</span><span className="block truncate font-bold">{activeProject?.displayName ?? "Projects"}</span></span>
+      <span className="min-w-0 flex-1"><span className="block text-[10px] font-bold uppercase tracking-wide text-slate-500">Project</span><span data-i18n-skip={activeProject ? true : undefined} className="block truncate font-bold">{activeProject?.displayName ?? "Projects"}</span></span>
       {activeProject?.kind === "temporary" && <span className="badge badge-ghost badge-xs">Temp</span>}
       <ChevronDown size={16} className="shrink-0 text-slate-400" />
     </button>
@@ -43,7 +43,7 @@ export function WorkspaceProjectNavigation({ isHost, recoveryReady, persistentSt
       aria-label={`Select canvas, current canvas: ${canvasName}`}
     >
       <Layers3 size={20} className="shrink-0" />
-      <span className="min-w-0 flex-1"><span className="block text-[10px] font-bold uppercase tracking-wide text-slate-500">Canvas</span><span className="block truncate font-bold">{canvasName}</span></span>
+      <span className="min-w-0 flex-1"><span className="block text-[10px] font-bold uppercase tracking-wide text-slate-500">Canvas</span><span data-i18n-skip className="block truncate font-bold">{canvasName}</span></span>
       <ChevronDown size={16} className="shrink-0 text-slate-400" />
     </button>
   </div>;

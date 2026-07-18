@@ -29,6 +29,7 @@ export function RelationshipLink({ relationship, seeds, onEdit }: RelationshipLi
       </span></>}
       <button
         type="button"
+        data-i18n-skip
         data-no-pan="true"
         className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 border-0 bg-transparent px-1 py-0.5 text-[11px] font-semibold text-slate-950 transition hover:text-blue-700"
         style={{ left: geometry.namePosition.x, top: geometry.namePosition.y, fontSize: 11, fontWeight: 600, lineHeight: 1, WebkitTextStroke: "4px white", paintOrder: "stroke fill" }}

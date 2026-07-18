@@ -43,6 +43,7 @@ function localizeElement(element: Element, locale: Locale) {
 
 function localizeTree(root: Node, locale: Locale) {
   if (root.nodeType === Node.TEXT_NODE) {
+    if (root.parentElement?.closest("[data-i18n-skip]")) return;
     localizeTextNode(root as Text, locale);
     return;
   }

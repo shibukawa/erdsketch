@@ -106,12 +106,12 @@ export function RelationshipEditorDialog({ relationship, source, target, canDele
             </label>
           </div>
           {draft.kind === "inherit" && <p className="rounded-lg bg-violet-50 px-3 py-2 text-xs text-violet-900">The source is the child and the target is the parent. SQL export copies every effective parent field into the child table.</p>}
-          {draft.kind === "composition" && <p className="rounded-lg bg-slate-100 px-3 py-2 text-xs leading-5 text-slate-800"><strong>{source?.title ?? "Source"}</strong> is the owner and <strong>{target?.title ?? "Target"}</strong> is its child. The name becomes the owner field. Relational projection uses ON DELETE CASCADE; document and search projections embed the child under that field.</p>}
+          {draft.kind === "composition" && <p className="rounded-lg bg-slate-100 px-3 py-2 text-xs leading-5 text-slate-800"><strong data-i18n-skip={Boolean(source)}>{source?.title ?? "Source"}</strong> is the owner and <strong data-i18n-skip={Boolean(target)}>{target?.title ?? "Target"}</strong> is its child. The name becomes the owner field. Relational projection uses ON DELETE CASCADE; document and search projections embed the child under that field.</p>}
           {draft.kind === "foreign-key" && <label className="block"><span className="text-sm font-bold text-slate-700">ON DELETE</span><select className="select select-bordered mt-2 w-full" value={draft.onDelete ?? "no_action"} onChange={handleOnDeleteChange}><option value="no_action">NO ACTION</option><option value="restrict">RESTRICT</option><option value="cascade">CASCADE</option><option value="set_null">SET NULL</option></select>{draft.onDelete === "set_null" && !relationshipForeignKeyNullable(draft) && <span className="mt-1 block text-xs font-semibold text-red-700">SET NULL requires an optional referenced endpoint.</span>}</label>}
           {draft.kind === "composition" && <label className="block"><span className="text-sm font-bold text-slate-700">ON DELETE</span><input className="input input-bordered mt-2 w-full bg-slate-100 font-mono" value="CASCADE" readOnly aria-label="Composition deletion action" /></label>}
           {draft.kind !== "label" && <><div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
             <label className="block">
-              <span className="block truncate text-sm font-bold text-slate-700">{source?.title ?? "Source"}{draft.kind === "composition" ? " (owner)" : ""}</span>
+              <span className="block truncate text-sm font-bold text-slate-700"><span data-i18n-skip={Boolean(source)}>{source?.title ?? "Source"}</span>{draft.kind === "composition" ? " (owner)" : ""}</span>
               <select className="select select-bordered mt-2 w-full" value={draft.sourceMultiplicity} onChange={handleSourceMultiplicity}>
                 {multiplicities.map((value) => <option key={value} value={value}>{value}</option>)}
               </select>
@@ -120,7 +120,7 @@ export function RelationshipEditorDialog({ relationship, source, target, canDele
               <ArrowLeftRight size={17} />
             </button>
             <label className="block">
-              <span className="block truncate text-sm font-bold text-slate-700">{target?.title ?? "Target"}{draft.kind === "composition" ? " (child)" : ""}</span>
+              <span className="block truncate text-sm font-bold text-slate-700"><span data-i18n-skip={Boolean(target)}>{target?.title ?? "Target"}</span>{draft.kind === "composition" ? " (child)" : ""}</span>
               <select className="select select-bordered mt-2 w-full" value={draft.targetMultiplicity} onChange={handleTargetMultiplicity}>
                 {multiplicities.map((value) => <option key={value} value={value}>{value}</option>)}
               </select>
@@ -130,16 +130,16 @@ export function RelationshipEditorDialog({ relationship, source, target, canDele
             <legend className="text-sm font-bold text-slate-700">Arrow direction</legend>
             <div className="mt-2 grid grid-cols-2 gap-2">
               <button type="button" className={`btn btn-sm ${draft.direction === "source-to-target" ? "btn-primary" : "btn-outline"}`} onClick={handleSourceToTarget}>
-                {source?.title ?? "Source"} → {target?.title ?? "Target"}
+                <span data-i18n-skip={Boolean(source)}>{source?.title ?? "Source"}</span> → <span data-i18n-skip={Boolean(target)}>{target?.title ?? "Target"}</span>
               </button>
               <button type="button" className={`btn btn-sm ${draft.direction === "target-to-source" ? "btn-primary" : "btn-outline"}`} onClick={handleTargetToSource}>
-                {target?.title ?? "Target"} → {source?.title ?? "Source"}
+                <span data-i18n-skip={Boolean(target)}>{target?.title ?? "Target"}</span> → <span data-i18n-skip={Boolean(source)}>{source?.title ?? "Source"}</span>
               </button>
             </div>
           </fieldset></>}
           <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
             <Link2 size={13} className="mr-1 inline" />
-            {draft.kind === "label" ? "A label relationship displays only its name; multiplicity and reading direction are not shown." : draft.kind === "composition" ? <>The filled diamond stays on {source?.title ?? "Source"}, independently of the reading arrow. The field is named <strong>{draft.name.trim() || "(name required)"}</strong>.</> : <>The arrow reads {draft.direction === "source-to-target" ? `${source?.title ?? "Source"} → ${target?.title ?? "Target"}` : `${target?.title ?? "Target"} → ${source?.title ?? "Source"}`}. This remains a relationship entity; SQL projection is deferred to export.</>}
+            {draft.kind === "label" ? "A label relationship displays only its name; multiplicity and reading direction are not shown." : draft.kind === "composition" ? <>The filled diamond stays on <span data-i18n-skip={Boolean(source)}>{source?.title ?? "Source"}</span>, independently of the reading arrow. The field is named <strong data-i18n-skip={Boolean(draft.name.trim())}>{draft.name.trim() || "(name required)"}</strong>.</> : <>The arrow reads <span data-i18n-skip>{draft.direction === "source-to-target" ? `${source?.title ?? "Source"} → ${target?.title ?? "Target"}` : `${target?.title ?? "Target"} → ${source?.title ?? "Source"}`}</span>. This remains a relationship entity; SQL projection is deferred to export.</>}
           </p>
         </div>
         <footer className="flex items-center justify-between border-t border-slate-200 px-5 py-4">
