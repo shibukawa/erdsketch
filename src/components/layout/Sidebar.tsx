@@ -125,7 +125,7 @@ export function Sidebar({
         <button data-tour="erd-vocabulary" type="button" className="btn btn-outline mb-2 w-full justify-start gap-2" onClick={handleOpenVocabulary}>
           <Languages size={17} />Vocabulary
         </button>
-        <button type="button" className="btn btn-outline w-full justify-start gap-2" onClick={handleOpenDomainDictionary}>
+        <button data-tour="erd-domains" type="button" className="btn btn-outline w-full justify-start gap-2" onClick={handleOpenDomainDictionary}>
           <BookOpen size={17} />Domain dictionary
         </button>
       </div>

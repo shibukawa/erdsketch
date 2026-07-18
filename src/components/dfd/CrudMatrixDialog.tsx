@@ -4,6 +4,8 @@ import type { CrudMatrixOrientation, CrudOperation, DataDomain, DfdCrudMatrix, D
 import { crudAssignmentSpecs, normalizeFlowCrud, processUnits } from "../../features/dfd/dfd";
 import { calculateCrudHeatmap, crudHeatmapColor, type CrudHeatmapBasis, type CrudHeatmapMetric } from "../../features/dfd/crudHeatmap";
 import { formatBytes } from "../../features/modeling/capacity";
+import { GuidedTourButton } from "../guidedTour/GuidedTourButton";
+import { GuidedTourTrigger } from "../guidedTour/GuidedTourTrigger";
 
 type Props = {
   dfd: DfdState;
@@ -156,11 +158,12 @@ export function CrudMatrixDialog({ dfd, models, domains, onChange, onClose }: Pr
   const rowAxis: Axis = matrix.orientation === "processes_rows" ? "process" : "model";
   const columnAxis: Axis = matrix.orientation === "processes_rows" ? "model" : "process";
 
-  return <div className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="crud-matrix-title">
+  return <div data-tour="crud-dialog" className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="crud-matrix-title">
+    <GuidedTourTrigger tour="crud" />
     <div className="modal-box flex h-[min(92vh,980px)] max-w-[min(96vw,1400px)] flex-col rounded-xl bg-white p-0">
       <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
         <div><p className="text-xs font-bold uppercase tracking-wide text-blue-700">Database design specification</p><h2 id="crud-matrix-title" className="text-xl font-bold">CRUD Matrix</h2><p className="text-xs text-slate-500">All project processes and models. Drag headers to reorder.</p></div>
-        <div className="flex items-center gap-2"><button type="button" className="btn btn-outline btn-sm gap-2" onClick={handleSwap}><Repeat2 size={15} />Swap axes</button><button type="button" className="btn btn-primary btn-sm gap-2" onClick={handleExport}><Download size={15} />CSV report</button><button type="button" className="btn btn-ghost btn-sm btn-square" onClick={onClose} aria-label="Close CRUD Matrix"><X size={18} /></button></div>
+        <div className="flex items-center gap-2"><button type="button" className="btn btn-outline btn-sm gap-2" onClick={handleSwap}><Repeat2 size={15} />Swap axes</button><button type="button" className="btn btn-primary btn-sm gap-2" onClick={handleExport}><Download size={15} />CSV report</button><GuidedTourButton tour="crud" label="CRUD Matrix" compact /><button type="button" className="btn btn-ghost btn-sm btn-square" onClick={onClose} aria-label="Close CRUD Matrix"><X size={18} /></button></div>
       </header>
       <section className="shrink-0 space-y-3 border-b border-slate-200 bg-slate-50 px-5 py-3" aria-label="CRUD heatmap controls">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
@@ -175,7 +178,7 @@ export function CrudMatrixDialog({ dfd, models, domains, onChange, onClose }: Pr
         </div>
         <p className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-950" role="note"><TriangleAlert className="mt-0.5 shrink-0" size={15} /><span>Heatmap values are only rough indications of SELECT query cost. Actual cost can differ substantially depending on index access, WHERE-clause selectivity, and multi-table join order or loop strategy.</span></p>
       </section>
-      <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-5">
+      <div data-tour="crud-matrix" className="min-h-0 flex-1 overflow-auto overscroll-contain p-5">
         <table className="table table-sm !w-max border-separate border-spacing-0">
           <thead><tr><th className="sticky left-0 top-0 z-30 w-52 min-w-52 max-w-52 border border-slate-200 bg-slate-100">{matrix.orientation === "processes_rows" ? "Process / Model" : "Model / Process"}</th>{columns.map((column) => {
             const metric = columnAxis === "model" ? heatmap.models.get(column.id) : heatmap.processes.get(column.id);

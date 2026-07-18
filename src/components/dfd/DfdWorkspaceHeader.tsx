@@ -31,7 +31,7 @@ export function DfdWorkspaceHeader({ me, users, connected, canvasName, isHost, r
       <GuidedTourButton tour="dfd" label="DFD" />
       <CoworkParticipantSummary me={me} users={users} connected={connected} isHost={isHost} onOpenCowork={onShareWork} iconSize={15} />
       <span className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-amber-500"}`} title={connected ? "Connected" : "Connecting"} />
-      <span className="btn btn-ghost btn-sm pointer-events-none"><span className="h-3 w-3 rounded-full" style={{ backgroundColor: me.color }} />{me.name}</span>
+      <span data-tour="collaborator-name" className="btn btn-ghost btn-sm pointer-events-none"><span className="h-3 w-3 rounded-full" style={{ backgroundColor: me.color }} />{me.name}</span>
       <button type="button" className="btn btn-error btn-sm gap-2 text-white" onClick={onOpenExport}><FileOutput size={15} />Export</button>
     </div>
   </header>;

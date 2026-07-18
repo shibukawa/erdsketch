@@ -4,6 +4,8 @@ import type { ShareAccess, WebRtcSharingController } from "../../collaboration/w
 import { defaultIceServerProfile, validateIceServerProfile, type IceServerProfile } from "../../collaboration/webrtc/ice";
 import { IceServerFields } from "./IceServerFields";
 import { copyShareText, shareUrl } from "./shareActions";
+import { GuidedTourButton } from "../guidedTour/GuidedTourButton";
+import { GuidedTourTrigger } from "../guidedTour/GuidedTourTrigger";
 
 type ShareWorkDialogProps = {
   sharing: WebRtcSharingController;
@@ -58,16 +60,17 @@ export function ShareWorkDialog({ sharing }: ShareWorkDialogProps) {
   }, [sharing.invitationUrl]);
 
   if (!sharing.hostDialogOpen) return null;
-  return <div className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="share-work-title">
+  return <div data-tour="collaboration-dialog" className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="share-work-title">
+    <GuidedTourTrigger tour="collaboration" />
     <div className="modal-box flex h-[min(82vh,640px)] max-w-2xl flex-col rounded-xl bg-white p-0">
       <header className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
         <div><p className="text-xs font-bold uppercase tracking-wide text-blue-700">Peer-to-peer collaboration</p><h2 id="share-work-title" className="text-xl font-bold">{invitationStep ? "Share invitation" : "Create invitation"}</h2><p className="mt-1 text-sm text-slate-500">{invitationStep ? "Send this invitation to one collaborator." : "Choose how the collaborator can connect."}</p></div>
-        <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={sharing.closeHostDialog} aria-label="Close Co-work"><X size={18} /></button>
+        <div className="flex items-center gap-1"><GuidedTourButton tour="collaboration" label="Co-work" compact /><button type="button" className="btn btn-ghost btn-sm btn-square" onClick={sharing.closeHostDialog} aria-label="Close Co-work"><X size={18} /></button></div>
       </header>
       <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-3 text-xs font-semibold" aria-label={`Step ${invitationStep ? 2 : 1} of 2`}>
         <span className={invitationStep ? "text-slate-400" : "text-blue-700"}>1. Connection</span><span className="h-px flex-1 bg-slate-200" /><span className={invitationStep ? "text-blue-700" : "text-slate-400"}>2. Invitation</span>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-6">
+      <div data-tour="collaboration-connection" className="min-h-0 flex-1 overflow-y-auto p-6">
         {!invitationStep && <div className="space-y-5">
           <label className="form-control w-full"><span className="label-text mb-1 text-sm font-semibold">Invitation label <span className="font-normal text-slate-400">(optional)</span></span><input className="input input-bordered w-full" value={invitationLabel} onChange={handleInvitationLabelChange} placeholder="Model, project, or your name" aria-describedby="invitation-label-count" /><span id="invitation-label-count" className="mt-1 text-right text-xs text-slate-400">{[...invitationLabel].length}/30</span></label>
           <label className="form-control w-full"><span className="label-text mb-1 text-sm font-semibold">Access</span><select className="select select-bordered w-full" value={access} onChange={handleAccessChange}><option value="edit">Can edit</option><option value="readonly">View only</option></select></label>
