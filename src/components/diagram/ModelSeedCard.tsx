@@ -56,6 +56,10 @@ function FieldDomainDisplay({ domainId, nameDisplayMode, domains, vocabularyCach
     : null;
 }
 
+function hasFieldDomainDisplay(domainId: string | undefined, nameDisplayMode: NameDisplayMode, domains: DataDomain[]) {
+  return nameDisplayMode === "physical" || domains.some((domain) => domain.id === domainId);
+}
+
 export function ModelSeedCard({ seed, width, descriptionHeight, selected, relationshipDropTarget, displayMode, nameDisplayMode, vocabularyCache, owner, me, accessMode, onPointerDown, onUpdate, onEditingChange, remoteEditor, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, domains, domainCategories, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, seeds, onApplyRefinement }: ModelSeedCardProps) {
   const { locale } = useI18n();
   const meta = roleMeta[seed.role];
@@ -336,21 +340,21 @@ export function ModelSeedCard({ seed, width, descriptionHeight, selected, relati
                   {primaryKeyFields.map((field) => (
                     <li key={field.id} className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_minmax(80px,42%)] items-center gap-1.5 font-mono text-xs text-slate-700">
                       <KeyRound size={12} className="shrink-0 text-violet-700" aria-label="Primary key" />
-                      <span className="truncate font-semibold"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`field:${seed.id}:${field.id}`} legacyName={getFieldEffectiveName(field, domains, nameDisplayMode)} names={field.names} mode={nameDisplayMode} /></span>
+                      <span className={`truncate font-semibold ${hasFieldDomainDisplay(field.domainId, nameDisplayMode, domains) ? "" : "col-span-2"}`}><VocabularyDisplayName cache={vocabularyCache} cacheKey={`field:${seed.id}:${field.id}`} legacyName={getFieldEffectiveName(field, domains, nameDisplayMode)} names={field.names} mode={nameDisplayMode} /></span>
                       <FieldDomainDisplay domainId={field.domainId} nameDisplayMode={nameDisplayMode} domains={domains} vocabularyCache={vocabularyCache} />
                     </li>
                   ))}
                   {favoriteFields.map((field) => (
                     <li key={field.id} className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_minmax(80px,42%)] items-center gap-1.5 font-mono text-xs text-slate-700">
                       <Star size={12} className="shrink-0 fill-amber-400 text-amber-600" aria-label="Important" />
-                      <span className="truncate font-semibold"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`field:${seed.id}:${field.id}`} legacyName={getFieldEffectiveName(field, domains, nameDisplayMode)} names={field.names} mode={nameDisplayMode} /></span>
+                      <span className={`truncate font-semibold ${hasFieldDomainDisplay(field.domainId, nameDisplayMode, domains) ? "" : "col-span-2"}`}><VocabularyDisplayName cache={vocabularyCache} cacheKey={`field:${seed.id}:${field.id}`} legacyName={getFieldEffectiveName(field, domains, nameDisplayMode)} names={field.names} mode={nameDisplayMode} /></span>
                       <FieldDomainDisplay domainId={field.domainId} nameDisplayMode={nameDisplayMode} domains={domains} vocabularyCache={vocabularyCache} />
                     </li>
                   ))}
                   {partitionKeyFields.map((field) => (
                     <li key={`${field.fieldId}:${field.componentId ?? "scalar"}`} className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_minmax(80px,42%)] items-center gap-1.5 rounded bg-cyan-50 px-1 font-mono text-xs text-cyan-900">
                       <Columns3 size={12} className="shrink-0 text-cyan-700" aria-label="Partition key" />
-                      <span data-i18n-skip className="truncate font-semibold">{field.name}</span>
+                      <span data-i18n-skip className={`truncate font-semibold ${hasFieldDomainDisplay(field.domainId, nameDisplayMode, domains) ? "" : "col-span-2"}`}>{field.name}</span>
                       <FieldDomainDisplay domainId={field.domainId} nameDisplayMode={nameDisplayMode} domains={domains} vocabularyCache={vocabularyCache} />
                     </li>
                   ))}
