@@ -857,7 +857,7 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
       window.alert("The term conflicts with an earlier business name or alias, or is invalid. Earlier definitions take priority.");
       return false;
     }
-    setLocalVocabularyEntries((current) => [...current, entry]);
+    setLocalVocabularyEntries((current) => current.some((item) => item.id === entry.id) ? current : [...current, entry]);
     return true;
   }, [saveVocabularyEntry, setLocalVocabularyEntries]);
 

@@ -161,7 +161,7 @@ export function buildRefinement(input: RefinementInput, context: RefinementConte
     history.dependency = "dependent";
     if (input.historyStorage !== "source") removeSelected();
     if (input.historyStorage === "current") addSeed(input.currentModelName || `${source.title} Current`, selected).dependency = "dependent";
-    addRelationship(relationship(idFactory(), "history", history.id, source.id, "0..*", "1", input.historyStorage === "source" ? "label" : "foreign-key"));
+    addRelationship(relationship(idFactory(), "history", source.id, history.id, "1", "1..*", "foreign-key"));
     if (input.historyStorage === "source") copySelectedRelationships(history.id, true); else moveSelectedRelationships(history.id);
     summary.push(`Create history model ${history.title}`, input.temporalMode === "range" ? "Use the range end as the temporal key" : `Use ${input.temporalMode} as the temporal key`);
   } else {

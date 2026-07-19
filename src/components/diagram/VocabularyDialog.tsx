@@ -1,5 +1,5 @@
 import { Settings, X } from "lucide-react";
-import { startTransition, useEffect, useState, type ChangeEvent, type FocusEvent, type KeyboardEvent, type MouseEvent } from "react";
+import { startTransition, useEffect, useRef, useState, type ChangeEvent, type FocusEvent, type KeyboardEvent, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { suggestVocabularyNames, type VocabularySuggestion } from "../../features/modeling/browserAi";
 import type { DataDomain, ModelSeed, NamingPolicy, VocabularyBinding, VocabularyEntry } from "../../features/modeling/types";
@@ -36,7 +36,7 @@ export function VocabularyDialog({ seeds, domains, entries, cache, indexing, nam
   const [tab, setTab] = useState<"words" | "usage">(focusedMatch ? "usage" : "words");
   const [query, setQuery] = useState("");
   const [quickEntry, setQuickEntry] = useState("");
-  const [creating, setCreating] = useState(false);
+  const [quickEntryPending, setQuickEntryPending] = useState(false);
   const [bulkEditing, setBulkEditing] = useState(false);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [usageScope, setUsageScope] = useState<"tables" | "domains">(focusedMatch?.target === "domain" ? "domains" : "tables");
@@ -46,6 +46,8 @@ export function VocabularyDialog({ seeds, domains, entries, cache, indexing, nam
   const [autofillPending, setAutofillPending] = useState<VocabularyAutofillTarget | null>(null);
   const [registrationMatch, setRegistrationMatch] = useState<VocabularyMatch | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const quickEntryPendingRef = useRef(false);
+  const quickEntryInputRef = useRef<HTMLInputElement>(null);
   const selectedEntry = entries.find((entry) => entry.id === selectedEntryId);
   const usageMatches = [...cache.matches.values()].filter((match) => usageScope === "domains" ? match.target === "domain" : match.ownerId === selectedTableId);
 
@@ -65,19 +67,24 @@ export function VocabularyDialog({ seeds, domains, entries, cache, indexing, nam
 
   async function handleQuickEntryKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Escape") {
-      setCreating(false);
       setQuickEntry("");
       return;
     }
     if (event.key !== "Enter" || event.nativeEvent.isComposing || event.keyCode === 229) return;
     event.preventDefault();
     const businessName = quickEntry.trim();
-    if (!businessName) return;
+    if (!businessName || quickEntryPendingRef.current) return;
+    quickEntryPendingRef.current = true;
+    setQuickEntryPending(true);
     const entry: VocabularyEntry = { id: crypto.randomUUID(), businessName, systemName: "", physicalName: "", meaning: "", memo: "", aliases: [] };
-    if (await onCreateEntry(entry)) {
-      setQuickEntry("");
-      setCreating(false);
-      setSelectedEntryId(entry.id);
+    try {
+      if (await onCreateEntry(entry)) {
+        setQuickEntry((current) => current.trim() === businessName ? "" : current);
+      }
+    } finally {
+      quickEntryPendingRef.current = false;
+      setQuickEntryPending(false);
+      requestAnimationFrame(() => quickEntryInputRef.current?.focus());
     }
   }
 
@@ -176,7 +183,7 @@ export function VocabularyDialog({ seeds, domains, entries, cache, indexing, nam
             <button type="button" role="tab" data-tab="usage" className={`tab ${tab === "usage" ? "tab-active" : ""}`} onClick={handleTabClick}>Usage</button>
           </div>
           {tab === "words" ? <div className="flex min-h-0 flex-1">
-            <VocabularyWordList entries={entries} query={query} selectedEntryId={selectedEntryId} bulkEditing={bulkEditing} creating={creating} quickEntry={quickEntry} language={locale} suggestions={suggestions} pendingId={pendingId} autofillPending={autofillPending} onQueryChange={handleQuery} onQuickEntryChange={handleQuickEntryChange} onQuickEntryKeyDown={handleQuickEntryKeyDown} onStartCreating={() => setCreating(true)} onCancelCreating={() => { setCreating(false); setQuickEntry(""); }} onToggleBulkEditing={() => setBulkEditing((current) => !current)} onSelectEntry={setSelectedEntryId} onEntryCommit={handleEntryCommit} onSuggest={handleSuggest} onApplySuggestion={handleApplySuggestion} onAutofill={handleAutofill} />
+            <VocabularyWordList entries={entries} query={query} selectedEntryId={selectedEntryId} bulkEditing={bulkEditing} quickEntry={quickEntry} quickEntryPending={quickEntryPending} quickEntryInputRef={quickEntryInputRef} language={locale} suggestions={suggestions} pendingId={pendingId} autofillPending={autofillPending} onQueryChange={handleQuery} onQuickEntryChange={handleQuickEntryChange} onQuickEntryKeyDown={handleQuickEntryKeyDown} onToggleBulkEditing={() => setBulkEditing((current) => !current)} onSelectEntry={setSelectedEntryId} onEntryCommit={handleEntryCommit} onSuggest={handleSuggest} onApplySuggestion={handleApplySuggestion} onAutofill={handleAutofill} />
             {selectedEntry && !bulkEditing && <VocabularyEntrySidebar entry={selectedEntry} cache={cache} language={locale} onCommit={handleEntryCommit} onDelete={handleDelete} onClose={() => setSelectedEntryId(null)} />}
           </div> : <VocabularyUsageList seeds={seeds} domains={domains} cache={cache} matches={usageMatches} scope={usageScope} selectedTableId={selectedTableId} focusMatchKey={focusMatchKey} onScopeClick={handleScopeClick} onTableClick={handleTableClick} onRegister={handleRegister} onAliasReplace={handleAliasReplace} />}
         </div>

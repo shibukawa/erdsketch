@@ -41,7 +41,7 @@ export const roleMeta: Record<EntityRole, { label: string; fill: string; stroke:
 };
 
 export const cardWidth = 300;
-export const cardHeight = 194;
+export const cardHeight = 250;
 
 export const initialDomainCategories: DomainCategory[] = [
   { id: "primitive", name: "Primitive", system: true },
