@@ -58,3 +58,18 @@ test("accepted vocabulary changes automatically persist the derived maturity", (
   const next = applyDurableOperation(state, { type: "vocabulary", entry: changedEntry, create: false, delete: false }, actor.id);
   assert.equal(next.seeds[0].maturedLevel, 1.25);
 });
+
+test("saving a model description persists the text and automatic maturity together", () => {
+  const actor = { id: "owner", name: "Owner", color: "#000", x: 0, y: 0, online: true, canvasId: "main" };
+  const initialModel = model({ description: defaultModelDescription, maturedLevel: 6 });
+  const state = {
+    canvases: [{ id: "main", name: "Main" }], placements: [{ canvasId: "main", seedId: initialModel.id, x: 0, y: 0, accessMode: "owner" }], seeds: [initialModel],
+    relationships: [], relationshipReferences: [], domains: [domain], domainCategories: [], namingPolicy: {}, vocabularyEntries: completeVocabulary,
+    dfd: { canvases: [], nodes: [], flows: [], groups: [], crudMatrix: { orientation: "processes_rows", processOrder: [], modelOrder: [initialModel.id] } },
+    users: [actor], locks: { [initialModel.id]: actor }, annotations: []
+  };
+  const description = "Tracks confirmed customer orders.";
+  const next = applyDurableOperation(state, { type: "seed", seed: { ...initialModel, description }, create: false, canvasId: "main" }, actor.id);
+  assert.equal(next.seeds[0].description, description);
+  assert.equal(next.seeds[0].maturedLevel, 0.5);
+});

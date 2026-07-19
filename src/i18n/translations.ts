@@ -186,7 +186,6 @@ const japanese: Record<string, string> = {
   "Domain list": "ドメイン一覧",
   "Domain name": "ドメイン名",
   "Domains": "ドメイン",
-  "Double click canvas to add": "キャンバスをダブルクリックして追加",
   "Drag empty space to pan": "空白をドラッグして移動",
   "Drag to another item to create a data flow": "別の項目までドラッグしてデータフローを作成",
   "Drag to another model to create a relationship": "別のモデルまでドラッグしてリレーションを作成",

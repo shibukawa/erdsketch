@@ -48,14 +48,31 @@ ui:
         body: description
       key-fields:
         body:
-          primary_key: single_grouped_row
+          primary_key: complete_ordered_rows
           favorite_attributes: complete_ordered_rows
+          row_metadata: domain_or_physical_type
     transition:
       kind: crossfade_with_small_vertical_motion
       reduced_motion: immediate_crossfade_or_no_motion
       stable_card_frame: true
 empty_state:
   key_fields: No primary or important fields
+card_layout:
+  title:
+    line_count: 1
+    truncation: forbidden
+    width: grow_to_fit_displayed_name
+  editing_actions:
+    model: hover_or_focus_within
+    fields: hover_or_focus_within
+    default_visibility: hidden
+  geometry:
+    shared_width_consumers:
+      - card_frame
+      - relationship_endpoints
+      - relationship_drop_target
+      - annotation_hit_target
+      - reset_view_bounds
 constraints:
   - ERD uses two tightly spaced primary FAB buttons horizontally adjacent at the canvas bottom-left.
   - DFD uses the content FAB and has no sidebar card-content control.
@@ -64,11 +81,14 @@ constraints:
   - Hovering a primary FAB shows its localized label as a tooltip.
   - Each speed dial shows labeled options above its primary button.
   - The selected option is visually distinguishable and exposed with pressed state.
-  - Composite key is one non-wrapping row.
+  - Every primary-key attribute has one row so its domain or physical type remains attributable.
   - Favorite rows have no count cap or omission summary.
   - Primary-key attributes are not duplicated as favorite rows.
   - Name mode changes model and field labels without changing description or key-field content mode.
   - Name mode applies to every visible card on the current ERD canvas.
+  - The displayed model name remains on one line and is never ellipsized; only cards that need more room grow horizontally.
+  - Model and field edit icons do not reserve persistent header controls and appear on card hover or keyboard focus-within.
+  - Variable card width is shared by rendering, connectors, hit testing, and viewport bounds.
 related:
   - ui:erd-sketch-canvas
   - requirement:model-card-field-summary

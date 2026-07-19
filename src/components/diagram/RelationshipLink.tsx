@@ -6,13 +6,15 @@ import { RoughLink } from "./RoughLink";
 type RelationshipLinkProps = {
   relationship: Relationship;
   seeds: ModelSeed[];
+  cardWidths: Record<string, number>;
+  cardHeights: Record<string, number>;
   onEdit: (relationshipId: string) => void;
 };
 
-export function RelationshipLink({ relationship, seeds, onEdit }: RelationshipLinkProps) {
+export function RelationshipLink({ relationship, seeds, cardWidths, cardHeights, onEdit }: RelationshipLinkProps) {
   const source = seeds.find((seed) => seed.id === relationship.sourceId);
   const target = seeds.find((seed) => seed.id === relationship.targetId);
-  const geometry = getRelationshipGeometry(relationship, seeds);
+  const geometry = getRelationshipGeometry(relationship, seeds, cardWidths, cardHeights);
   const handleEdit = useCallback(() => onEdit(relationship.id), [onEdit, relationship.id]);
   if (!source || !target || !geometry) return null;
   const { originId } = relationshipDirectionEndpoints(relationship);
@@ -20,7 +22,7 @@ export function RelationshipLink({ relationship, seeds, onEdit }: RelationshipLi
 
   return (
     <>
-      <RoughLink path={geometry.path} roughness={getRelationshipRoughness(relationship, seeds)} arrowPath={relationship.kind === "label" ? undefined : geometry.arrowPath} diamondPath={getCompositionDiamondPath(relationship, seeds)} />
+      <RoughLink path={geometry.path} roughness={getRelationshipRoughness(relationship, seeds)} arrowPath={relationship.kind === "label" ? undefined : geometry.arrowPath} diamondPath={getCompositionDiamondPath(relationship, seeds, cardWidths, cardHeights)} />
       {relationship.kind !== "label" && <><span className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded bg-white/90 px-1.5 py-0.5 font-mono text-[11px] font-bold text-slate-600 shadow-sm" style={{ left: geometry.sourceLabel.x, top: geometry.sourceLabel.y }}>
         {relationship.sourceMultiplicity}
       </span>

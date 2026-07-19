@@ -17,7 +17,6 @@ ui:
     primary_item: data:model-seed
     interactions:
       - quick_create_model_seed
-      - double_click_to_add_model_seed
       - drag_and_drop_to_move
       - click_title_to_edit
       - click_description_to_edit
@@ -137,6 +136,7 @@ constraints:
   - State and roughness update automatically through rule:model-maturity-assessment.
   - The sidebar exposes no manual state or maturity control.
   - New seeds start at maximum roughness.
+  - Manual creation from the ERD workspace uses ui:modeling-quick-create; canvas double-click does not create items.
   - Roughness labels are not displayed on cards.
   - Role, dependency, and privacy are not multi-tag fields.
   - Relationship labels are not seed tags.

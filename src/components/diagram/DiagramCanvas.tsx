@@ -25,11 +25,13 @@ type DiagramCanvasProps = {
   viewport: Viewport;
   seeds: ModelSeed[];
   allSeeds: ModelSeed[];
+  cardWidths: Record<string, number>;
+  cardHeights: Record<string, number>;
+  descriptionHeights: Record<string, number>;
   projectSeeds: ModelSeed[];
   placements: CanvasModelPlacement[];
   activeCanvasId: string;
   canvasTitle: string;
-  titleFocusSeedId: string | null;
   relationships: Relationship[];
   relationshipReferences: RelationshipReference[];
   domains: DataDomain[];
@@ -43,7 +45,6 @@ type DiagramCanvasProps = {
   locks: Record<string, Collaborator>;
   me: Collaborator;
   remoteUsers: Collaborator[];
-  onDoubleClick: React.MouseEventHandler<HTMLDivElement>;
   onPointerDown: PointerEventHandler<HTMLDivElement>;
   onPointerMove: PointerEventHandler<HTMLDivElement>;
   onPointerLeave: PointerEventHandler<HTMLDivElement>;
@@ -51,7 +52,6 @@ type DiagramCanvasProps = {
   onSeedPointerDown: (event: PointerEvent<HTMLElement>, seed: ModelSeed) => void;
   onUpdateSeed: (seedId: string, patch: Partial<ModelSeed>) => void;
   onModelEditingChange: (seedId: string, editing: boolean) => void;
-  onTitleFocusHandled: (seedId: string) => void;
   onUnlockSeed: (seedId: string) => void;
   onRelationshipPointerDown: (event: PointerEvent<HTMLButtonElement>, seed: ModelSeed) => void;
   onEditRelationship: (relationshipId: string) => void;
@@ -73,11 +73,13 @@ export function DiagramCanvas({
   viewport,
   seeds,
   allSeeds,
+  cardWidths,
+  cardHeights,
+  descriptionHeights,
   projectSeeds,
   placements,
   activeCanvasId,
   canvasTitle,
-  titleFocusSeedId,
   relationships,
   relationshipReferences,
   domains,
@@ -91,7 +93,6 @@ export function DiagramCanvas({
   locks,
   me,
   remoteUsers,
-  onDoubleClick,
   onPointerDown,
   onPointerMove,
   onPointerLeave,
@@ -99,7 +100,6 @@ export function DiagramCanvas({
   onSeedPointerDown,
   onUpdateSeed,
   onModelEditingChange,
-  onTitleFocusHandled,
   onUnlockSeed,
   onRelationshipPointerDown,
   onEditRelationship,
@@ -115,7 +115,7 @@ export function DiagramCanvas({
   onUpdateScale
 }: DiagramCanvasProps) {
   const relationshipDropTargetId = dragState?.type === "relationship"
-    ? getRelationshipDropTarget(dragState.sourceId, dragState, allSeeds)?.id
+    ? getRelationshipDropTarget(dragState.sourceId, dragState, allSeeds, cardWidths, cardHeights)?.id
     : undefined;
 
   return (
@@ -127,7 +127,6 @@ export function DiagramCanvas({
         backgroundPosition: `${viewport.x}px ${viewport.y}px, ${viewport.x}px ${viewport.y}px, ${viewport.x}px ${viewport.y}px`,
         backgroundSize: `${24 * viewport.scale}px ${24 * viewport.scale}px, ${120 * viewport.scale}px ${120 * viewport.scale}px, ${120 * viewport.scale}px ${120 * viewport.scale}px`
       }}
-      onDoubleClick={onDoubleClick}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerLeave={onPointerLeave}
@@ -140,11 +139,11 @@ export function DiagramCanvas({
       >
         <CanvasAnnotationLayer layer="background" controller={annotationController} users={annotationUsers} me={me} resolveAnchor={resolveAnnotationAnchor} />
         <div className="pointer-events-none absolute inset-0">
-          {relationships.filter((relationship) => relationshipVisibleOnCanvas(relationship, relationshipReferences)).map((relationship) => <RelationshipLink key={relationship.id} relationship={relationship} seeds={allSeeds} onEdit={onEditRelationship} />)}
+          {relationships.filter((relationship) => relationshipVisibleOnCanvas(relationship, relationshipReferences)).map((relationship) => <RelationshipLink key={relationship.id} relationship={relationship} seeds={allSeeds} cardWidths={cardWidths} cardHeights={cardHeights} onEdit={onEditRelationship} />)}
           {dragState?.type === "relationship" && (() => {
             const source = allSeeds.find((seed) => seed.id === dragState.sourceId);
             if (!source) return null;
-            const start = getCardBoundaryPoint(source, dragState);
+            const start = getCardBoundaryPoint(source, dragState, cardWidths, cardHeights);
             const dx = dragState.x - start.x;
             const dy = dragState.y - start.y;
             const horizontal = Math.abs(dx) >= Math.abs(dy);
@@ -158,6 +157,8 @@ export function DiagramCanvas({
           <ModelSeedCard
             key={seed.id}
             seed={seed}
+            width={cardWidths[seed.id]}
+            descriptionHeight={descriptionHeights[seed.id]}
             selected={selectedId === seed.id}
             relationshipDropTarget={relationshipDropTargetId === seed.id}
             displayMode={displayMode}
@@ -166,8 +167,6 @@ export function DiagramCanvas({
             owner={locks[seed.id]}
             me={me}
             accessMode={placements.find((placement) => placement.canvasId === activeCanvasId && placement.seedId === seed.id)?.accessMode ?? "readonly"}
-            titleFocusRequested={titleFocusSeedId === seed.id}
-            onTitleFocusHandled={onTitleFocusHandled}
             onPointerDown={onSeedPointerDown}
             onUpdate={onUpdateSeed}
             onEditingChange={onModelEditingChange}

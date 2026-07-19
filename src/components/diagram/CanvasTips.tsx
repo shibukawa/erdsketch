@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, LocateFixed, Move, Plus, Sprout, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronLeft, ChevronRight, LocateFixed, Move, Sprout, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useState } from "react";
 
 type Props = {
@@ -39,7 +39,6 @@ export function CanvasTips({ scale, onResetView, onUpdateScale, dailyTip }: Prop
             <div className="mt-3 space-y-2 text-sm text-slate-600">
               <p className="flex items-center gap-2"><Move size={14} />Drag empty space to pan</p>
               <p className="flex items-center gap-2"><ZoomIn size={14} />Pinch or Ctrl-wheel to zoom</p>
-              <p className="flex items-center gap-2"><Plus size={14} />Double click canvas to add</p>
             </div>
           ) : (
             <div className="mt-3 text-sm leading-6 text-slate-600">
