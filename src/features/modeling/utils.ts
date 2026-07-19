@@ -3,6 +3,74 @@ import { cardHeight, cardWidth } from "./constants.ts";
 
 export const clampScale = (scale: number) => Math.min(2.4, Math.max(0.35, scale));
 
+let measurementContext: CanvasRenderingContext2D | null | undefined;
+const measuredTextWidths = new Map<string, number>();
+
+type CardTextKind = "title" | "tag" | "description";
+
+function estimateTextWidth(value: string, kind: CardTextKind) {
+  const scale = kind === "title" ? 1 : kind === "tag" ? 0.6 : 0.7;
+  return [...value].reduce((width, character) => {
+    if (/\s/u.test(character)) return width + 6;
+    if (/[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe10-\ufe6f\uff00-\uffef]/u.test(character)) return width + 20;
+    if (/[A-Z0-9]/u.test(character)) return width + 13;
+    return width + 10.5;
+  }, 0) * scale;
+}
+
+function measureCardText(value: string, kind: CardTextKind) {
+  const key = `${kind}:${value}`;
+  const cached = measuredTextWidths.get(key);
+  if (cached !== undefined) return cached;
+  if (measurementContext === undefined && typeof document !== "undefined") measurementContext = document.createElement("canvas").getContext("2d");
+  if (!measurementContext) return estimateTextWidth(value, kind);
+  measurementContext.font = kind === "title"
+    ? "700 20px ui-sans-serif, system-ui, sans-serif"
+    : kind === "tag" ? "600 12px ui-sans-serif, system-ui, sans-serif" : "400 14px ui-sans-serif, system-ui, sans-serif";
+  const width = measurementContext.measureText(value).width;
+  measuredTextWidths.set(key, width);
+  return width;
+}
+
+export function getModelCardWidth(displayName: string, tags: string[] = []) {
+  const titleRequiredWidth = measureCardText(displayName, "title") + 80;
+  const tagsRequiredWidth = tags.reduce((width, tag) => width + measureCardText(tag, "tag") + 18, 0) + Math.max(0, tags.length - 1) * 6 + 32;
+  return Math.max(cardWidth, Math.ceil(titleRequiredWidth), Math.ceil(tagsRequiredWidth));
+}
+
+function wrappedDescriptionLineCount(value: string, availableWidth: number) {
+  return value.split("\n").reduce((total, paragraph) => {
+    if (!paragraph) return total + 1;
+    const tokens = paragraph.match(/\S+\s*/gu) ?? [paragraph];
+    let lines = 1;
+    let lineWidth = 0;
+    for (const token of tokens) {
+      const tokenWidth = measureCardText(token, "description");
+      if (tokenWidth <= availableWidth) {
+        if (lineWidth > 0 && lineWidth + tokenWidth > availableWidth) {
+          lines += 1;
+          lineWidth = tokenWidth;
+        } else lineWidth += tokenWidth;
+        continue;
+      }
+      for (const character of token) {
+        const characterWidth = measureCardText(character, "description");
+        if (lineWidth > 0 && lineWidth + characterWidth > availableWidth) {
+          lines += 1;
+          lineWidth = characterWidth;
+        } else lineWidth += characterWidth;
+      }
+    }
+    return total + lines;
+  }, 0);
+}
+
+export function getModelDescriptionCardHeight(description: string, width: number) {
+  const lineCount = wrappedDescriptionLineCount(description, Math.max(80, width - 40));
+  const bodyHeight = Math.max(64, lineCount * 20 + 8);
+  return cardHeight + bodyHeight - 64;
+}
+
 export function toSnakeCase(value: string) {
   return value
     .normalize("NFKC")
@@ -165,15 +233,17 @@ export function sortFieldListItems(fields: ModelSeed["fields"], references: Rela
 type Point = { x: number; y: number };
 type CardEdge = "left" | "right" | "top" | "bottom";
 
-function cardBoundaryIntersection(seed: ModelSeed, toward: Point) {
-  const center = { x: seed.x + cardWidth / 2, y: seed.y + cardHeight / 2 };
+function cardBoundaryIntersection(seed: ModelSeed, toward: Point, cardWidths?: Record<string, number>, cardHeights?: Record<string, number>) {
+  const width = cardWidths?.[seed.id] ?? cardWidth;
+  const height = cardHeights?.[seed.id] ?? cardHeight;
+  const center = { x: seed.x + width / 2, y: seed.y + height / 2 };
   const dx = toward.x - center.x;
   const dy = toward.y - center.y;
   if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) {
-    return { point: { x: center.x + cardWidth / 2, y: center.y }, edge: "right" as const };
+    return { point: { x: center.x + width / 2, y: center.y }, edge: "right" as const };
   }
-  const horizontalScale = dx === 0 ? Number.POSITIVE_INFINITY : cardWidth / 2 / Math.abs(dx);
-  const verticalScale = dy === 0 ? Number.POSITIVE_INFINITY : cardHeight / 2 / Math.abs(dy);
+  const horizontalScale = dx === 0 ? Number.POSITIVE_INFINITY : width / 2 / Math.abs(dx);
+  const verticalScale = dy === 0 ? Number.POSITIVE_INFINITY : height / 2 / Math.abs(dy);
   const scale = Math.min(horizontalScale, verticalScale);
   const edge: CardEdge = horizontalScale <= verticalScale ? (dx >= 0 ? "right" : "left") : dy >= 0 ? "bottom" : "top";
   return { point: { x: center.x + dx * scale, y: center.y + dy * scale }, edge };
@@ -209,18 +279,18 @@ function arrowHeadPath(tip: Point, tangent: Point) {
   return `M${base.x + perpendicular.x} ${base.y + perpendicular.y} L${tip.x} ${tip.y} L${base.x - perpendicular.x} ${base.y - perpendicular.y}`;
 }
 
-export function getCardBoundaryPoint(seed: ModelSeed, toward: Point) {
-  return cardBoundaryIntersection(seed, toward).point;
+export function getCardBoundaryPoint(seed: ModelSeed, toward: Point, cardWidths?: Record<string, number>, cardHeights?: Record<string, number>) {
+  return cardBoundaryIntersection(seed, toward, cardWidths, cardHeights).point;
 }
 
-export function getRelationshipGeometry(relationship: Relationship, seeds: ModelSeed[]) {
+export function getRelationshipGeometry(relationship: Relationship, seeds: ModelSeed[], cardWidths?: Record<string, number>, cardHeights?: Record<string, number>) {
   const source = seeds.find((seed) => seed.id === relationship.sourceId);
   const target = seeds.find((seed) => seed.id === relationship.targetId);
   if (!source || !target) return undefined;
-  const sourceCenter = { x: source.x + cardWidth / 2, y: source.y + cardHeight / 2 };
-  const targetCenter = { x: target.x + cardWidth / 2, y: target.y + cardHeight / 2 };
-  const sourceIntersection = cardBoundaryIntersection(source, targetCenter);
-  const targetIntersection = cardBoundaryIntersection(target, sourceCenter);
+  const sourceCenter = { x: source.x + (cardWidths?.[source.id] ?? cardWidth) / 2, y: source.y + (cardHeights?.[source.id] ?? cardHeight) / 2 };
+  const targetCenter = { x: target.x + (cardWidths?.[target.id] ?? cardWidth) / 2, y: target.y + (cardHeights?.[target.id] ?? cardHeight) / 2 };
+  const sourceIntersection = cardBoundaryIntersection(source, targetCenter, cardWidths, cardHeights);
+  const targetIntersection = cardBoundaryIntersection(target, sourceCenter, cardWidths, cardHeights);
   const start = sourceIntersection.point;
   const end = targetIntersection.point;
   const dx = end.x - start.x;
@@ -244,9 +314,9 @@ export function getRelationshipGeometry(relationship: Relationship, seeds: Model
   };
 }
 
-export function getCompositionDiamondPath(relationship: Relationship, seeds: ModelSeed[]) {
+export function getCompositionDiamondPath(relationship: Relationship, seeds: ModelSeed[], cardWidths?: Record<string, number>, cardHeights?: Record<string, number>) {
   if (relationship.kind !== "composition") return undefined;
-  const geometry = getRelationshipGeometry(relationship, seeds);
+  const geometry = getRelationshipGeometry(relationship, seeds, cardWidths, cardHeights);
   if (!geometry) return undefined;
   const length = Math.hypot(geometry.sourceTangent.x, geometry.sourceTangent.y);
   if (length < 0.001) return undefined;
@@ -294,8 +364,8 @@ export function getRelatedDragSeedIDs(startSeed: ModelSeed, seeds: ModelSeed[], 
   return seeds.filter((seed) => ids.has(seed.id)).map((seed) => seed.id);
 }
 
-export function getRelationshipDropTarget(sourceId: string, point: { x: number; y: number }, seeds: ModelSeed[]) {
+export function getRelationshipDropTarget(sourceId: string, point: { x: number; y: number }, seeds: ModelSeed[], cardWidths?: Record<string, number>, cardHeights?: Record<string, number>) {
   return seeds.find(
-    (seed) => seed.id !== sourceId && point.x >= seed.x && point.x <= seed.x + cardWidth && point.y >= seed.y && point.y <= seed.y + cardHeight
+    (seed) => seed.id !== sourceId && point.x >= seed.x && point.x <= seed.x + (cardWidths?.[seed.id] ?? cardWidth) && point.y >= seed.y && point.y <= seed.y + (cardHeights?.[seed.id] ?? cardHeight)
   );
 }

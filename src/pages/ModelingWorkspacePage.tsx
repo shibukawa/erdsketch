@@ -5,7 +5,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type MouseEvent,
   type PointerEvent
 } from "react";
 import { useCollaboration } from "../collaboration";
@@ -21,13 +20,13 @@ import { ProjectCanvasSelectorDialog, type ProjectCanvasKind } from "../componen
 import { WorkspaceStartDialog } from "../components/layout/WorkspaceStartDialog";
 import { ModelCatalogDialog } from "../components/diagram/ModelCatalogDialog";
 import { OwnershipTransferDialog } from "../components/diagram/OwnershipTransferDialog";
-import { cardHeight, cardWidth, initialDomainCategories, initialDomains } from "../features/modeling/constants";
+import { cardHeight, dependencyLabels, initialDomainCategories, initialDomains } from "../features/modeling/constants";
 import { createStarterProjectState, starterProjects, type StarterProjectId } from "../features/modeling/starterProjects";
 import type { CanvasModelPlacement, CardDisplayMode, DataDomain, DfdState, DomainCategory, DomainCategoryBundle, DragState, ErdCanvas, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference, Viewport, VocabularyBinding, VocabularyEntry } from "../features/modeling/types";
 import { getCachedDisplayName, replaceAliasInSource, type VocabularyMatch } from "../features/modeling/vocabulary";
 import { useVocabularyMatchCache } from "../features/modeling/useVocabularyMatchCache";
 import { defaultVolumeEstimate } from "../features/modeling/capacity";
-import { clampScale, flattenLabels, getFieldEffectiveName, getRelatedDragSeedIDs, getRelationshipDropTarget, getRelationshipReference, updateNameSet } from "../features/modeling/utils";
+import { clampScale, flattenLabels, getFieldEffectiveName, getModelCardWidth, getModelDescriptionCardHeight, getRelatedDragSeedIDs, getRelationshipDropTarget, getRelationshipReference, updateNameSet } from "../features/modeling/utils";
 import { DfdWorkspace } from "./DfdWorkspace";
 import { CrudMatrixDialog } from "../components/dfd/CrudMatrixDialog";
 import { useCanvasAnnotations } from "../features/annotations/useCanvasAnnotations";
@@ -40,14 +39,17 @@ import { CoworkClosedScreen } from "../components/collaboration/CoworkClosedScre
 import { CoworkReadOnlySnapshotNotice } from "../components/collaboration/CoworkReadOnlySnapshotNotice";
 import { ExportDialog } from "../components/layout/ExportDialog";
 import { GuidedTourTrigger } from "../components/guidedTour/GuidedTourTrigger";
-import { defaultModelDescription } from "../features/modeling/maturity";
+import { applyAutomaticMaturity, defaultModelDescription } from "../features/modeling/maturity";
 import { buildRefinementPlacements } from "../features/modeling/refinement";
 import { LocalSessionLeaveDialog } from "../components/collaboration/LocalSessionLeaveDialog";
 import { AiAssistantProvider } from "../components/ai/AiAssistantProvider";
+import { useI18n } from "../i18n/I18nProvider";
+import { translateText } from "../i18n/translations";
 
 type ModelingWorkspacePageProps = { initialInvitationToken?: string; initialParticipantRecovery?: ParticipantRecoveryCandidate<ModelSeed> };
 
 export function ModelingWorkspacePage({ initialInvitationToken, initialParticipantRecovery }: ModelingWorkspacePageProps) {
+  const { locale } = useI18n();
   const {
     me,
     seeds,
@@ -145,7 +147,6 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
   const [projectManagerOpen, setProjectManagerOpen] = useState(false);
   const [exportDialog, setExportDialog] = useState<{ snapshot: string; cardDisplayMode: CardDisplayMode } | null>(null);
   const [ownershipTransferSeedId, setOwnershipTransferSeedId] = useState<string | null>(null);
-  const [titleFocusSeedId, setTitleFocusSeedId] = useState<string | null>(null);
   const [viewport, setViewport] = useState<Viewport>({ x: 260, y: 140, scale: 1 });
   const [dragState, setDragState] = useState<DragState>(null);
   const [selectedId, setSelectedId] = useState("");
@@ -169,6 +170,21 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
   }), [activePlacements, dragState, seeds]);
   const activeSeedIds = useMemo(() => new Set(canvasSeeds.map((seed) => seed.id)), [canvasSeeds]);
   const canvasRelationships = useMemo(() => relationships.filter((relationship) => activeSeedIds.has(relationship.sourceId) && activeSeedIds.has(relationship.targetId)), [activeSeedIds, relationships]);
+  const canvasCardWidths = useMemo(() => Object.fromEntries(canvasSeeds.map((seed) => [
+    seed.id,
+    getModelCardWidth(
+      getCachedDisplayName(vocabularyCache, `table:${seed.id}`, seed.title, seed.names, nameDisplayMode),
+      flattenLabels(seed).map((tag) => translateText(tag === seed.dependency ? dependencyLabels[seed.dependency] : tag, locale))
+    )
+  ])), [canvasSeeds, locale, nameDisplayMode, vocabularyCache]);
+  const canvasDescriptionHeights = useMemo(() => Object.fromEntries(canvasSeeds.map((seed) => [
+    seed.id,
+    getModelDescriptionCardHeight(seed.description, canvasCardWidths[seed.id])
+  ])), [canvasCardWidths, canvasSeeds]);
+  const canvasCardHeights = useMemo(() => Object.fromEntries(canvasSeeds.map((seed) => [
+    seed.id,
+    cardDisplayMode === "description" ? canvasDescriptionHeights[seed.id] : cardHeight
+  ])), [canvasDescriptionHeights, canvasSeeds, cardDisplayMode]);
 
   const visibleSeeds = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -209,12 +225,13 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
   const updateSeed = useCallback(
     (seedId: string, patch: Partial<ModelSeed>) => {
       if (activePlacements.find((placement) => placement.seedId === seedId)?.accessMode !== "owner") return;
-      const nextSeeds = seeds.map((seed) => (seed.id === seedId ? { ...seed, ...patch } : seed));
+      const patchedSeeds = seeds.map((seed) => (seed.id === seedId ? { ...seed, ...patch } : seed));
+      const nextSeeds = applyAutomaticMaturity(patchedSeeds, domains, vocabularyEntries);
       const nextSeed = nextSeeds.find((seed) => seed.id === seedId);
       setLocalSeeds(nextSeeds);
       if (nextSeed) void saveSeed(nextSeed, false, activeCanvasId);
     },
-    [activeCanvasId, activePlacements, saveSeed, seeds, setLocalSeeds]
+    [activeCanvasId, activePlacements, domains, saveSeed, seeds, setLocalSeeds, vocabularyEntries]
   );
 
   const handleModelEditingChange = useCallback((seedId: string, editing: boolean) => {
@@ -449,9 +466,9 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
   );
 
   const findErdAnnotationAnchor = useCallback((point: CanvasPoint): AnnotationAnchor | undefined => {
-    const seed = [...canvasSeeds].reverse().find((item) => point.x >= item.x && point.x <= item.x + cardWidth && point.y >= item.y && point.y <= item.y + cardHeight);
+    const seed = [...canvasSeeds].reverse().find((item) => point.x >= item.x && point.x <= item.x + canvasCardWidths[item.id] && point.y >= item.y && point.y <= item.y + canvasCardHeights[item.id]);
     return seed ? { x: point.x - seed.x, y: point.y - seed.y, itemId: seed.id, itemKind: "model" } : undefined;
-  }, [canvasSeeds]);
+  }, [canvasCardHeights, canvasCardWidths, canvasSeeds]);
 
   const resolveErdAnnotationAnchor = useCallback((anchor: AnnotationAnchor): CanvasPoint => {
     if (anchor.itemKind !== "model" || !anchor.itemId) return anchor;
@@ -475,16 +492,13 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
     if (workspaceMode === "dfd") clearErdAnnotationSelection();
   }, [clearErdAnnotationSelection, workspaceMode]);
 
-  const addSeedAt = useCallback(
-    async (clientX?: number, clientY?: number, requestedTitle?: string) => {
+  const quickCreateSeed = useCallback(
+    async (name: string) => {
       const index = seeds.length + 1;
-      const point =
-        clientX === undefined || clientY === undefined
-          ? { x: 120 + index * 24, y: 120 + index * 18 }
-          : screenToWorld(clientX, clientY);
+      const point = { x: 120 + index * 24, y: 120 + index * 18 };
       const seed: ModelSeed = {
         id: crypto.randomUUID(),
-        title: requestedTitle?.trim() || `Model Seed ${index}`,
+        title: name.trim(),
         description: defaultModelDescription,
         fields: [],
         x: point.x,
@@ -499,7 +513,6 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
 
       setSelectedId(seed.id);
       setNameDisplayMode("business");
-      setTitleFocusSeedId(seed.id);
       startTransition(() => {
         setLocalSeeds([...seeds, seed]);
         setLocalPlacements([...placements, { canvasId: activeCanvasId, seedId: seed.id, x: point.x, y: point.y, accessMode: "owner" }]);
@@ -510,15 +523,8 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
         await lock(seed.id);
       }
     },
-    [activeCanvasId, lock, placements, saveSeed, screenToWorld, seeds, setLocalPlacements, setLocalSeeds, unlockOwnedExcept]
+    [activeCanvasId, lock, placements, saveSeed, seeds, setLocalPlacements, setLocalSeeds, unlockOwnedExcept]
   );
-
-  const handleTitleFocusHandled = useCallback((seedId: string) => {
-    setTitleFocusSeedId((current) => current === seedId ? null : current);
-  }, []);
-  const quickCreateSeed = useCallback(async (name: string) => {
-    await addSeedAt(undefined, undefined, name);
-  }, [addSeedAt]);
 
   const updateScale = useCallback(
     (nextScale: number, anchor?: { clientX: number; clientY: number }) => {
@@ -723,7 +729,7 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
       if (!dragState || dragState.pointerId !== event.pointerId) return;
       if (dragState.type === "relationship") {
         const point = screenToWorld(event.clientX, event.clientY);
-        const target = getRelationshipDropTarget(dragState.sourceId, point, canvasSeeds);
+        const target = getRelationshipDropTarget(dragState.sourceId, point, canvasSeeds, canvasCardWidths, canvasCardHeights);
         if (target && (await lockAll([dragState.sourceId, target.id]))) {
           setEditingRelationship({
             create: true,
@@ -758,7 +764,7 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
       }
       setDragState(null);
     },
-    [activeCanvasId, annotationController, canvasSeeds, dragState, lockAll, placements, savePlacement, screenToWorld, setLocalPlacements, unlockAll]
+    [activeCanvasId, annotationController, canvasCardHeights, canvasCardWidths, canvasSeeds, dragState, lockAll, placements, savePlacement, screenToWorld, setLocalPlacements, unlockAll]
   );
 
   const handleEditRelationship = useCallback(
@@ -792,15 +798,6 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
     return () => window.removeEventListener("keydown", handleUndo);
   }, [activeCanvasId, annotationController.selectedId, lockAll, placements, savePlacement, setLocalPlacements, unlockAll]);
 
-  const handleCanvasDoubleClick = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => {
-      if (!(event.target as HTMLElement).closest("article, button, input, textarea")) {
-        void addSeedAt(event.clientX, event.clientY);
-      }
-    },
-    [addSeedAt]
-  );
-
   const resetView = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || canvasSeeds.length === 0) {
@@ -810,14 +807,14 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
     const bounds = canvas.getBoundingClientRect();
     const minX = Math.min(...canvasSeeds.map((seed) => seed.x));
     const minY = Math.min(...canvasSeeds.map((seed) => seed.y));
-    const maxX = Math.max(...canvasSeeds.map((seed) => seed.x + cardWidth));
-    const maxY = Math.max(...canvasSeeds.map((seed) => seed.y + cardHeight));
+    const maxX = Math.max(...canvasSeeds.map((seed) => seed.x + canvasCardWidths[seed.id]));
+    const maxY = Math.max(...canvasSeeds.map((seed) => seed.y + canvasCardHeights[seed.id]));
     setViewport({
       x: bounds.width / 2 - (minX + maxX) / 2,
       y: bounds.height / 2 - (minY + maxY) / 2,
       scale: 1
     });
-  }, [canvasSeeds]);
+  }, [canvasCardHeights, canvasCardWidths, canvasSeeds]);
 
   const applyRefinement = useCallback(async (result: RefinementResult, targetCanvasId?: string) => {
     const existingSeedIds = new Set(seeds.map((seed) => seed.id));
@@ -1232,11 +1229,13 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
             viewport={viewport}
             seeds={visibleSeeds}
             allSeeds={canvasSeeds}
+            cardWidths={canvasCardWidths}
+            cardHeights={canvasCardHeights}
+            descriptionHeights={canvasDescriptionHeights}
             projectSeeds={seeds}
             placements={placements}
             activeCanvasId={activeCanvasId}
             canvasTitle={canvases.find((canvas) => canvas.id === activeCanvasId)?.name ?? "ERD canvas"}
-            titleFocusSeedId={titleFocusSeedId}
             relationships={canvasRelationships}
             relationshipReferences={relationshipReferences}
             domains={domains}
@@ -1250,7 +1249,6 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
             locks={locks}
             me={me}
             remoteUsers={remoteUsers}
-            onDoubleClick={handleCanvasDoubleClick}
             onPointerDown={handleCanvasPointerDown}
             onPointerMove={handlePointerMove}
             onPointerLeave={handlePointerLeave}
@@ -1258,7 +1256,6 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
             onSeedPointerDown={handleSeedPointerDown}
             onUpdateSeed={updateSeed}
             onModelEditingChange={handleModelEditingChange}
-            onTitleFocusHandled={handleTitleFocusHandled}
             onUnlockSeed={unlock}
             onRelationshipPointerDown={handleRelationshipPointerDown}
             onEditRelationship={(relationshipId) => void handleEditRelationship(relationshipId)}

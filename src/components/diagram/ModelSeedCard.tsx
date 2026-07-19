@@ -1,19 +1,21 @@
 import { Columns3, Database, KeyRound, Link2, Lock, Menu, Pencil, Star } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FocusEvent, type KeyboardEvent, type PointerEvent } from "react";
 import type { Collaborator } from "../../collaboration";
-import { cardHeight, cardWidth, dependencyLabels, roleMeta } from "../../features/modeling/constants";
+import { cardHeight, dependencyLabels, roleMeta } from "../../features/modeling/constants";
 import type { CanvasAccessMode, CardDisplayMode, DataDomain, DomainCategory, ModelField, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
 import { expandDomainField, flattenLabels, getDomainPhysicalTypeLabel, getFieldEffectiveName, getModelStageLabel, relationshipDisplaySeedIDs, updateNameSet } from "../../features/modeling/utils";
 import { FieldListDialog } from "./FieldListDialog";
 import { ModelEditDialog } from "./ModelEditDialog";
 import { RoughShape } from "./RoughShape";
-import { getCachedDisplayName, type VocabularyMatchCache } from "../../features/modeling/vocabulary";
+import type { VocabularyMatchCache } from "../../features/modeling/vocabulary";
 import { VocabularyDisplayName } from "./VocabularyDisplayName";
 import { useI18n } from "../../i18n/I18nProvider";
 import { translateText } from "../../i18n/translations";
 
 type ModelSeedCardProps = {
   seed: ModelSeed;
+  width: number;
+  descriptionHeight: number;
   selected: boolean;
   relationshipDropTarget: boolean;
   displayMode: CardDisplayMode;
@@ -22,8 +24,6 @@ type ModelSeedCardProps = {
   owner?: Collaborator;
   me: Collaborator;
   accessMode: CanvasAccessMode;
-  titleFocusRequested: boolean;
-  onTitleFocusHandled: (seedId: string) => void;
   onPointerDown: (event: PointerEvent<HTMLElement>, seed: ModelSeed) => void;
   onUpdate: (seedId: string, patch: Partial<ModelSeed>) => void;
   onEditingChange: (seedId: string, editing: boolean) => void;
@@ -55,7 +55,7 @@ function FieldDomainDisplay({ domainId, nameDisplayMode, domains, vocabularyCach
     : <span className="truncate text-[10px] font-semibold text-orange-700 underline decoration-wavy decoration-orange-500" title="Assign a domain to this field.">Domain missing</span>;
 }
 
-export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayMode, nameDisplayMode, vocabularyCache, owner, me, accessMode, titleFocusRequested, onTitleFocusHandled, onPointerDown, onUpdate, onEditingChange, remoteEditor, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, domains, domainCategories, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, seeds, onApplyRefinement }: ModelSeedCardProps) {
+export function ModelSeedCard({ seed, width, descriptionHeight, selected, relationshipDropTarget, displayMode, nameDisplayMode, vocabularyCache, owner, me, accessMode, onPointerDown, onUpdate, onEditingChange, remoteEditor, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, domains, domainCategories, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, seeds, onApplyRefinement }: ModelSeedCardProps) {
   const { locale } = useI18n();
   const meta = roleMeta[seed.role];
   const lockedByMe = accessMode === "owner" && owner?.id === me.id;
@@ -64,7 +64,6 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
   const [modelEditOpen, setModelEditOpen] = useState(false);
   const [titleDraft, setTitleDraft] = useState(() => seed.names === undefined ? seed.title : seed.names.business);
   const [descriptionDraft, setDescriptionDraft] = useState(seed.description);
-  const titleInputRef = useRef<HTMLTextAreaElement | null>(null);
   const titleEditingRef = useRef(false);
   const descriptionEditingRef = useRef(false);
   const titleCancelRef = useRef(false);
@@ -76,7 +75,6 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
   const primaryKeyFields = effectiveFields.filter((field) => field.primaryKey);
   const favoriteFields = effectiveFields.filter((field) => field.important && !field.primaryKey);
   const partitionKeyFields = effectiveFields.flatMap((field) => expandDomainField(field, domains).filter((expanded) => expanded.partitionKey).map((expanded) => ({ ...expanded, fieldId: field.id })));
-  const displayedTitle = getCachedDisplayName(vocabularyCache, `table:${seed.id}`, seed.title, seed.names, nameDisplayMode);
   const editableBusinessTitle = seed.names === undefined ? seed.title : seed.names.business;
   const modelStageLabel = getModelStageLabel(seed.maturedLevel);
   const projectedRelationshipReferences = relationships.flatMap((relationship) => {
@@ -87,7 +85,8 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
   const visibleRelationshipReferences = projectedRelationshipReferences.filter(({ reference }) => !(reference.hiddenOnModelIds ?? []).includes(seed.id));
   const summaryRowCount = primaryKeyFields.length + favoriteFields.length + partitionKeyFields.length + visibleRelationshipReferences.length;
   const summaryBodyHeight = Math.max(64, summaryRowCount * 22 + 12);
-  const renderedCardHeight = displayMode === "key-fields" ? cardHeight + summaryBodyHeight - 64 : cardHeight;
+  const renderedCardHeight = displayMode === "key-fields" ? cardHeight + summaryBodyHeight - 64 : descriptionHeight;
+  const descriptionBodyHeight = descriptionHeight - cardHeight + 64;
 
   useEffect(() => {
     if (!titleEditingRef.current) setTitleDraft(editableBusinessTitle);
@@ -100,13 +99,6 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
   useEffect(() => () => {
     if (titleEditingRef.current || descriptionEditingRef.current) onEditingChange(seed.id, false);
   }, [onEditingChange, seed.id]);
-
-  useEffect(() => {
-    if (!titleFocusRequested || !lockedByMe || nameDisplayMode !== "business") return;
-    titleInputRef.current?.focus();
-    titleInputRef.current?.select();
-    onTitleFocusHandled(seed.id);
-  }, [lockedByMe, nameDisplayMode, onTitleFocusHandled, seed.id, titleFocusRequested]);
 
   const handlePointerDown = useCallback(
     (event: PointerEvent<HTMLElement>) => {
@@ -131,8 +123,8 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
   );
 
   const handleTitleChange = useCallback(
-    (event: ChangeEvent<HTMLTextAreaElement>) => {
-      setTitleDraft(event.target.value.replace(/\r?\n/g, " "));
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setTitleDraft(event.target.value);
     },
     []
   );
@@ -145,7 +137,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
     onEditingChange(seed.id, true);
   }, [editableBusinessTitle, lockedByMe, onEditingChange, seed.id]);
 
-  const handleTitleBlur = useCallback((event: FocusEvent<HTMLTextAreaElement>) => {
+  const handleTitleBlur = useCallback((event: FocusEvent<HTMLInputElement>) => {
     if (!titleEditingRef.current) return;
     titleEditingRef.current = false;
     if ((event.relatedTarget as HTMLElement | null)?.dataset.modelTextEditor !== seed.id) onEditingChange(seed.id, false);
@@ -157,11 +149,8 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
     if (event.currentTarget.value !== editableBusinessTitle) onUpdate(seed.id, { names: updateNameSet(seed.title, seed.names, "business", event.currentTarget.value), vocabularyBinding: undefined });
   }, [editableBusinessTitle, onEditingChange, onUpdate, seed.id, seed.names, seed.title]);
 
-  const handleTitleKeyDown = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      event.currentTarget.blur();
-    }
+  const handleTitleKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") event.currentTarget.blur();
     if (event.key === "Escape") {
       titleCancelRef.current = true;
       setTitleDraft(editableBusinessTitle);
@@ -180,9 +169,8 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
     if (!lockedByMe) return;
     descriptionEditingRef.current = true;
     descriptionCancelRef.current = false;
-    setDescriptionDraft(seed.description);
     onEditingChange(seed.id, true);
-  }, [lockedByMe, onEditingChange, seed.description, seed.id]);
+  }, [lockedByMe, onEditingChange, seed.id]);
 
   const handleDescriptionBlur = useCallback((event: FocusEvent<HTMLTextAreaElement>) => {
     if (!descriptionEditingRef.current) return;
@@ -220,6 +208,7 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
   }, []);
 
   const handleSaveModelEdit = useCallback((patch: Partial<ModelSeed>) => {
+    if (patch.description !== undefined) setDescriptionDraft(patch.description);
     onUpdate(seed.id, patch);
     setModelEditOpen(false);
   }, [onUpdate, seed.id]);
@@ -253,20 +242,20 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
 
   return (
     <article
-      className={`model-seed-card absolute select-none p-4 ${selected || relationshipDropTarget ? "is-selected" : ""} ${relationshipDropTarget ? "is-relationship-drop-target" : ""} ${
+      className={`model-seed-card group absolute select-none p-4 ${selected || relationshipDropTarget ? "is-selected" : ""} ${relationshipDropTarget ? "is-relationship-drop-target" : ""} ${
         lockedByOther ? "is-locked" : ""
       }`}
       style={{
         left: seed.x,
         top: seed.y,
-        width: cardWidth,
+        width,
         height: renderedCardHeight,
         transform: `rotate(${seed.rotation}deg)`
       }}
       onPointerDown={handlePointerDown}
     >
       <RoughShape
-        width={cardWidth}
+        width={width}
         height={renderedCardHeight}
         roughness={seed.maturedLevel}
         fill={seed.dependency === "independent" ? meta.fill.replace("0.96", "0.58") : meta.fill}
@@ -297,8 +286,21 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{modelStageLabel}</p>
+            {nameDisplayMode === "business" ? <input
+              data-no-drag="true"
+              data-model-text-editor={seed.id}
+              readOnly={!lockedByMe}
+              className="h-7 w-full whitespace-nowrap rounded-md bg-transparent text-xl font-bold leading-7 outline-none focus:bg-white/80 focus:px-1"
+              value={titleDraft}
+              onFocus={handleTitleFocus}
+              onChange={handleTitleChange}
+              onBlur={handleTitleBlur}
+              onKeyDown={handleTitleKeyDown}
+              onPointerDown={handleEditablePointerDown}
+              aria-label={`${editableBusinessTitle || "Untitled model"} title`}
+            /> : <div className="h-7 w-full whitespace-nowrap rounded-md text-xl font-bold leading-7"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`table:${seed.id}`} legacyName={seed.title} names={seed.names} mode={nameDisplayMode} /></div>}
           </div>
-          <div className="-mr-1 -mt-1 flex shrink-0 gap-1">
+          <div className="pointer-events-none absolute right-0 top-0 flex gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
             <button data-no-drag="true" type="button" className="btn btn-ghost btn-sm btn-square shrink-0 rounded-lg bg-white/60 text-slate-600 hover:bg-white" aria-label={`Edit model settings for ${seed.title}`} aria-haspopup="dialog" onClick={handleOpenModelEdit}>
               <Pencil size={16} />
             </button>
@@ -307,31 +309,15 @@ export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayM
             </button>
           </div>
         </div>
-        {nameDisplayMode === "business" ? <textarea
-          ref={titleInputRef}
-          rows={3}
-          data-no-drag="true"
-          data-model-text-editor={seed.id}
-          readOnly={!lockedByMe}
-          className="mt-1 h-[66px] w-full resize-none overflow-hidden rounded-md bg-transparent text-lg font-bold leading-[22px] outline-none focus:bg-white/80 focus:px-1"
-          value={titleDraft}
-          title={editableBusinessTitle}
-          onFocus={handleTitleFocus}
-          onChange={handleTitleChange}
-          onBlur={handleTitleBlur}
-          onKeyDown={handleTitleKeyDown}
-          onPointerDown={handleEditablePointerDown}
-          aria-label={`${editableBusinessTitle || "Untitled model"} title`}
-        /> : <div className="mt-1 min-h-[66px] w-full break-words rounded-md text-lg font-bold leading-[22px]" title={displayedTitle}><VocabularyDisplayName cache={vocabularyCache} cacheKey={`table:${seed.id}`} legacyName={seed.title} names={seed.names} mode={nameDisplayMode} /></div>}
 
-        <div key={displayMode} className="model-card-content relative mt-1.5" style={{ height: displayMode === "key-fields" ? summaryBodyHeight : 64 }}>
+        <div key={displayMode} className="model-card-content relative mt-1.5" style={{ height: displayMode === "key-fields" ? summaryBodyHeight : descriptionBodyHeight }}>
           {remoteEditor && <span className="pointer-events-none absolute -top-7 right-0 z-20 flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold text-white shadow" style={{ backgroundColor: remoteEditor.color }}><Pencil className="cowork-pencil" size={11} /><span data-i18n-skip>{remoteEditor.name}</span> editing</span>}
           {displayMode === "description" ? (
             <textarea
               data-no-drag="true"
               data-model-text-editor={seed.id}
               readOnly={!lockedByMe}
-              className="h-full w-full resize-none rounded-md bg-transparent text-sm leading-5 text-slate-700 outline-none focus:bg-white/80 focus:px-1"
+              className="h-full w-full resize-none overflow-hidden rounded-md bg-transparent text-sm leading-5 text-slate-700 outline-none focus:bg-white/80 focus:px-1"
               value={descriptionDraft}
               onFocus={handleDescriptionFocus}
               onChange={handleDescriptionChange}
