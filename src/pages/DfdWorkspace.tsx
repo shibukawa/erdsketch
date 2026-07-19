@@ -11,7 +11,7 @@ import type { DfdQuickCreateKind } from "../components/dfd/DfdQuickCreate";
 import { FieldListDialog } from "../components/diagram/FieldListDialog";
 import { ProjectCanvasSelectorDialog, type ProjectCanvasKind } from "../components/layout/ProjectCanvasSelectorDialog";
 import type { VocabularyMatchCache } from "../features/modeling/vocabulary";
-import { relationshipDisplaySeedIDs } from "../features/modeling/utils";
+import { getDisplayName, relationshipDisplaySeedIDs } from "../features/modeling/utils";
 import { defaultVolumeEstimate } from "../features/modeling/capacity";
 import type { AnnotationAnchor, CanvasAnnotation, CanvasPoint, SaveAnnotation } from "../features/annotations/types";
 import { useCanvasAnnotations } from "../features/annotations/useCanvasAnnotations";
@@ -255,7 +255,7 @@ export function DfdWorkspace({ dfd, erdCanvases, erdPlacements, activeCanvasId, 
     const model = models.find((item) => item.id === modelId);
     if (!model) return;
     const position = nextPosition("model");
-    const node: DfdNode = { id: crypto.randomUUID(), definitionId: model.id, canvasId: activeCanvasId, kind: "model", name: model.title, modelId: model.id, ...position };
+    const node: DfdNode = { id: crypto.randomUUID(), definitionId: model.id, canvasId: activeCanvasId, kind: "model", name: getDisplayName(model.title, model.names, "business"), modelId: model.id, ...position };
     persistDfd({ ...dfdRef.current, nodes: [...dfdRef.current.nodes, node] });
     setSelectedEndpointId(node.id);
     setModelPickerOpen(false);
@@ -265,7 +265,7 @@ export function DfdWorkspace({ dfd, erdCanvases, erdPlacements, activeCanvasId, 
     if (!(await onSaveCatalogModel(model, true))) return false;
     startTransition(() => onSetLocalModels([...models, model]));
     const position = nextPosition("model");
-    const node: DfdNode = { id: crypto.randomUUID(), definitionId: model.id, canvasId: activeCanvasId, kind: "model", name: model.title, modelId: model.id, ...position };
+    const node: DfdNode = { id: crypto.randomUUID(), definitionId: model.id, canvasId: activeCanvasId, kind: "model", name: getDisplayName(model.title, model.names, "business"), modelId: model.id, ...position };
     persistDfd({ ...dfdRef.current, nodes: [...dfdRef.current.nodes, node] });
     setSelectedEndpointId(node.id);
     setModelPickerOpen(false);

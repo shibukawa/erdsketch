@@ -4,6 +4,7 @@ import type { CrudMatrixOrientation, CrudOperation, DataDomain, DfdCrudMatrix, D
 import { crudAssignmentSpecs, normalizeFlowCrud, processUnits } from "../../features/dfd/dfd";
 import { calculateCrudHeatmap, crudHeatmapColor, type CrudHeatmapBasis, type CrudHeatmapMetric } from "../../features/dfd/crudHeatmap";
 import { formatBytes } from "../../features/modeling/capacity";
+import { getDisplayName } from "../../features/modeling/utils";
 import { GuidedTourButton } from "../guidedTour/GuidedTourButton";
 import { GuidedTourTrigger } from "../guidedTour/GuidedTourTrigger";
 
@@ -50,7 +51,7 @@ export function CrudMatrixDialog({ dfd, models, domains, onChange, onClose }: Pr
     for (const node of dfd.nodes) if (node.kind === "process") for (const unit of processUnits(node)) if (!result.has(unit.id)) result.set(unit.id, { id: unit.id, label: unit.name });
     return [...result.values()];
   }, [dfd.nodes]);
-  const modelItems = useMemo(() => models.map((model) => ({ id: model.id, label: model.title })), [models]);
+  const modelItems = useMemo(() => models.map((model) => ({ id: model.id, label: getDisplayName(model.title, model.names, "business") })), [models]);
   const matrix: DfdCrudMatrix = dfd.crudMatrix ?? { orientation: "processes_rows", processOrder: [], modelOrder: [] };
   const processes = orderedItems(processItems, matrix.processOrder);
   const matrixModels = orderedItems(modelItems, matrix.modelOrder);

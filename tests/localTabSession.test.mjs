@@ -63,6 +63,52 @@ test("same-project tabs join one host and exchange collaboration messages", asyn
   }
 });
 
+test("same-browser guest sends every durable change intent to the host", async () => {
+  const hostMessages = [];
+  let host;
+  host = new LocalTabSession("all-changes-host", (message) => {
+    hostMessages.push(message);
+    if (message.kind === "participant_joined") host.send({ kind: "state_snapshot", targetId: message.senderId, payload: { sequence: 0 } });
+  }, () => assert.fail("host cannot lose itself"), { channelFactory, heartbeatMs: 10, hostTimeoutMs: 50 });
+  const participant = new LocalTabSession("all-changes-guest", () => {}, () => assert.fail("host should remain available"), { channelFactory, heartbeatMs: 10, hostTimeoutMs: 50 });
+  const operationTypes = [
+    "replace_project",
+    "seed",
+    "placement",
+    "remove_model",
+    "canvas",
+    "dfd",
+    "ownership",
+    "domain",
+    "domain_category",
+    "naming_policy",
+    "export_settings",
+    "vocabulary",
+    "relationship",
+    "refinement",
+    "annotation"
+  ];
+  try {
+    host.host("all-changes-project");
+    assert.equal(await participant.join("all-changes-project", user("all-changes-guest"), 100), true);
+    for (const [index, type] of operationTypes.entries()) {
+      assert.equal(participant.send({
+        kind: "operation_intent",
+        messageId: `request-${index}`,
+        payload: { requestId: `request-${index}`, operation: { type, verificationMarker: `change-${index}` } }
+      }), true);
+    }
+    await flush();
+
+    const intents = hostMessages.filter((message) => message.kind === "operation_intent");
+    assert.deepEqual(intents.map((message) => message.payload.operation.type), operationTypes);
+    assert.deepEqual(intents.map((message) => message.payload.operation.verificationMarker), operationTypes.map((_, index) => `change-${index}`));
+  } finally {
+    participant.close();
+    host.close();
+  }
+});
+
 test("tabs for different project IDs remain independent", async () => {
   const host = new LocalTabSession("host-b", () => {}, () => {}, { channelFactory, heartbeatMs: 10, hostTimeoutMs: 50 });
   const participant = new LocalTabSession("participant-b", () => {}, () => {}, { channelFactory, heartbeatMs: 10, hostTimeoutMs: 50 });
