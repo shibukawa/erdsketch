@@ -113,7 +113,7 @@ function durable(payload: Record<string, unknown>, key: string) {
 
 function invokeService(service: PersistenceService<PersistedModel>, operation: PersistenceOperation, payload: Record<string, unknown>): Promise<unknown> | unknown {
   switch (operation) {
-    case "initialize": return service.initialize(durable(payload, "initialState"));
+    case "initialize": return service.initialize(durable(payload, "initialState"), typeof payload.projectId === "string" ? payload.projectId : undefined);
     case "append": return service.append(payload.operation as DurableOperation<PersistedModel>, String(payload.messageId), Number(payload.expectedPreviousSequence));
     case "checkpoint": return service.checkpoint(durable(payload, "state"));
     case "has_message": return service.hasMessage(String(payload.messageId));
@@ -149,21 +149,21 @@ export class PersistenceClient<T extends PersistedModel> {
     }
   }
 
-  async initialize(initialState: DurableState<T>) {
+  async initialize(initialState: DurableState<T>, projectId?: string) {
     try {
-      return await this.call<PersistenceSession<T>>("initialize", { initialState });
+      return await this.call<PersistenceSession<T>>("initialize", { initialState, projectId });
     } catch (error) {
       if (!this.usingWorker || !(error instanceof PersistenceWorkerError) || !["WorkerCrashed", "WorkerUnavailable", "WorkerTimeout", "DataCloneError"].includes(error.code)) throw error;
       this.backend.dispose();
       try {
         this.backend = new WorkerBackend();
-        return await this.call<PersistenceSession<T>>("initialize", { initialState });
+        return await this.call<PersistenceSession<T>>("initialize", { initialState, projectId });
       } catch (restartError) {
         if (restartError instanceof PersistenceWorkerError && !["WorkerCrashed", "WorkerUnavailable", "WorkerTimeout", "DataCloneError"].includes(restartError.code)) throw restartError;
         this.backend.dispose();
         this.backend = new LocalBackend();
         this.usingWorker = false;
-        return this.call<PersistenceSession<T>>("initialize", { initialState });
+        return this.call<PersistenceSession<T>>("initialize", { initialState, projectId });
       }
     }
   }

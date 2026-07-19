@@ -155,12 +155,6 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
   const historyRef = useRef<Record<string, { x: number; y: number }>[] >([]);
   const { cache: vocabularyCache, indexing: vocabularyIndexing } = useVocabularyMatchCache(seeds, domains, vocabularyEntries, namingPolicy);
 
-  useEffect(() => {
-    if (!isLocalTabParticipant || !activeProject) return;
-    setWorkspaceStarted(true);
-    setStartDialogOpen(false);
-  }, [activeProject, isLocalTabParticipant]);
-
   const activePlacements = useMemo(() => placements.filter((placement) => placement.canvasId === activeCanvasId), [activeCanvasId, placements]);
   const canvasSeeds = useMemo(() => activePlacements.flatMap((placement) => {
     const seed = seeds.find((candidate) => candidate.id === placement.seedId);

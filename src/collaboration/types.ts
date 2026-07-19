@@ -71,6 +71,7 @@ export type RelayMessage<T> = {
     operation?: Operation<T>;
     state?: CollaborationState<T>;
     project?: { projectId: string; displayName: string; kind: "named" | "temporary"; createdAt: string; updatedAt: string };
+    projects?: Array<{ projectId: string; displayName: string; kind: "named" | "temporary"; createdAt: string; updatedAt: string }>;
     error?: string;
   } | Collaborator | { clientId: string } | { message?: string };
 };

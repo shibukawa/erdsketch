@@ -43,16 +43,17 @@ type ModelSeedCardProps = {
 };
 
 function FieldDomainDisplay({ domainId, nameDisplayMode, domains, vocabularyCache }: { domainId?: string; nameDisplayMode: NameDisplayMode; domains: DataDomain[]; vocabularyCache: VocabularyMatchCache }) {
+  const domain = domains.find((candidate) => candidate.id === domainId);
   if (nameDisplayMode === "physical") {
+    if (!domain) return <span className="truncate text-[10px] font-semibold text-orange-700 underline decoration-wavy decoration-orange-500" title="Assign a domain to this field.">Domain missing</span>;
     const physicalType = getDomainPhysicalTypeLabel(domainId, domains);
     return physicalType
       ? <code data-i18n-skip className="truncate text-[10px] font-semibold text-slate-500" title={physicalType}>{physicalType}</code>
       : <span className="truncate text-[10px] font-semibold text-orange-700 underline decoration-wavy decoration-orange-500" title="The physical data type could not be resolved.">Type unresolved</span>;
   }
-  const domain = domains.find((candidate) => candidate.id === domainId);
   return domain
     ? <span className="truncate text-[10px] font-semibold text-slate-500"><VocabularyDisplayName cache={vocabularyCache} cacheKey={`domain:${domain.id}`} legacyName={domain.name} names={domain.names} mode={nameDisplayMode} /></span>
-    : <span className="truncate text-[10px] font-semibold text-orange-700 underline decoration-wavy decoration-orange-500" title="Assign a domain to this field.">Domain missing</span>;
+    : null;
 }
 
 export function ModelSeedCard({ seed, selected, relationshipDropTarget, displayMode, nameDisplayMode, vocabularyCache, owner, me, accessMode, titleFocusRequested, onTitleFocusHandled, onPointerDown, onUpdate, onEditingChange, remoteEditor, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, domains, domainCategories, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, seeds, onApplyRefinement }: ModelSeedCardProps) {
