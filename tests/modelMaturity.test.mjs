@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { assessModelMaturity, defaultModelDescription } from "../src/features/modeling/maturity.ts";
-import { resolveVocabularyBinding } from "../src/features/modeling/vocabulary.ts";
+import { getCachedDisplayName, resolveVocabularyBinding } from "../src/features/modeling/vocabulary.ts";
 import { applyDurableOperation } from "../src/collaboration/hostState.ts";
+import { updateNameSet } from "../src/features/modeling/utils.ts";
 
 const completeVocabulary = [
   { id: "order", businessName: "Order", systemName: "Order", physicalName: "order", meaning: "", memo: "", aliases: [] },
@@ -72,4 +73,21 @@ test("saving a model description persists the text and automatic maturity togeth
   const next = applyDurableOperation(state, { type: "seed", seed: { ...initialModel, description }, create: false, canvasId: "main" }, actor.id);
   assert.equal(next.seeds[0].description, description);
   assert.equal(next.seeds[0].maturedLevel, 0.5);
+});
+
+test("host-accepted table rename is visible through the canonical business name", () => {
+  const actor = { id: "guest", name: "Guest", color: "#000", x: 0, y: 0, online: true, canvasId: "main" };
+  const initialModel = model();
+  const state = {
+    canvases: [{ id: "main", name: "Main" }], placements: [{ canvasId: "main", seedId: initialModel.id, x: 0, y: 0, accessMode: "owner" }], seeds: [initialModel],
+    relationships: [], relationshipReferences: [], domains: [domain], domainCategories: [], namingPolicy: {}, vocabularyEntries: completeVocabulary,
+    dfd: { canvases: [], nodes: [], flows: [], groups: [], crudMatrix: { orientation: "processes_rows", processOrder: [], modelOrder: [initialModel.id] } },
+    users: [actor], locks: { [initialModel.id]: actor }, annotations: []
+  };
+  const renamed = { ...initialModel, names: updateNameSet(initialModel.title, initialModel.names, "business", "Customer order"), vocabularyBinding: undefined };
+
+  const next = applyDurableOperation(state, { type: "seed", seed: renamed, create: false, canvasId: "main" }, actor.id);
+
+  assert.equal(next.seeds[0].names.business, "Customer order");
+  assert.equal(getCachedDisplayName({ matches: new Map(), entryUsage: new Map(), builtAt: 0 }, `table:${initialModel.id}`, next.seeds[0].title, next.seeds[0].names, "business"), "Customer order");
 });

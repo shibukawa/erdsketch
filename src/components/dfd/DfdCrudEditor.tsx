@@ -1,6 +1,7 @@
 import { useCallback, useMemo, type ChangeEvent } from "react";
 import type { CrudOperation, DfdCrudAssignment, DfdFlow, DfdGroup, DfdNode, ModelSeed } from "../../features/modeling/types";
 import { crudAssignmentSpecs, endpointBounds, expandedEndpointNodes, modelEndpointCrud, processUnits } from "../../features/dfd/dfd";
+import { getDisplayName } from "../../features/modeling/utils";
 
 type Props = {
   flow: DfdFlow;
@@ -20,7 +21,10 @@ export function DfdCrudEditor({ flow, nodes, groups, models, onChange }: Props) 
   const rightId = leftId === flow.sourceId ? flow.destinationId : flow.sourceId;
   const axisItems = useCallback((endpointId: string): AxisItem[] => expandedEndpointNodes(endpointId, nodes, groups).reduce<AxisItem[]>((items, node) => {
     if (node.kind === "process") items.push(...processUnits(node).map((unit) => ({ id: unit.id, label: unit.name, kind: "process" as const })));
-    if (node.kind === "model" && node.modelId) items.push({ id: node.modelId, label: models.find((model) => model.id === node.modelId)?.title ?? node.name, kind: "model" });
+    if (node.kind === "model" && node.modelId) {
+      const model = models.find((candidate) => candidate.id === node.modelId);
+      items.push({ id: node.modelId, label: model ? getDisplayName(model.title, model.names, "business") : node.name, kind: "model" });
+    }
     return items;
   }, []), [groups, models, nodes]);
   const rows = axisItems(leftId);

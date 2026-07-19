@@ -2,7 +2,7 @@ import { Trash2, Ungroup } from "lucide-react";
 import { useCallback, type ChangeEvent, type MouseEvent } from "react";
 import { roleMeta, roleOptions } from "../../features/modeling/constants";
 import type { DfdCrudAssignment, DfdFlow, DfdGroup, DfdIntermediateKind, DfdNode, DfdProcessKind, EntityRole, ModelSeed } from "../../features/modeling/types";
-import { getModelStageLabel } from "../../features/modeling/utils";
+import { getDisplayName, getModelStageLabel } from "../../features/modeling/utils";
 import { reconcilePhysicalProcesses } from "../../features/dfd/dfd";
 import { CommittedTextInput } from "../forms/CommittedTextInput";
 import { CommittedTextarea } from "../forms/CommittedTextarea";
@@ -39,7 +39,7 @@ export function DfdSelectionInspector({ node, group, flow, model, nodes, groups,
   const handleCrudAssignments = useCallback((crudAssignments: DfdCrudAssignment[]) => onUpdateFlow({ crudAssignments }), [onUpdateFlow]);
   const handleRole = useCallback((event: MouseEvent<HTMLButtonElement>) => onUpdateModel({ role: event.currentTarget.dataset.role as EntityRole }), [onUpdateModel]);
 
-  const title = node ? model?.title ?? node.name : group ? `${group.kind.replace("_", " ")} group` : flow?.label || "Data flow";
+  const title = node ? model ? getDisplayName(model.title, model.names, "business") : node.name : group ? `${group.kind.replace("_", " ")} group` : flow?.label || "Data flow";
   return <section className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
     <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Selected</p>
     <h2 data-i18n-skip={Boolean(node || flow?.label)} className="mt-1 truncate font-bold">{title}</h2>

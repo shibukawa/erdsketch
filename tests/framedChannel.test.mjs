@@ -28,6 +28,45 @@ test("framed data channel reassembles multi-frame collaboration messages", async
   receiver.dispose();
 });
 
+test("framed collaboration sends every durable change intent without loss", async () => {
+  const left = new FakeDataChannel();
+  const right = new FakeDataChannel();
+  left.partner = right;
+  right.partner = left;
+  const received = [];
+  const receiver = new FramedDataChannel(right, (message) => received.push(message));
+  const sender = new FramedDataChannel(left, () => undefined);
+  const operationTypes = [
+    "replace_project",
+    "seed",
+    "placement",
+    "remove_model",
+    "canvas",
+    "dfd",
+    "ownership",
+    "domain",
+    "domain_category",
+    "naming_policy",
+    "export_settings",
+    "vocabulary",
+    "relationship",
+    "refinement",
+    "annotation"
+  ];
+  const messages = operationTypes.map((type, index) => ({
+    kind: "operation_intent",
+    senderId: "guest",
+    messageId: `request-${index}`,
+    payload: { requestId: `request-${index}`, operation: { type, verificationMarker: `change-${index}` } }
+  }));
+
+  await Promise.all(messages.map((message) => sender.send(message)));
+
+  assert.deepEqual(received, messages);
+  sender.dispose();
+  receiver.dispose();
+});
+
 test("framed data channel ignores incomplete frame sets", () => {
   const channel = new FakeDataChannel();
   channel.partner = channel;

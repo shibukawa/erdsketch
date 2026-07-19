@@ -2,6 +2,7 @@ import { Database, FileJson, Link2, Menu, Monitor, Play, RadioTower } from "luci
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FocusEvent, type KeyboardEvent, type PointerEvent } from "react";
 import type { CardDisplayMode, DfdNode, ModelSeed } from "../../features/modeling/types";
 import { DFD_NODE_SIZE } from "../../features/dfd/dfd";
+import { getDisplayName, updateNameSet } from "../../features/modeling/utils";
 import { DfdRoughShape } from "./DfdRoughShape";
 
 type Props = {
@@ -16,7 +17,7 @@ type Props = {
 
 export function DfdNodeCard({ node, model, selected, connectionSource, relationshipDropTarget, displayMode, onSelect, onPointerDown, onLinkPointerDown, onEditModelFields, onUpdateNode, onUpdateModel }: Props) {
   const size = DFD_NODE_SIZE[node.kind];
-  const title = model?.title ?? node.name;
+  const title = model ? getDisplayName(model.title, model.names, "business") : node.name;
   const description = model?.description ?? node.description ?? "";
   const [titleDraft, setTitleDraft] = useState(title);
   const [descriptionDraft, setDescriptionDraft] = useState(description);
@@ -43,7 +44,7 @@ export function DfdNodeCard({ node, model, selected, connectionSource, relations
     }
     if (nextTitle === title) return;
     setTitleDraft(nextTitle);
-    if (model) onUpdateModel({ title: nextTitle });
+    if (model) onUpdateModel({ names: updateNameSet(model.title, model.names, "business", nextTitle), vocabularyBinding: undefined });
     else onUpdateNode({ name: nextTitle });
   }, [model, onUpdateModel, onUpdateNode, title, titleDraft]);
   const handleTitleBlur = useCallback((_event: FocusEvent<HTMLTextAreaElement>) => {
