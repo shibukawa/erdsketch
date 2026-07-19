@@ -55,10 +55,13 @@ export class PersistenceService<T extends PersistedModel> {
   private projectLock: LockLease | null = null;
   private lastRecovery: RecoveryResult<T> | null = null;
 
-  async initialize(initialState: DurableState<T>) {
+  async initialize(initialState: DurableState<T>, projectId?: string) {
     this.releaseProjectLock();
     this.catalog = await ProjectCatalog.open();
-    const active = this.catalog.active();
+    const active = projectId
+      ? this.catalog.list().find((project) => project.projectId === projectId)
+      : this.catalog.active();
+    if (!active) throw new Error("OPFS project was not found");
     const lock = await acquireProjectLock(active.projectId);
     try {
       const store = await RecoveryStore.open<T>(active.projectId);

@@ -19,7 +19,7 @@ async function execute(request: PersistenceRequest) {
   const payload = (request.payload ?? {}) as WorkerPayload;
   switch (request.operation) {
     case "initialize":
-      return service.initialize(state(payload, "initialState"));
+      return service.initialize(state(payload, "initialState"), typeof payload.projectId === "string" ? payload.projectId : undefined);
     case "append":
       return service.append(payload.operation as DurableOperation<PersistedModel>, String(payload.messageId), Number(payload.expectedPreviousSequence));
     case "checkpoint":

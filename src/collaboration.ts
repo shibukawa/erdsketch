@@ -19,6 +19,7 @@ import { normalizePlacementOwnership } from "./features/modeling/placements";
 export type { Collaborator } from "./collaboration/types";
 
 const colors = ["#e11d48", "#7c3aed", "#2563eb", "#0891b2", "#059669", "#ca8a04", "#ea580c", "#db2777"];
+const pageClientId = crypto.randomUUID();
 
 const defaultDfdState = (): DfdState => ({
   canvases: [{ id: "dfd-main", name: "Main data flow" }],
@@ -59,11 +60,7 @@ function normalizeCollaborationState<T extends { id: string; x?: number; y?: num
 }
 
 function getIdentity() {
-  let clientId = sessionStorage.getItem("erdsketch-client-id");
-  if (!clientId) {
-    clientId = crypto.randomUUID();
-    sessionStorage.setItem("erdsketch-client-id", clientId);
-  }
+  const clientId = pageClientId;
   let name = localStorage.getItem("erdsketch-user-name")?.trim();
   if (!name) {
     name = `Modeler ${clientId.slice(0, 4)}`;
@@ -134,6 +131,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   const relayAvailableRef = useRef(false);
   const persistenceRef = useRef<PersistenceClient<T> | null>(null);
   const activeProjectRef = useRef<OpfsProject | null>(null);
+  const projectsRef = useRef<OpfsProject[]>([]);
   const initialProjectStateRef = useRef(durableState(state));
   const durableWritesBlockedRef = useRef(false);
   const participantSnapshotReadOnlyRef = useRef(false);
@@ -157,6 +155,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
 
   const replaceProjectCatalogView = useCallback((view: CatalogView) => {
     activeProjectRef.current = view.activeProject;
+    projectsRef.current = view.projects;
     startTransition(() => {
       setProjects(view.projects);
       setActiveProject(view.activeProject);
@@ -191,7 +190,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
   }, [me.id]);
 
   const publishState = useCallback(async (kind: "operation_accepted" | "state_snapshot", requestId?: string, targetId?: string) => {
-    await sendRelay({ kind, messageId: requestId, targetId, payload: { requestId, sequence: sequenceRef.current, state: confirmedStateRef.current, project: activeProjectRef.current ?? undefined } });
+    await sendRelay({ kind, messageId: requestId, targetId, payload: { requestId, sequence: sequenceRef.current, state: confirmedStateRef.current, project: activeProjectRef.current ?? undefined, projects: projectsRef.current } });
   }, [sendRelay]);
 
   const commitHostNow = useCallback(async (operation: Operation<T>, requestId: string, actorID: string, targetID?: string) => {
@@ -299,7 +298,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
       return;
     }
     if (message.kind === "operation_accepted" || message.kind === "state_snapshot") {
-      const payload = message.payload as { requestId?: string; sequence?: number; state?: CollaborationState<T>; project?: OpfsProject } | undefined;
+      const payload = message.payload as { requestId?: string; sequence?: number; state?: CollaborationState<T>; project?: OpfsProject; projects?: OpfsProject[] } | undefined;
       if (payload?.state) {
         payload.state.dfd = normalizeDfdState(payload.state.dfd?.canvases?.length ? payload.state.dfd : defaultDfdState());
         confirmedStateRef.current = payload.state;
@@ -312,7 +311,11 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
       }
       if (payload?.project) {
         activeProjectRef.current = payload.project;
-        startTransition(() => setActiveProject(payload.project ?? null));
+        if (payload.projects) projectsRef.current = payload.projects;
+        startTransition(() => {
+          setActiveProject(payload.project ?? null);
+          if (payload.projects) setProjects(payload.projects);
+        });
       }
       if (payload?.requestId) {
         pendingRequestsRef.current.get(payload.requestId)?.(true);
@@ -627,19 +630,37 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     return false;
   }, []);
 
-  const loadOpfsProject = useCallback((projectId: string) => runProjectTask(async () => {
-    try {
-      return await activateProjectNow(projectId);
-    } catch (error) {
-      const openProjectId = projectAlreadyOpenId(error);
+  const loadOpfsProject = useCallback(async (projectId: string) => {
+    if (roleRef.current === "participant" && isLocalTabParticipant) {
+      if (activeProjectRef.current?.projectId === projectId) return true;
       const local = localTabSessionRef.current;
-      if (openProjectId && local) {
-        const previousProjectId = activeProjectRef.current?.projectId;
-        localTabAvailableRef.current = false;
-        local.leaveProject();
-        if (await local.join(openProjectId, me)) {
-          persistenceRef.current?.dispose();
-          persistenceRef.current = null;
+      if (!local) return false;
+      const previousProjectId = activeProjectRef.current?.projectId;
+      localTabAvailableRef.current = false;
+      local.leaveProject();
+      const persistence = new PersistenceClient<T>();
+      persistenceRef.current = persistence;
+      try {
+        const recovered = await persistence.initialize(structuredClone(initialProjectStateRef.current), projectId);
+        installPersistenceSession(recovered, [me]);
+        roleRef.current = "host";
+        local.host(projectId);
+        localTabAvailableRef.current = true;
+        participantSnapshotReadOnlyRef.current = false;
+        startTransition(() => {
+          setIsHost(true);
+          setConnected(true);
+          setIsLocalTabParticipant(false);
+          setParticipantSnapshotReadOnly(false);
+          setLocalTabConnectionError(undefined);
+          setNativeFileSystemAvailable(hasWailsBridge());
+        });
+        return true;
+      } catch (error) {
+        persistence.dispose();
+        if (persistenceRef.current === persistence) persistenceRef.current = null;
+        const openProjectId = projectAlreadyOpenId(error);
+        if (openProjectId && await local.join(openProjectId, me)) {
           localTabAvailableRef.current = true;
           roleRef.current = "participant";
           startTransition(() => {
@@ -652,15 +673,48 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
           });
           return true;
         }
-        if (previousProjectId) {
-          local.host(previousProjectId);
+        if (previousProjectId && await local.join(previousProjectId, me)) {
           localTabAvailableRef.current = true;
+          roleRef.current = "participant";
         }
-        return failProjectTask(new Error("This project has an editing owner, but its host tab did not respond. Retry after the host finishes loading, or close the other tab."));
+        return failProjectTask(error);
       }
-      return failProjectTask(error);
     }
-  }), [activateProjectNow, failProjectTask, me, runProjectTask]);
+    return runProjectTask(async () => {
+      try {
+        return await activateProjectNow(projectId);
+      } catch (error) {
+        const openProjectId = projectAlreadyOpenId(error);
+        const local = localTabSessionRef.current;
+        if (openProjectId && local) {
+          const previousProjectId = activeProjectRef.current?.projectId;
+          localTabAvailableRef.current = false;
+          local.leaveProject();
+          if (await local.join(openProjectId, me)) {
+            persistenceRef.current?.dispose();
+            persistenceRef.current = null;
+            localTabAvailableRef.current = true;
+            roleRef.current = "participant";
+            startTransition(() => {
+              setIsHost(false);
+              setConnected(true);
+              setIsLocalTabParticipant(true);
+              setLocalTabConnectionError(undefined);
+              setNativeFileSystemAvailable(false);
+              setRecoveryStatus({ ready: true, recoveredOperations: 0, ignoredTailRecords: 0, persistentStorage: false });
+            });
+            return true;
+          }
+          if (previousProjectId) {
+            local.host(previousProjectId);
+            localTabAvailableRef.current = true;
+          }
+          return failProjectTask(new Error("This project has an editing owner, but its host tab did not respond. Retry after the host finishes loading, or close the other tab."));
+        }
+        return failProjectTask(error);
+      }
+    });
+  }, [activateProjectNow, failProjectTask, installPersistenceSession, isLocalTabParticipant, me, runProjectTask]);
 
   function leaveLocalTabSession() {
     if (!localTabSessionRef.current?.isParticipant()) return false;
