@@ -4,6 +4,8 @@
 
 ERDSketch is a Design IDE for growing rough Concept Seeds into data flows, logical models, physical schemas, and plain-text design knowledge. It treats an ERD as one stage of a wider modeling process rather than the final product.
 
+[![ERDSketch ERD modeling workspace](docs/images/erdsketch-erd.png)](https://shibukawa.github.io/erdsketch/)
+
 ## Live demo
 
 Try ERDSketch without installing anything:
@@ -11,6 +13,16 @@ Try ERDSketch without installing anything:
 **https://shibukawa.github.io/erdsketch/**
 
 The static demo runs entirely in the browser. No account, API key, backend, or GPT-5.6 access is required. Project data remains local to the browser unless you explicitly export it or select a local folder.
+
+## Screenshots
+
+| Data Flow Diagram | CRUD Matrix |
+| --- | --- |
+| ![A Help Desk data flow diagram connecting actors, processes, and data stores](docs/images/erdsketch-dfd.png) | ![A CRUD Matrix combining process operations with record-count and read-load heatmaps](docs/images/erdsketch-crud-matrix.png) |
+
+### AI-assisted modeling
+
+![The ERD workspace with the browser-local AI assistant reviewing a Todo model](docs/images/erdsketch-ai-assistant.png)
 
 ## What you can do
 
