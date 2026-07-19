@@ -28,6 +28,35 @@ export function updateNameSet(legacyName: string, names: Partial<NameSet> | unde
   return { ...normalizeNames(legacyName, names), [mode]: value };
 }
 
+function primitivePhysicalTypeLabel(domain: DataDomain) {
+  if (!domain.primitiveType) return undefined;
+  if (domain.primitiveType === "code_set") {
+    const baseType = (domain.codeSetBaseType ?? "varchar").toUpperCase();
+    return domain.codeSetBaseType === "varchar" || !domain.codeSetBaseType
+      ? `${baseType}${domain.length ? `(${domain.length})` : ""}`
+      : baseType;
+  }
+  const type = domain.primitiveType.replace(/_/g, " ").toUpperCase();
+  if (domain.primitiveType === "varchar") return `${type}${domain.length ? `(${domain.length})` : ""}`;
+  if (domain.primitiveType === "decimal") return `${type}${domain.precision ? `(${domain.precision}, ${domain.scale ?? 0})` : ""}`;
+  if ((domain.primitiveType === "integer" || domain.primitiveType === "floating_point") && domain.bits) return `${type} · ${domain.bits} bit`;
+  return type;
+}
+
+export function getDomainPhysicalTypeLabel(domainId: string | undefined, domains: DataDomain[], seen = new Set<string>()): string | undefined {
+  const domain = domains.find((candidate) => candidate.id === domainId);
+  if (!domain || seen.has(domain.id)) return undefined;
+  const primitive = primitivePhysicalTypeLabel(domain);
+  if (primitive) return primitive;
+  seen.add(domain.id);
+  if (domain.shape === "scalar" && domain.components.length === 1) return getDomainPhysicalTypeLabel(domain.components[0].domainId, domains, seen);
+  if (domain.shape === "composite" && domain.components.length > 0) {
+    const componentTypes = domain.components.map((component) => getDomainPhysicalTypeLabel(component.domainId, domains, new Set(seen)));
+    return componentTypes.every((value): value is string => Boolean(value)) ? componentTypes.join(" + ") : undefined;
+  }
+  return undefined;
+}
+
 export const getModelStageLabel = (maturedLevel: number) => {
   if (maturedLevel <= 0.5) return "Matured model";
   if (maturedLevel <= 1.25) return "Logical model";
@@ -46,6 +75,22 @@ export function normalizeRelationshipSemantics(relationship: Relationship): Rela
   if (relationship.kind === "composition") return { ...relationship, name, onDelete: "cascade" };
   if (relationship.kind === "foreign-key") return { ...relationship, name, onDelete: relationship.onDelete ?? "no_action" };
   return { ...relationship, name, onDelete: undefined };
+}
+
+export function upgradeLegacyHistoryRelationship(relationship: Relationship, source?: ModelSeed, target?: ModelSeed): Relationship {
+  if (relationship.kind !== "label" || relationship.name.trim().toLowerCase() !== "history") return relationship;
+  const sourceIsHistory = source?.role === "history";
+  const targetIsHistory = target?.role === "history";
+  if (sourceIsHistory === targetIsHistory) return relationship;
+  return normalizeRelationshipSemantics({
+    ...relationship,
+    sourceId: sourceIsHistory ? relationship.targetId : relationship.sourceId,
+    targetId: sourceIsHistory ? relationship.sourceId : relationship.targetId,
+    sourceMultiplicity: "1",
+    targetMultiplicity: "1..*",
+    direction: "source-to-target",
+    kind: "foreign-key"
+  });
 }
 
 export function relationshipDisplaySeedIDs(relationship: Relationship) {

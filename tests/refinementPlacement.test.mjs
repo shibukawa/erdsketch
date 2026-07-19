@@ -4,6 +4,7 @@ import { applyDurableOperation, OperationError } from "../src/collaboration/host
 import { MonotonicTimer, timestampDurableOperation } from "../src/collaboration/timestamp.ts";
 import { buildRefinement, buildRefinementPlacements } from "../src/features/modeling/refinement.ts";
 import { normalizePlacementOwnership } from "../src/features/modeling/placements.ts";
+import { upgradeLegacyHistoryRelationship } from "../src/features/modeling/utils.ts";
 
 const actor = { id: "owner", name: "Owner", color: "#000", x: 0, y: 0, online: true, canvasId: "main" };
 const source = {
@@ -70,6 +71,49 @@ test("every model-generating refinement creates a placement candidate for every 
     assert.equal(placements.length, expectedCount, patternId);
     assert.ok(placements.every((placement) => placement.canvasId === "main" && placement.accessMode === "owner"), patternId);
   }
+});
+
+test("history refinement creates an editable one-to-many relationship from source to history", () => {
+  const result = build("create-history", { selectedFieldIds: ["order-name"] });
+  const historyId = result.createdSeedIds[0];
+  const historyRelationship = result.relationships.find((relationship) => relationship.name === "history");
+
+  assert.deepEqual(historyRelationship, {
+    id: "create-history-2",
+    name: "history",
+    sourceId: source.id,
+    targetId: historyId,
+    sourceMultiplicity: "1",
+    targetMultiplicity: "1..*",
+    direction: "source-to-target",
+    kind: "foreign-key"
+  });
+});
+
+test("legacy history labels become editable one-to-many relationships", () => {
+  const history = { ...source, id: "order-history", title: "Order History", role: "history" };
+  const upgraded = upgradeLegacyHistoryRelationship({
+    id: "legacy-history",
+    name: "history",
+    sourceId: history.id,
+    targetId: source.id,
+    sourceMultiplicity: "0..*",
+    targetMultiplicity: "1",
+    direction: "source-to-target",
+    kind: "label"
+  }, history, source);
+
+  assert.deepEqual(upgraded, {
+    id: "legacy-history",
+    name: "history",
+    sourceId: source.id,
+    targetId: history.id,
+    sourceMultiplicity: "1",
+    targetMultiplicity: "1..*",
+    direction: "source-to-target",
+    kind: "foreign-key",
+    onDelete: "no_action"
+  });
 });
 
 test("refined model positions follow the source owner placement instead of stale model coordinates", () => {

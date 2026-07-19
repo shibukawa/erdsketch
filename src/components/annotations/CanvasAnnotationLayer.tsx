@@ -33,32 +33,46 @@ function RemoteEditingBadge({ editor, className }: { editor: Collaborator; class
 function useAnnotationTextDraft(annotation: CanvasAnnotation, controller: CanvasAnnotationController, me: Collaborator, remoteEditor?: Collaborator) {
   const [text, setText] = useState(annotation.text ?? "");
   const editingRef = useRef(false);
+  const pendingTextRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!editingRef.current) setText(annotation.text ?? "");
+    if (editingRef.current) return;
+    const committedText = annotation.text ?? "";
+    if (pendingTextRef.current !== null) {
+      if (committedText !== pendingTextRef.current) return;
+      pendingTextRef.current = null;
+    }
+    setText(committedText);
   }, [annotation.text]);
 
   const begin = useCallback(() => {
     if (remoteEditor) return;
     editingRef.current = true;
+    pendingTextRef.current = null;
     setText(annotation.text ?? "");
     controller.beginTextEdit(annotation);
   }, [annotation, controller, remoteEditor]);
 
   const change = useCallback((value: string) => setText(value), []);
 
-  const finish = useCallback((value: string) => {
+  const finish = useCallback(async (value: string) => {
     if (!editingRef.current) return;
     editingRef.current = false;
+    pendingTextRef.current = value;
     setText(value);
-    controller.finishTextEdit({ ...annotation, text: value, updatedBy: me.id });
+    const saved = await controller.finishTextEdit({ ...annotation, text: value, updatedBy: me.id });
+    if (!saved && pendingTextRef.current === value) {
+      pendingTextRef.current = null;
+      setText(annotation.text ?? "");
+    }
   }, [annotation, controller, me.id]);
 
   const cancel = useCallback(() => {
     if (!editingRef.current) return;
     editingRef.current = false;
+    pendingTextRef.current = null;
     setText(annotation.text ?? "");
-    controller.finishTextEdit(annotation);
+    void controller.finishTextEdit(annotation);
   }, [annotation, controller]);
 
   return { text, begin, change, finish, cancel };
@@ -132,7 +146,7 @@ function AnnotationLabel({ annotation, controller, users, me, resolveAnchor }: O
     : points.reduce((best, point) => point.y < best.y ? point : best, points[0] ?? { x: 0, y: 0 });
   const handleFocus = useCallback(() => begin(), [begin]);
   const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => change(event.target.value), [change]);
-  const handleBlur = useCallback((event: FocusEvent<HTMLInputElement>) => finish(event.target.value), [finish]);
+  const handleBlur = useCallback((event: FocusEvent<HTMLInputElement>) => { void finish(event.target.value); }, [finish]);
   const handleKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== "Escape") return;
     cancel();
@@ -154,7 +168,7 @@ function StickyAnnotation({ annotation, controller, users, me }: Omit<CanvasAnno
   const handleResizePointerDown = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => controller.handleAnnotationPointerDown(event, annotation, "resize"), [annotation, controller]);
   const handleFocus = useCallback(() => begin(), [begin]);
   const handleChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => change(event.target.value), [change]);
-  const handleBlur = useCallback((event: FocusEvent<HTMLTextAreaElement>) => finish(event.target.value), [finish]);
+  const handleBlur = useCallback((event: FocusEvent<HTMLTextAreaElement>) => { void finish(event.target.value); }, [finish]);
   const handleKeyDown = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key !== "Escape") return;
     cancel();

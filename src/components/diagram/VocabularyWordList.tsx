@@ -1,5 +1,5 @@
 import { ClipboardCopy, Copy, ListChecks, Plus, Search, Sparkles } from "lucide-react";
-import type { ChangeEvent, FocusEvent, KeyboardEvent, MouseEvent } from "react";
+import type { ChangeEvent, FocusEvent, KeyboardEvent, MouseEvent, RefObject } from "react";
 import type { VocabularySuggestion } from "../../features/modeling/browserAi";
 import type { VocabularyEntry } from "../../features/modeling/types";
 import type { VocabularyAutofillTarget } from "../../features/modeling/vocabulary";
@@ -9,8 +9,9 @@ type VocabularyWordListProps = {
   query: string;
   selectedEntryId: string | null;
   bulkEditing: boolean;
-  creating: boolean;
   quickEntry: string;
+  quickEntryPending: boolean;
+  quickEntryInputRef: RefObject<HTMLInputElement | null>;
   language: "en" | "ja";
   suggestions: Record<string, VocabularySuggestion>;
   pendingId: string | null;
@@ -18,8 +19,6 @@ type VocabularyWordListProps = {
   onQueryChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onQuickEntryChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onQuickEntryKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
-  onStartCreating: () => void;
-  onCancelCreating: () => void;
   onToggleBulkEditing: () => void;
   onSelectEntry: (entryId: string) => void;
   onEntryCommit: (event: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
@@ -35,7 +34,7 @@ function entryBackground(entry: VocabularyEntry) {
   return "bg-white hover:bg-slate-50";
 }
 
-export function VocabularyWordList({ entries, query, selectedEntryId, bulkEditing, creating, quickEntry, language, suggestions, pendingId, autofillPending, onQueryChange, onQuickEntryChange, onQuickEntryKeyDown, onStartCreating, onCancelCreating, onToggleBulkEditing, onSelectEntry, onEntryCommit, onSuggest, onApplySuggestion, onAutofill }: VocabularyWordListProps) {
+export function VocabularyWordList({ entries, query, selectedEntryId, bulkEditing, quickEntry, quickEntryPending, quickEntryInputRef, language, suggestions, pendingId, autofillPending, onQueryChange, onQuickEntryChange, onQuickEntryKeyDown, onToggleBulkEditing, onSelectEntry, onEntryCommit, onSuggest, onApplySuggestion, onAutofill }: VocabularyWordListProps) {
   const normalized = query.trim().toLocaleLowerCase();
   const visibleEntries = entries.filter((entry) => !normalized || [entry.businessName, entry.systemName, entry.physicalName, entry.meaning, entry.memo, ...entry.aliases].some((value) => value.toLocaleLowerCase().includes(normalized)));
   const missingSystemCount = entries.filter((entry) => !entry.systemName.trim()).length;
@@ -55,7 +54,7 @@ export function VocabularyWordList({ entries, query, selectedEntryId, bulkEditin
 
   return <section className="flex min-w-0 flex-1 flex-col px-6 py-4">
     <div className="flex flex-wrap items-center gap-3">
-      {creating ? <label data-tour="vocabulary-add-entry" className="input input-bordered intent-add flex min-w-64 flex-1 items-center gap-2"><Plus size={15} /><input autoFocus value={quickEntry} onChange={onQuickEntryChange} onKeyDown={onQuickEntryKeyDown} aria-label="New business name" spellCheck lang={language} /><kbd className="kbd kbd-sm">Enter</kbd><button type="button" className="btn btn-ghost btn-xs" onClick={onCancelCreating}>Cancel</button></label> : <button data-tour="vocabulary-add-entry" type="button" className="btn btn-primary btn-sm gap-1" onClick={onStartCreating}><Plus size={15} />Add term</button>}
+      <label data-tour="vocabulary-add-entry" className="input input-bordered intent-add flex min-w-64 flex-1 items-center gap-2"><Plus size={15} /><input ref={quickEntryInputRef} autoFocus value={quickEntry} onChange={onQuickEntryChange} onKeyDown={onQuickEntryKeyDown} aria-label="New business name" aria-busy={quickEntryPending} placeholder="Add term" spellCheck lang={language} /><kbd className="kbd kbd-sm">{quickEntryPending ? "Adding…" : "Enter"}</kbd></label>
       <button type="button" className={`btn btn-sm gap-1 ${bulkEditing ? "btn-neutral" : "btn-outline"}`} aria-pressed={bulkEditing} onClick={onToggleBulkEditing}><ListChecks size={15} />Bulk settings</button>
       {missingSystemCount > 0 && <button type="button" data-autofill="system" className="btn btn-sm border-orange-300 bg-orange-50 text-orange-800 hover:bg-orange-100" disabled={autofillPending !== null} title="Fill every empty system name with its business name" onClick={handleAutofill}><ClipboardCopy size={14} />Copy as is <span className="badge badge-sm">{missingSystemCount}</span></button>}
       {missingPhysicalCount > 0 && <button type="button" data-autofill="physical" className="btn btn-sm border-yellow-300 bg-yellow-50 text-yellow-900 hover:bg-yellow-100" disabled={autofillPending !== null} title="Fill every empty physical name with its snake_case business name" onClick={handleAutofill}><Copy size={14} />Copy as small <span className="badge badge-sm">{missingPhysicalCount}</span></button>}

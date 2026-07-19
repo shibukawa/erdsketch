@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { applyDurableOperation, OperationError } from "../src/collaboration/hostState.ts";
+import { cardHeight, cardWidth } from "../src/features/modeling/constants.ts";
 import { compositionProjection } from "../src/features/modeling/physicalDesign.ts";
 import { getCompositionDiamondPath, normalizeRelationshipSemantics, relationshipDisplaySeedIDs } from "../src/features/modeling/utils.ts";
 
@@ -38,7 +39,7 @@ test("composition geometry includes a filled-diamond path at the source owner", 
     { id: "line", x: 500, y: 0, maturedLevel: 1 }
   ];
   const path = getCompositionDiamondPath(normalizeRelationshipSemantics(composition), seeds);
-  assert.match(path, /^M300 97 L/);
+  assert.ok(path?.startsWith(`M${cardWidth} ${cardHeight / 2} L`));
   assert.match(path, / Z$/);
 });
 

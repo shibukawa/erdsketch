@@ -308,11 +308,12 @@ export function useCanvasAnnotations({ canvasType, canvasId, annotations, me, sc
     void updatePresence(annotation.id, annotation.id);
   }, [updatePresence]);
 
-  const finishTextEdit = useCallback((annotation: CanvasAnnotation) => {
+  const finishTextEdit = useCallback(async (annotation: CanvasAnnotation) => {
     const before = textEditingBeforeRef.current;
     textEditingBeforeRef.current = null;
-    void updatePresence(annotation.id, "");
-    if (before && changed(before, annotation)) void recordAndSave(before, annotation);
+    const saved = before && changed(before, annotation) ? await recordAndSave(before, annotation) : true;
+    await updatePresence(annotation.id, "");
+    return saved;
   }, [recordAndSave, updatePresence]);
 
   const beginGeometryEdit = useCallback(() => {
