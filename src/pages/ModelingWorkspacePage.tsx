@@ -486,13 +486,17 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
     if (workspaceMode === "dfd") clearErdAnnotationSelection();
   }, [clearErdAnnotationSelection, workspaceMode]);
 
-  const quickCreateSeed = useCallback(
-    async (name: string) => {
-      const index = seeds.length + 1;
+  const quickCreateSeeds = useCallback(async (names: string[]) => {
+    const normalizedNames = names.map((name) => name.trim()).filter(Boolean);
+    if (normalizedNames.length === 0) return;
+
+    const baseIndex = seeds.length;
+    const createdSeeds = normalizedNames.map((title, offset) => {
+      const index = baseIndex + offset + 1;
       const point = { x: 120 + index * 24, y: 120 + index * 18 };
       const seed: ModelSeed = {
         id: crypto.randomUUID(),
-        title: name.trim(),
+        title,
         description: defaultModelDescription,
         fields: [],
         x: point.x,
@@ -504,20 +508,38 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
         maturedLevel: 6,
         rotation: index % 2 === 0 ? 0.6 : -0.6
       };
+      return {
+        seed,
+        placement: { canvasId: activeCanvasId, seedId: seed.id, x: point.x, y: point.y, accessMode: "owner" as const }
+      };
+    });
 
-      setSelectedId(seed.id);
-      setNameDisplayMode("business");
-      startTransition(() => {
-        setLocalSeeds([...seeds, seed]);
-        setLocalPlacements([...placements, { canvasId: activeCanvasId, seedId: seed.id, x: point.x, y: point.y, accessMode: "owner" }]);
-      });
+    const lastSeed = createdSeeds.length > 0 ? createdSeeds[createdSeeds.length - 1].seed : undefined;
+    if (!lastSeed) return;
 
-      if (await saveSeed(seed, true, activeCanvasId)) {
-        await unlockOwnedExcept([seed.id]);
-        await lock(seed.id);
-      }
+    setSelectedId(lastSeed.id);
+    setNameDisplayMode("business");
+    startTransition(() => {
+      setLocalSeeds([...seeds, ...createdSeeds.map((item) => item.seed)]);
+      setLocalPlacements([...placements, ...createdSeeds.map((item) => item.placement)]);
+    });
+
+    const savedSeedIds: string[] = [];
+    for (const { seed } of createdSeeds) {
+      if (await saveSeed(seed, true, activeCanvasId)) savedSeedIds.push(seed.id);
+      else window.alert(`The model “${seed.title}” could not be created.`);
+    }
+    if (savedSeedIds.length > 0) {
+      await unlockOwnedExcept(savedSeedIds);
+      await lock(savedSeedIds[savedSeedIds.length - 1]);
+    }
+  }, [activeCanvasId, lock, placements, saveSeed, seeds, setLocalPlacements, setLocalSeeds, unlockOwnedExcept]);
+
+  const quickCreateSeed = useCallback(
+    async (name: string) => {
+      await quickCreateSeeds([name]);
     },
-    [activeCanvasId, lock, placements, saveSeed, seeds, setLocalPlacements, setLocalSeeds, unlockOwnedExcept]
+    [quickCreateSeeds]
   );
 
   const updateScale = useCallback(
@@ -1190,7 +1212,9 @@ export function ModelingWorkspacePage({ initialInvitationToken, initialParticipa
           vocabularyEntries={vocabularyEntries}
           canDeleteSelected={!participantSnapshotReadOnly}
           onQueryChange={setQuery}
+          modelNames={seeds.map((seed) => seed.title)}
           onAddSeed={quickCreateSeed}
+          onAddSeeds={quickCreateSeeds}
           onUpdateSeed={updateSeed}
           onRemoveSelected={removeSelectedModel}
           onOpenDomainDictionary={openDomainDictionary}

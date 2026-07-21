@@ -4,6 +4,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type ClipboardEvent,
   type ChangeEvent,
   type DragEvent,
   type KeyboardEvent,
@@ -13,9 +14,11 @@ import {
   type WheelEvent
 } from "react";
 import { createPortal } from "react-dom";
+import { parseBulkEntryText } from "../../features/modeling/bulkEntry";
 import { reorderFields } from "../../features/modeling/fieldOrder";
 import type { DataDomain, DomainCategory, ErdCanvas, ModelField, ModelSeed, NameDisplayMode, NameSet, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
 import { getDisplayName, sortFieldListItems, updateNameSet } from "../../features/modeling/utils";
+import { BulkEntryConfirmDialog, type BulkEntryCandidate } from "./BulkEntryConfirmDialog";
 import { FieldListRow } from "./FieldListRow";
 import { RelationshipReferenceRow } from "./RelationshipReferenceRow";
 import { DomainDictionaryPanel } from "./DomainDictionaryPanel";
@@ -73,6 +76,7 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
   const [dropTargetFieldId, setDropTargetFieldId] = useState<string | null>(null);
   const [domainDropTargetFieldId, setDomainDropTargetFieldId] = useState<string | null>(null);
   const [quickEntryDomainDropTarget, setQuickEntryDomainDropTarget] = useState(false);
+  const [bulkCandidates, setBulkCandidates] = useState<BulkEntryCandidate[] | null>(null);
   const [selectedRefinementFieldIds, setSelectedRefinementFieldIds] = useState<string[]>([]);
   const [selectedRefinementRelationshipIds, setSelectedRefinementRelationshipIds] = useState<string[]>([]);
   const [sideTab, setSideTab] = useState<"definition" | "domains" | "refinement">("domains");
@@ -127,6 +131,15 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
     setQuickEntry(event.target.value);
   }, []);
 
+  const handleQuickEntryPaste = useCallback((event: ClipboardEvent<HTMLInputElement>) => {
+    if (!canEdit) return;
+    const pasted = event.clipboardData.getData("text/plain");
+    const parsed = parseBulkEntryText(pasted);
+    if (!parsed.hadMultipleRows && !parsed.hadAdditionalColumns) return;
+    event.preventDefault();
+    setBulkCandidates(parsed.names.map((name) => ({ id: crypto.randomUUID(), value: name, selected: true })));
+  }, [canEdit]);
+
   const handleAutoFavoriteClick = useCallback(() => {
     setAutoFavorite((current) => !current);
   }, []);
@@ -180,6 +193,24 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
     setQuickEntry("");
     setEditingFieldId(field.id);
   }, [autoFavorite, canEdit, commitFields, domains, quickEntry]);
+
+  const handleBulkConfirm = useCallback(async (names: string[]) => {
+    commitFields([...fieldsRef.current, ...names.map((name) => ({
+      id: crypto.randomUUID(),
+      name,
+      primaryKey: false,
+      important: autoFavorite
+    }))]);
+    setQuickEntry("");
+    setEditingFieldId(null);
+    setBulkCandidates(null);
+    quickEntryRef.current?.focus();
+  }, [autoFavorite, commitFields]);
+
+  const handleBulkClose = useCallback(() => {
+    setBulkCandidates(null);
+    quickEntryRef.current?.focus();
+  }, []);
 
   const handleSelectField = useCallback((fieldId: string) => {
     setEditingFieldId(fieldId);
@@ -382,9 +413,10 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
                 className="grow"
                 value={quickEntry}
                 disabled={!canEdit}
-                placeholder="Type a field name and press Enter or drop Domain,"
+                placeholder="Type a field name, press Enter, or paste multiple rows"
                 aria-label="New field name"
                 onChange={handleQuickEntryChange}
+                onPaste={handleQuickEntryPaste}
                 onKeyDown={handleQuickEntryKeyDown}
               />
               <kbd className="kbd kbd-sm bg-white text-slate-500">Enter</kbd>
@@ -455,6 +487,7 @@ export function FieldListDialog({ modelId, modelTitle, modelNames, initialNameDi
       </div>
       {advancedDialog === "indexes" && <IndexDefinitionDialog fields={fields} domains={domains} relationshipReferences={relationshipReferences} initial={seeds.find((seed) => seed.id === modelId)?.indexes ?? []} canEdit={canEdit} onSave={handleSaveIndexes} onClose={handleCloseAdvanced}/>}
       {advancedDialog === "partition" && <PartitionDefinitionDialog fields={fields} domains={domains} initial={seeds.find((seed) => seed.id === modelId)?.partitioning} canEdit={canEdit} onSave={handleSavePartitioning} onClose={handleCloseAdvanced}/>}
+      {bulkCandidates && <BulkEntryConfirmDialog title="Review field candidates" description="Pasted rows are listed below. Edit names, uncheck rows, then add the valid candidates." confirmLabel="Add selected fields" occupiedNames={fields.map((field) => field.name)} initialCandidates={bulkCandidates} note="Only the first TSV column is used. Existing field names on this model cannot be added." onConfirm={handleBulkConfirm} onClose={handleBulkClose}/>}
     </dialog></VocabularyNavigationProvider>,
     document.body
   );
