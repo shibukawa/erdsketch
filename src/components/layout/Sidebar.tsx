@@ -1,8 +1,10 @@
 import { BookOpen, Braces, Languages, Search } from "lucide-react";
-import { useCallback, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { startTransition, useCallback, useMemo, useRef, useState, type ChangeEvent, type ClipboardEvent, type FormEvent } from "react";
 import type { Collaborator } from "../../collaboration";
+import { parseBulkEntryText } from "../../features/modeling/bulkEntry";
 import { assessModelMaturity, type ModelMaturityIssue } from "../../features/modeling/maturity";
 import type { CanvasModelPlacement, DataDomain, ModelSeed, VocabularyEntry } from "../../features/modeling/types";
+import { BulkEntryConfirmDialog, type BulkEntryCandidate } from "../diagram/BulkEntryConfirmDialog";
 import { MaturityValidation } from "../diagram/MaturityValidation";
 import { ModelRemovalDialog } from "../diagram/ModelRemovalDialog";
 import { SeedInspector } from "../diagram/SeedInspector";
@@ -17,7 +19,9 @@ type SidebarProps = {
   vocabularyEntries: VocabularyEntry[];
   canDeleteSelected: boolean;
   onQueryChange: (query: string) => void;
+  modelNames: string[];
   onAddSeed: (name: string) => Promise<void>;
+  onAddSeeds: (names: string[]) => Promise<void>;
   onUpdateSeed: (seedId: string, patch: Partial<ModelSeed>) => void;
   onRemoveSelected: (seedId: string) => Promise<boolean>;
   onOpenDomainDictionary: (seedId?: string, fieldId?: string) => void;
@@ -34,7 +38,9 @@ export function Sidebar({
   vocabularyEntries,
   canDeleteSelected,
   onQueryChange,
+  modelNames,
   onAddSeed,
+  onAddSeeds,
   onUpdateSeed,
   onRemoveSelected,
   onOpenDomainDictionary,
@@ -42,6 +48,7 @@ export function Sidebar({
 }: SidebarProps) {
   const [newModelName, setNewModelName] = useState("");
   const [creatingModel, setCreatingModel] = useState(false);
+  const [bulkCandidates, setBulkCandidates] = useState<BulkEntryCandidate[] | null>(null);
   const [removalTarget, setRemovalTarget] = useState<ModelSeed | null>(null);
   const [removingModel, setRemovingModel] = useState(false);
   const newModelInputRef = useRef<HTMLInputElement | null>(null);
@@ -56,6 +63,32 @@ export function Sidebar({
     setNewModelName("");
     newModelInputRef.current?.focus();
   }, [creatingModel, newModelName, onAddSeed]);
+
+  const handleBulkPaste = useCallback((event: ClipboardEvent<HTMLInputElement>) => {
+    if (creatingModel) return;
+    const pasted = event.clipboardData.getData("text/plain");
+    const parsed = parseBulkEntryText(pasted);
+    if (!parsed.hadMultipleRows && !parsed.hadAdditionalColumns) return;
+    event.preventDefault();
+    setBulkCandidates(parsed.names.map((name) => ({ id: crypto.randomUUID(), value: name, selected: true })));
+  }, [creatingModel]);
+
+  const handleBulkConfirm = useCallback(async (names: string[]) => {
+    setCreatingModel(true);
+    await onAddSeeds(names);
+    setCreatingModel(false);
+    startTransition(() => {
+      setBulkCandidates(null);
+      setNewModelName("");
+    });
+    newModelInputRef.current?.focus();
+  }, [onAddSeeds]);
+
+  const handleBulkClose = useCallback(() => {
+    if (creatingModel) return;
+    setBulkCandidates(null);
+    newModelInputRef.current?.focus();
+  }, [creatingModel]);
 
   const handleQueryChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -110,7 +143,7 @@ export function Sidebar({
         </button>
       </nav>
 
-      <form data-tour="erd-quick-create" className="mt-5 border-t border-slate-200 pt-4" onSubmit={handleAddSeed}><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Quick create</p><div className="mt-2 join intent-add w-full rounded-lg"><input ref={newModelInputRef} className="input input-sm input-bordered join-item min-w-0 flex-1 bg-transparent" value={newModelName} disabled={creatingModel} onChange={(event) => setNewModelName(event.target.value)} placeholder="New model name" aria-label="New model name" /><button className="btn btn-primary btn-sm join-item" disabled={!newModelName.trim() || creatingModel}>Add</button></div><p className="mt-1 text-[11px] text-slate-500">Enter creates a model and keeps this input ready.</p></form>
+      <form data-tour="erd-quick-create" className="mt-5 border-t border-slate-200 pt-4" onSubmit={handleAddSeed}><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Quick create</p><div className="mt-2 join intent-add w-full rounded-lg"><input ref={newModelInputRef} className="input input-sm input-bordered join-item min-w-0 flex-1 bg-transparent" value={newModelName} disabled={creatingModel} onChange={(event) => setNewModelName(event.target.value)} onPaste={handleBulkPaste} placeholder="New model name" aria-label="New model name" /><button className="btn btn-primary btn-sm join-item" disabled={!newModelName.trim() || creatingModel}>Add</button></div><p className="mt-1 text-[11px] text-slate-500">Enter creates a model. Paste multiple rows to review and add in bulk.</p></form>
 
       <label className="input input-bordered intent-search mt-4 flex h-11 items-center gap-2 rounded-lg">
         <Search size={16} className="text-slate-400" />
@@ -131,6 +164,7 @@ export function Sidebar({
       )}
 
       {removalTarget && <ModelRemovalDialog model={removalTarget} pending={removingModel} onConfirm={handleDeleteConfirm} onClose={handleDeleteClose}/>}
+      {bulkCandidates && <BulkEntryConfirmDialog title="Review model candidates" description="Pasted rows are listed below. Edit names, uncheck rows, then add the valid candidates." confirmLabel="Add selected models" occupiedNames={modelNames} initialCandidates={bulkCandidates} note="Only the first TSV column is used. Existing names cannot be added." onConfirm={handleBulkConfirm} onClose={handleBulkClose}/>}
     </aside>
   );
 }

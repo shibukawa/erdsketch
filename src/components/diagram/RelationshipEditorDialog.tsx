@@ -22,6 +22,7 @@ export function RelationshipEditorDialog({ relationship, source, target, canDele
   const endpointModels = [source, target];
   const draftSource = endpointModels.find((model) => model?.id === draft.sourceId);
   const draftTarget = endpointModels.find((model) => model?.id === draft.targetId);
+  const isSaveDisabled = !draft.name.trim() || (draft.onDelete === "set_null" && !relationshipForeignKeyNullable(draft));
 
   useEffect(() => {
     setDraft(normalizeRelationshipSemantics(upgradeLegacyHistoryRelationship({ ...relationship, kind: relationship.kind ?? "foreign-key" }, source, target)));
@@ -66,10 +67,10 @@ export function RelationshipEditorDialog({ relationship, source, target, canDele
   const handleSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
       event.preventDefault();
-      if (!draft.name.trim() || (draft.onDelete === "set_null" && !relationshipForeignKeyNullable(draft))) return;
+      if (isSaveDisabled) return;
       onSave(normalizeRelationshipSemantics(draft));
     },
-    [draft, onSave]
+    [draft, isSaveDisabled, onSave]
   );
   const handleDelete = useCallback(() => {
     if (window.confirm(`Delete the “${relationship.name || "unnamed"}” relationship? Its relationship link will also disappear.`)) onDelete();
@@ -94,7 +95,7 @@ export function RelationshipEditorDialog({ relationship, source, target, canDele
         </header>
         <div className="space-y-5 px-5 py-5">
           <label className="block">
-            <span className="text-sm font-bold text-slate-700">Name</span>
+            <span className="text-sm font-bold text-slate-700">Name <span className="text-red-700">※required</span></span>
             <input autoFocus className="input input-bordered mt-2 w-full" value={draft.name} onChange={handleNameChange} placeholder="e.g. ownership" />
           </label>
           <div>
@@ -149,7 +150,7 @@ export function RelationshipEditorDialog({ relationship, source, target, canDele
           <button type="button" className="btn btn-ghost text-red-600 hover:bg-red-50" disabled={!canDelete} onClick={handleDelete}><Trash2 size={16} /> Delete</button>
           <div className="flex gap-2">
             <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary">Save relationship</button>
+            <button type="submit" className="btn btn-primary" disabled={isSaveDisabled}>Save relationship</button>
           </div>
         </footer>
       </form>
