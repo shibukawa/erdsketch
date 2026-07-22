@@ -1,4 +1,4 @@
 interface:
   display_name: "React Frontend Conventions"
-  short_description: "Apply React Compiler-first frontend standards"
-  default_prompt: "Use $react-frontend-conventions to refactor this frontend with React Compiler-first conventions."
+  short_description: "Apply React 19 transactional frontend standards"
+  default_prompt: "Use $react-frontend-conventions to implement this React frontend with optimistic persistence, rollback, toast feedback, and React Compiler-first conventions."

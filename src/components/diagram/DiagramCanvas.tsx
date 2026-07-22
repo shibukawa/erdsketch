@@ -50,7 +50,7 @@ type DiagramCanvasProps = {
   onPointerLeave: PointerEventHandler<HTMLDivElement>;
   onPointerUp: PointerEventHandler<HTMLDivElement>;
   onSeedPointerDown: (event: PointerEvent<HTMLElement>, seed: ModelSeed) => void;
-  onUpdateSeed: (seedId: string, patch: Partial<ModelSeed>) => void;
+  onUpdateSeed: (seedId: string, patch: Partial<ModelSeed>) => Promise<boolean>;
   onModelEditingChange: (seedId: string, editing: boolean) => void;
   onUnlockSeed: (seedId: string) => void;
   onRelationshipPointerDown: (event: PointerEvent<HTMLButtonElement>, seed: ModelSeed) => void;

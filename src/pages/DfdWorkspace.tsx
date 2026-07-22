@@ -15,6 +15,7 @@ import { getDisplayName, relationshipDisplaySeedIDs } from "../features/modeling
 import { defaultVolumeEstimate } from "../features/modeling/capacity";
 import type { AnnotationAnchor, CanvasAnnotation, CanvasPoint, SaveAnnotation } from "../features/annotations/types";
 import { useCanvasAnnotations } from "../features/annotations/useCanvasAnnotations";
+import { useToast } from "../components/feedback/ToastProvider";
 
 type DfdWorkspaceProps = {
   dfd: DfdState;
@@ -31,7 +32,7 @@ type DfdWorkspaceProps = {
   recoveryError?: string;
   activeProject?: { displayName: string; kind: "named" | "temporary" };
   onOpenProjectManager: () => void;
-  onOpenExport: (displayMode: CardDisplayMode) => void;
+  onOpenExport: (displayMode: CardDisplayMode) => Promise<void>;
   onSetLocalDfd: (dfd: DfdState) => void;
   onSaveDfd: (dfd: DfdState) => Promise<boolean>;
   onSaveCatalogModel: (model: ModelSeed, create?: boolean) => Promise<boolean>;
@@ -57,7 +58,6 @@ type DfdWorkspaceProps = {
   onShareWork: () => void;
   onLeaveSession?: () => void;
   annotations: CanvasAnnotation[];
-  onSetLocalAnnotations: (next: CanvasAnnotation[] | ((current: CanvasAnnotation[]) => CanvasAnnotation[])) => void;
   onSaveAnnotation: SaveAnnotation;
   onUpdateAnnotationPresence: (selectionId?: string, editingAnnotationId?: string) => Promise<boolean>;
   onMoveCursor: (x: number, y: number) => void;
@@ -86,7 +86,8 @@ const dailyTips = [
   "Overlap same-class nodes to replace repeated lines with one grouped flow."
 ];
 
-export function DfdWorkspace({ dfd, erdCanvases, erdPlacements, activeCanvasId, models, me, users, connected, isHost, recoveryReady, persistentStorage, recoveryError, activeProject, onOpenProjectManager, onOpenExport, onSetLocalDfd, onSaveDfd, onSaveCatalogModel, onSetLocalModels, relationships, relationshipReferences, domains, domainCategories, nameDisplayMode, vocabularyCache, onLockModel, onUnlockModel, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, onApplyRefinement, onActiveCanvasChange, onSelectErdCanvas, onCreateProjectCanvas, onRenameProjectCanvas, onOpenCrudMatrix, onShareWork, onLeaveSession, annotations, onSetLocalAnnotations, onSaveAnnotation, onUpdateAnnotationPresence, onMoveCursor, onChangeCanvasPresence }: DfdWorkspaceProps) {
+export function DfdWorkspace({ dfd, erdCanvases, erdPlacements, activeCanvasId, models, me, users, connected, isHost, recoveryReady, persistentStorage, recoveryError, activeProject, onOpenProjectManager, onOpenExport, onSetLocalDfd, onSaveDfd, onSaveCatalogModel, onSetLocalModels, relationships, relationshipReferences, domains, domainCategories, nameDisplayMode, vocabularyCache, onLockModel, onUnlockModel, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, onApplyRefinement, onActiveCanvasChange, onSelectErdCanvas, onCreateProjectCanvas, onRenameProjectCanvas, onOpenCrudMatrix, onShareWork, onLeaveSession, annotations, onSaveAnnotation, onUpdateAnnotationPresence, onMoveCursor, onChangeCanvasPresence }: DfdWorkspaceProps) {
+  const { error: showError } = useToast();
   const [viewport, setViewport] = useState<Viewport>({ x: 250, y: 130, scale: 1 });
   const [cardDisplayMode, setCardDisplayMode] = useState<CardDisplayMode>("description");
   const [selectedEndpointId, setSelectedEndpointId] = useState<string>();
@@ -99,14 +100,9 @@ export function DfdWorkspace({ dfd, erdCanvases, erdPlacements, activeCanvasId, 
   const [fieldEditorModelId, setFieldEditorModelId] = useState<string>();
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const dfdRef = useRef(dfd);
-  const modelsRef = useRef(models);
-  const pendingModelUpdatesRef = useRef(new Map<string, ModelSeed>());
-  const modelSaveTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const groupFlowRestorationsRef = useRef(new Map<string, DfdGroupFlowRestoration>());
-  const openExport = useCallback(() => onOpenExport(cardDisplayMode), [cardDisplayMode, onOpenExport]);
+  function openExport() { void onOpenExport(cardDisplayMode); }
   useEffect(() => { dfdRef.current = dfd; }, [dfd]);
-  useEffect(() => { modelsRef.current = models; }, [models]);
-  useEffect(() => () => { for (const timer of modelSaveTimersRef.current.values()) clearTimeout(timer); }, []);
   useEffect(() => {
     if (dfd.canvases.some((canvas) => canvas.id === activeCanvasId)) return;
     onActiveCanvasChange(dfd.canvases[0]?.id ?? "dfd-main");
@@ -136,8 +132,8 @@ export function DfdWorkspace({ dfd, erdCanvases, erdPlacements, activeCanvasId, 
   const setLocalDfd = useCallback((next: DfdState) => { dfdRef.current = next; onSetLocalDfd(next); }, [onSetLocalDfd]);
   const persistDfd = useCallback((next: DfdState) => {
     setLocalDfd(next);
-    void onSaveDfd(next).then((saved) => { if (!saved) window.alert("The DFD change could not be saved."); });
-  }, [onSaveDfd, setLocalDfd]);
+    void onSaveDfd(next).then((saved) => { if (!saved) showError("The DFD change could not be saved."); });
+  }, [onSaveDfd, setLocalDfd, showError]);
   const worldPoint = useCallback((clientX: number, clientY: number) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return { x: 120, y: 100 };
@@ -162,7 +158,7 @@ export function DfdWorkspace({ dfd, erdCanvases, erdPlacements, activeCanvasId, 
     const bounds = endpointBounds(anchor.itemId, activeNodes, activeGroups);
     return bounds ? { x: bounds.x + anchor.x, y: bounds.y + anchor.y } : anchor;
   }, [activeGroups, activeNodes]);
-  const annotationController = useCanvasAnnotations({ canvasType: "dfd", canvasId: activeCanvasId, annotations, me, screenToWorld: worldPoint, findAnchor: findDfdAnnotationAnchor, saveAnnotation: onSaveAnnotation, setLocalAnnotations: onSetLocalAnnotations, updatePresence: onUpdateAnnotationPresence });
+  const annotationController = useCanvasAnnotations({ canvasType: "dfd", canvasId: activeCanvasId, annotations, me, screenToWorld: worldPoint, findAnchor: findDfdAnnotationAnchor, saveAnnotation: onSaveAnnotation, updatePresence: onUpdateAnnotationPresence });
   const nextPosition = useCallback((kind: DfdNode["kind"]) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     const center = rect
@@ -297,56 +293,47 @@ export function DfdWorkspace({ dfd, erdCanvases, erdPlacements, activeCanvasId, 
     const next = withModelCrud({ ...selectedFlow, ...patch }, dfdRef.current.nodes, dfdRef.current.groups);
     persistDfd({ ...dfdRef.current, flows: dfdRef.current.flows.map((flow) => flow.id === selectedFlow.id ? next : flow) });
   }, [persistDfd, selectedFlow]);
-  const flushModelUpdate = useCallback(async (modelId: string) => {
-    modelSaveTimersRef.current.delete(modelId);
-    const pending = pendingModelUpdatesRef.current.get(modelId);
-    if (!pending) return;
-    if (!(await onLockModel(modelId))) {
-      window.alert("This model is locked by another collaborator.");
-      return;
+  const updateSelectedModel = useCallback(async (patch: Partial<ModelSeed>) => {
+    if (!selectedModel) return false;
+    if (!(await onLockModel(selectedModel.id))) {
+      showError("This model is locked by another collaborator.");
+      return false;
     }
-    if (!(await onSaveCatalogModel(pending))) window.alert("The model change could not be saved.");
-    await onUnlockModel(modelId);
-    if (pendingModelUpdatesRef.current.get(modelId) === pending) pendingModelUpdatesRef.current.delete(modelId);
-  }, [onLockModel, onSaveCatalogModel, onUnlockModel]);
-  const updateSelectedModel = useCallback((patch: Partial<ModelSeed>) => {
-    if (!selectedModel) return;
-    const base = pendingModelUpdatesRef.current.get(selectedModel.id) ?? modelsRef.current.find((model) => model.id === selectedModel.id);
-    if (!base) return;
-    const next = { ...base, ...patch };
-    pendingModelUpdatesRef.current.set(next.id, next);
-    const nextModels = modelsRef.current.map((model) => model.id === next.id ? next : model);
-    modelsRef.current = nextModels;
-    onSetLocalModels(nextModels);
-    const currentTimer = modelSaveTimersRef.current.get(next.id);
-    if (currentTimer) clearTimeout(currentTimer);
-    modelSaveTimersRef.current.set(next.id, setTimeout(() => { void flushModelUpdate(next.id); }, 300));
-  }, [flushModelUpdate, onSetLocalModels, selectedModel]);
+    try {
+      const saved = await onSaveCatalogModel({ ...selectedModel, ...patch });
+      if (!saved) showError("The model change could not be saved. Your last confirmed value was restored.");
+      return saved;
+    } finally {
+      await onUnlockModel(selectedModel.id);
+    }
+  }, [onLockModel, onSaveCatalogModel, onUnlockModel, selectedModel, showError]);
 
   const openModelFields = useCallback(async (node: DfdNode) => {
     if (!node.modelId) return;
     if (!(await onLockModel(node.modelId))) {
-      window.alert("This model is locked by another collaborator.");
+      showError("This model is locked by another collaborator.");
       return;
     }
     setFieldEditorModelId(node.modelId);
-  }, [onLockModel]);
+  }, [onLockModel, showError]);
   const closeModelFields = useCallback(() => {
     if (fieldEditorModelId) void onUnlockModel(fieldEditorModelId);
     setFieldEditorModelId(undefined);
   }, [fieldEditorModelId, onUnlockModel]);
-  const changeModelFields = useCallback((fields: ModelField[]) => {
-    if (!fieldEditorModel) return;
+  const changeModelFields = useCallback(async (fields: ModelField[]) => {
+    if (!fieldEditorModel) return false;
     const next = { ...fieldEditorModel, fields };
-    onSetLocalModels(models.map((model) => model.id === next.id ? next : model));
-    void onSaveCatalogModel(next);
-  }, [fieldEditorModel, models, onSaveCatalogModel, onSetLocalModels]);
-  const changeModelDefinition = useCallback((patch: Partial<ModelSeed>) => {
-    if (!fieldEditorModel) return;
+    const saved = await onSaveCatalogModel(next);
+    if (!saved) showError("The model change could not be saved. Your last confirmed value was restored.");
+    return saved;
+  }, [fieldEditorModel, onSaveCatalogModel, showError]);
+  const changeModelDefinition = useCallback(async (patch: Partial<ModelSeed>) => {
+    if (!fieldEditorModel) return false;
     const next = { ...fieldEditorModel, ...patch };
-    onSetLocalModels(models.map((model) => model.id === next.id ? next : model));
-    void onSaveCatalogModel(next);
-  }, [fieldEditorModel, models, onSaveCatalogModel, onSetLocalModels]);
+    const saved = await onSaveCatalogModel(next);
+    if (!saved) showError("The model change could not be saved. Your last confirmed value was restored.");
+    return saved;
+  }, [fieldEditorModel, onSaveCatalogModel, showError]);
   const projectedReferences = useMemo(() => fieldEditorModel ? relationships.flatMap((relationship) => {
     if (!relationshipDisplaySeedIDs(relationship).includes(fieldEditorModel.id)) return [];
     const reference = relationshipReferences.find((item) => item.relationshipId === relationship.id);

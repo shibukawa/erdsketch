@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useOptimistic, useRef, useState, useTransition, type PointerEvent as ReactPointerEvent } from "react";
 import type { Collaborator } from "../../collaboration";
 import { annotationStrokes, primaryAnnotationPoints, screenToleranceToWorld, simplifyPointSequence } from "./geometry";
 import type { AnnotationAnchor, AnnotationTool, CanvasAnnotation, CanvasPoint, CanvasType, SaveAnnotation } from "./types";
+import { useToast } from "../../components/feedback/ToastProvider";
 
 type HistoryEntry = { before?: CanvasAnnotation; after?: CanvasAnnotation };
 type GeometryEditState = {
@@ -25,9 +26,10 @@ type UseCanvasAnnotationsOptions = {
   screenToWorld: (clientX: number, clientY: number) => CanvasPoint;
   findAnchor: (point: CanvasPoint) => AnnotationAnchor | undefined;
   saveAnnotation: SaveAnnotation;
-  setLocalAnnotations: (next: CanvasAnnotation[] | ((current: CanvasAnnotation[]) => CanvasAnnotation[])) => void;
   updatePresence: (selectionId?: string, editingAnnotationId?: string) => Promise<boolean>;
 };
+
+type OptimisticAnnotationChange = { annotation?: CanvasAnnotation; removedId?: string };
 
 const notePalette = [
   { color: "#92400e", fill: "#fef3c7" },
@@ -71,7 +73,10 @@ function changed(before: CanvasAnnotation, after?: CanvasAnnotation) {
   return !after || JSON.stringify(before) !== JSON.stringify(after);
 }
 
-export function useCanvasAnnotations({ canvasType, canvasId, annotations, me, screenToWorld, findAnchor, saveAnnotation, setLocalAnnotations, updatePresence }: UseCanvasAnnotationsOptions) {
+export function useCanvasAnnotations({ canvasType, canvasId, annotations, me, screenToWorld, findAnchor, saveAnnotation, updatePresence }: UseCanvasAnnotationsOptions) {
+  const { error: showError } = useToast();
+  const [, startSaveTransition] = useTransition();
+  const [optimisticAnnotations, addOptimisticChange] = useOptimistic<CanvasAnnotation[], OptimisticAnnotationChange>(annotations, (current, change) => replaceAnnotation(current, change.annotation, change.removedId));
   const [activeTool, setActiveTool] = useState<AnnotationTool>("select");
   const [selectedId, setSelectedId] = useState("");
   const [visible, setVisible] = useState(true);
@@ -82,30 +87,37 @@ export function useCanvasAnnotations({ canvasType, canvasId, annotations, me, sc
   const redoRef = useRef<HistoryEntry[]>([]);
   const textEditingBeforeRef = useRef<CanvasAnnotation | null>(null);
 
-  const canvasAnnotations = useMemo(() => annotations.filter((annotation) => annotation.canvasType === canvasType && annotation.canvasId === canvasId), [annotations, canvasId, canvasType]);
+  const canvasAnnotations = useMemo(() => optimisticAnnotations.filter((annotation) => annotation.canvasType === canvasType && annotation.canvasId === canvasId), [optimisticAnnotations, canvasId, canvasType]);
   const selected = useMemo(() => canvasAnnotations.find((annotation) => annotation.id === selectedId), [canvasAnnotations, selectedId]);
   const previewAnnotation = geometryEdit ? geometryEdit.current : draft;
   const previewAnnotationId = geometryEdit?.before.id ?? draft?.id;
 
-  const updateLocal = useCallback((annotation?: CanvasAnnotation, removedId?: string) => {
-    setLocalAnnotations((current) => replaceAnnotation(current, annotation, removedId));
-  }, [setLocalAnnotations]);
+  const persistChange = useCallback((before: CanvasAnnotation | undefined, after: CanvasAnnotation | undefined, recordHistory: boolean) => new Promise<boolean>((resolve) => {
+    if (!before && !after) { resolve(false); return; }
+    startSaveTransition(async () => {
+      addOptimisticChange({ annotation: after, removedId: before?.id });
+      try {
+        const saved = after
+          ? await saveAnnotation(after, { create: !before })
+          : await saveAnnotation(before!, { delete: true });
+        if (!saved) {
+          showError("The annotation change could not be synchronized. Your last confirmed value was restored.");
+          resolve(false);
+          return;
+        }
+        if (recordHistory) {
+          historyRef.current.push({ before, after });
+          redoRef.current = [];
+        }
+        resolve(true);
+      } catch (error) {
+        showError(error instanceof Error ? error.message : "The annotation change could not be synchronized. Your last confirmed value was restored.");
+        resolve(false);
+      }
+    });
+  }), [addOptimisticChange, saveAnnotation, showError]);
 
-  const recordAndSave = useCallback(async (before: CanvasAnnotation | undefined, after: CanvasAnnotation | undefined) => {
-    if (!before && !after) return false;
-    updateLocal(after, before?.id);
-    const saved = after
-      ? await saveAnnotation(after, { create: !before })
-      : await saveAnnotation(before!, { delete: true });
-    if (!saved) {
-      updateLocal(before, after?.id);
-      window.alert("The annotation change could not be synchronized.");
-      return false;
-    }
-    historyRef.current.push({ before, after });
-    redoRef.current = [];
-    return true;
-  }, [saveAnnotation, updateLocal]);
+  const recordAndSave = useCallback((before: CanvasAnnotation | undefined, after: CanvasAnnotation | undefined) => persistChange(before, after, true), [persistChange]);
 
   const cancelGeometryEdit = useCallback(() => {
     if (!geometryEdit) return;
@@ -151,11 +163,7 @@ export function useCanvasAnnotations({ canvasType, canvasId, annotations, me, sc
       setSelectedId(annotation.id);
       void updatePresence(annotation.id, annotation.id);
       textEditingBeforeRef.current = annotation;
-      updateLocal(annotation);
-      void saveAnnotation(annotation, { create: true }).then((saved) => {
-        if (saved) historyRef.current.push({ after: annotation });
-        else updateLocal(undefined, annotation.id);
-      });
+      void recordAndSave(undefined, annotation);
       return true;
     }
     if (annotation.kind === "arrow") annotation = { ...annotation, start: findAnchor(point) ?? point };
@@ -169,7 +177,7 @@ export function useCanvasAnnotations({ canvasType, canvasId, annotations, me, sc
     setGesture({ type: "draw", pointerId: event.pointerId, annotation, strokeIndex });
     setDraft(annotation);
     return true;
-  }, [activeTool, canvasAnnotations, canvasId, canvasType, draft, findAnchor, me.id, saveAnnotation, screenToWorld, updateLocal, updatePresence]);
+  }, [activeTool, canvasAnnotations, canvasId, canvasType, draft, findAnchor, me.id, recordAndSave, screenToWorld, updatePresence]);
 
   const handleAnnotationPointerDown = useCallback((event: ReactPointerEvent<HTMLElement | SVGElement>, annotation: CanvasAnnotation, mode: "move" | "resize" = "move") => {
     if (activeTool !== "select" || geometryEdit) return;
@@ -426,19 +434,23 @@ export function useCanvasAnnotations({ canvasType, canvasId, annotations, me, sc
     const entry = historyRef.current.pop();
     if (!entry) return;
     redoRef.current.push(entry);
-    updateLocal(entry.before, entry.after?.id);
-    if (entry.before) void saveAnnotation(entry.before, { create: !entry.after });
-    else if (entry.after) void saveAnnotation(entry.after, { delete: true });
-  }, [saveAnnotation, updateLocal]);
+    void persistChange(entry.after, entry.before, false).then((saved) => {
+      if (saved) return;
+      redoRef.current.pop();
+      historyRef.current.push(entry);
+    });
+  }, [persistChange]);
 
   const redo = useCallback(() => {
     const entry = redoRef.current.pop();
     if (!entry) return;
     historyRef.current.push(entry);
-    updateLocal(entry.after, entry.before?.id);
-    if (entry.after) void saveAnnotation(entry.after, { create: !entry.before });
-    else if (entry.before) void saveAnnotation(entry.before, { delete: true });
-  }, [saveAnnotation, updateLocal]);
+    void persistChange(entry.before, entry.after, false).then((saved) => {
+      if (saved) return;
+      historyRef.current.pop();
+      redoRef.current.push(entry);
+    });
+  }, [persistChange]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

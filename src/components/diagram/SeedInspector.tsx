@@ -10,25 +10,25 @@ type SeedInspectorProps = {
   owner?: Collaborator;
   canEdit: boolean;
   placement?: CanvasModelPlacement;
-  onUpdate: (seedId: string, patch: Partial<ModelSeed>) => void;
+  onUpdate: (seedId: string, patch: Partial<ModelSeed>) => Promise<boolean>;
   onDelete: () => void;
   canDelete: boolean;
   deleting: boolean;
 };
 
 export function SeedInspector({ seed, owner, canEdit, placement, onUpdate, onDelete, canDelete, deleting }: SeedInspectorProps) {
-  function handleRoleClick(event: MouseEvent<HTMLButtonElement>) {
+  async function handleRoleClick(event: MouseEvent<HTMLButtonElement>) {
     const role = event.currentTarget.dataset.role as EntityRole;
     const volumeEstimate = seed.volumeEstimate ?? defaultVolumeEstimate(role);
-    onUpdate(seed.id, { role, volumeEstimate: { ...volumeEstimate, retentionPeriod: normalizeTransactionRetention(role, volumeEstimate.retentionPeriod) } });
+    await onUpdate(seed.id, { role, volumeEstimate: { ...volumeEstimate, retentionPeriod: normalizeTransactionRetention(role, volumeEstimate.retentionPeriod) } });
   }
 
-  function handleDependencyClick(event: MouseEvent<HTMLButtonElement>) {
-    onUpdate(seed.id, { dependency: event.currentTarget.dataset.dependency as Dependency });
+  async function handleDependencyClick(event: MouseEvent<HTMLButtonElement>) {
+    await onUpdate(seed.id, { dependency: event.currentTarget.dataset.dependency as Dependency });
   }
 
-  function handlePrivacyChange(event: ChangeEvent<HTMLInputElement>) {
-    onUpdate(seed.id, { hasPrivacy: event.target.checked });
+  async function handlePrivacyChange(event: ChangeEvent<HTMLInputElement>) {
+    await onUpdate(seed.id, { hasPrivacy: event.target.checked });
   }
 
   return (

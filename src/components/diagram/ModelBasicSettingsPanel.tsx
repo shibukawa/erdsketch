@@ -1,4 +1,4 @@
-import { useCallback, type ChangeEvent, type MouseEvent } from "react";
+import type { ChangeEvent, MouseEvent } from "react";
 import { dependencyLabels, dependencyOptions, roleMeta, roleOptions } from "../../features/modeling/constants";
 import { defaultVolumeEstimate, normalizeTransactionRetention } from "../../features/modeling/capacity";
 import type { Dependency, EntityRole, ModelSeed } from "../../features/modeling/types";
@@ -13,23 +13,23 @@ type ModelBasicSettingsPanelProps = {
 export function ModelBasicSettingsPanel({ model, canEdit, onChange }: ModelBasicSettingsPanelProps) {
   const businessName = model.names?.business ?? model.title;
 
-  const handleNameChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+  function handleNameChange(event: ChangeEvent<HTMLInputElement>) {
     onChange({ names: updateNameSet(model.title, model.names, "business", event.target.value), vocabularyBinding: undefined });
-  }, [model.names, model.title, onChange]);
-  const handleNoteChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
+  }
+  function handleNoteChange(event: ChangeEvent<HTMLTextAreaElement>) {
     onChange({ description: event.target.value });
-  }, [onChange]);
-  const handleRoleClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+  }
+  function handleRoleClick(event: MouseEvent<HTMLButtonElement>) {
     const role = event.currentTarget.dataset.role as EntityRole;
     const volumeEstimate = model.volumeEstimate ?? defaultVolumeEstimate(role);
     onChange({ role, volumeEstimate: { ...volumeEstimate, retentionPeriod: normalizeTransactionRetention(role, volumeEstimate.retentionPeriod) } });
-  }, [model.volumeEstimate, onChange]);
-  const handleDependencyClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+  }
+  function handleDependencyClick(event: MouseEvent<HTMLButtonElement>) {
     onChange({ dependency: event.currentTarget.dataset.dependency as Dependency });
-  }, [onChange]);
-  const handlePrivacyChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+  }
+  function handlePrivacyChange(event: ChangeEvent<HTMLInputElement>) {
     onChange({ hasPrivacy: event.target.checked });
-  }, [onChange]);
+  }
 
   return (
     <div className="mx-auto max-w-3xl p-6">

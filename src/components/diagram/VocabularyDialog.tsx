@@ -11,6 +11,7 @@ import { ProjectSettingsDialog } from "./ProjectSettingsDialog";
 import { VocabularyEntrySidebar } from "./VocabularyEntrySidebar";
 import { VocabularyRegistrationDialog } from "./VocabularyRegistrationDialog";
 import { VocabularyUsageList } from "./VocabularyUsageList";
+import { useToast } from "../feedback/ToastProvider";
 import { VocabularyWordList } from "./VocabularyWordList";
 
 type VocabularyDialogProps = {
@@ -32,6 +33,7 @@ type VocabularyDialogProps = {
 
 export function VocabularyDialog({ seeds, domains, entries, cache, indexing, namingPolicy, onNamingPolicyChange, onCreateEntry, onChangeEntry, onDeleteEntry, onBindingChange, onAliasReplace, focusMatchKey, onClose }: VocabularyDialogProps) {
   const { locale } = useI18n();
+  const { error: showError } = useToast();
   const focusedMatch = focusMatchKey ? cache.matches.get(focusMatchKey) : undefined;
   const [tab, setTab] = useState<"words" | "usage">(focusedMatch ? "usage" : "words");
   const [query, setQuery] = useState("");
@@ -100,19 +102,25 @@ export function VocabularyDialog({ seeds, domains, entries, cache, indexing, nam
     setSelectedTableId(event.currentTarget.dataset.tableId ?? "");
   }
 
-  async function handleEntryCommit(event: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    const entry = entries.find((candidate) => candidate.id === event.currentTarget.dataset.entryId);
-    const key = event.currentTarget.dataset.entryKey as keyof VocabularyEntry;
-    if (!entry || !key) return;
-    const value = key === "aliases" ? event.currentTarget.value.split(",").map((item) => item.trim()).filter(Boolean) : event.currentTarget.value;
+  async function commitEntryValue(entryId: string, key: keyof VocabularyEntry, rawValue: string) {
+    const entry = entries.find((candidate) => candidate.id === entryId);
+    if (!entry || !key) return false;
+    const value = key === "aliases" ? rawValue.split(",").map((item) => item.trim()).filter(Boolean) : rawValue;
     const next = { ...entry, [key]: value } as VocabularyEntry;
     const conflict = vocabularyTermConflict(entries, next);
     if (conflict) {
-      window.alert(`“${conflict}” is already defined. The earlier vocabulary definition takes priority.`);
-      event.currentTarget.value = key === "aliases" ? entry.aliases.join(", ") : String(entry[key]);
-      return;
+      showError(`“${conflict}” is already defined. The earlier vocabulary definition takes priority.`);
+      return false;
     }
-    if (!(await onChangeEntry(next))) event.currentTarget.value = key === "aliases" ? entry.aliases.join(", ") : String(entry[key]);
+    return onChangeEntry(next);
+  }
+
+  async function handleEntryCommit(event: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    const control = event.currentTarget;
+    const entry = entries.find((candidate) => candidate.id === control.dataset.entryId);
+    const key = control.dataset.entryKey as keyof VocabularyEntry;
+    if (!entry || !key) return;
+    if (!(await commitEntryValue(entry.id, key, control.value)) && control.isConnected) control.value = key === "aliases" ? entry.aliases.join(", ") : String(entry[key]);
   }
 
   function handleDelete(entry: VocabularyEntry) {
@@ -184,7 +192,7 @@ export function VocabularyDialog({ seeds, domains, entries, cache, indexing, nam
           </div>
           {tab === "words" ? <div className="flex min-h-0 flex-1">
             <VocabularyWordList entries={entries} query={query} selectedEntryId={selectedEntryId} bulkEditing={bulkEditing} quickEntry={quickEntry} quickEntryPending={quickEntryPending} quickEntryInputRef={quickEntryInputRef} language={locale} suggestions={suggestions} pendingId={pendingId} autofillPending={autofillPending} onQueryChange={handleQuery} onQuickEntryChange={handleQuickEntryChange} onQuickEntryKeyDown={handleQuickEntryKeyDown} onToggleBulkEditing={() => setBulkEditing((current) => !current)} onSelectEntry={setSelectedEntryId} onEntryCommit={handleEntryCommit} onSuggest={handleSuggest} onApplySuggestion={handleApplySuggestion} onAutofill={handleAutofill} />
-            {selectedEntry && !bulkEditing && <VocabularyEntrySidebar entry={selectedEntry} cache={cache} language={locale} onCommit={handleEntryCommit} onDelete={handleDelete} onClose={() => setSelectedEntryId(null)} />}
+            {selectedEntry && !bulkEditing && <VocabularyEntrySidebar entry={selectedEntry} cache={cache} language={locale} onCommit={handleEntryCommit} onValueCommit={commitEntryValue} onDelete={handleDelete} onClose={() => setSelectedEntryId(null)} />}
           </div> : <VocabularyUsageList seeds={seeds} domains={domains} cache={cache} matches={usageMatches} scope={usageScope} selectedTableId={selectedTableId} focusMatchKey={focusMatchKey} onScopeClick={handleScopeClick} onTableClick={handleTableClick} onRegister={handleRegister} onAliasReplace={handleAliasReplace} />}
         </div>
       </div>

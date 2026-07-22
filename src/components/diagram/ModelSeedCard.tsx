@@ -1,5 +1,5 @@
 import { Columns3, Database, KeyRound, Link2, Lock, Menu, Pencil, Star } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FocusEvent, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useOptimistic, useRef, useState, useTransition, type ChangeEvent, type FocusEvent, type KeyboardEvent, type PointerEvent } from "react";
 import type { Collaborator } from "../../collaboration";
 import { cardHeight, dependencyLabels, roleMeta } from "../../features/modeling/constants";
 import type { CanvasAccessMode, CardDisplayMode, DataDomain, DomainCategory, ModelField, ModelSeed, NameDisplayMode, RefinementResult, Relationship, RelationshipReference } from "../../features/modeling/types";
@@ -25,7 +25,7 @@ type ModelSeedCardProps = {
   me: Collaborator;
   accessMode: CanvasAccessMode;
   onPointerDown: (event: PointerEvent<HTMLElement>, seed: ModelSeed) => void;
-  onUpdate: (seedId: string, patch: Partial<ModelSeed>) => void;
+  onUpdate: (seedId: string, patch: Partial<ModelSeed>) => Promise<boolean>;
   onEditingChange: (seedId: string, editing: boolean) => void;
   remoteEditor?: Collaborator;
   onUnlock: (seedId: string) => void;
@@ -60,8 +60,10 @@ function hasFieldDomainDisplay(domainId: string | undefined, nameDisplayMode: Na
   return nameDisplayMode === "physical" || domains.some((domain) => domain.id === domainId);
 }
 
-export function ModelSeedCard({ seed, width, descriptionHeight, selected, relationshipDropTarget, displayMode, nameDisplayMode, vocabularyCache, owner, me, accessMode, onPointerDown, onUpdate, onEditingChange, remoteEditor, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, domains, domainCategories, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, seeds, onApplyRefinement }: ModelSeedCardProps) {
+export function ModelSeedCard({ seed: confirmedSeed, width, descriptionHeight, selected, relationshipDropTarget, displayMode, nameDisplayMode, vocabularyCache, owner, me, accessMode, onPointerDown, onUpdate, onEditingChange, remoteEditor, onUnlock, onRelationshipPointerDown, relationships, relationshipReferences, domains, domainCategories, onUpdateRelationshipReference, onDeleteRelationship, onCreateDomain, onOpenDomainDictionary, seeds, onApplyRefinement }: ModelSeedCardProps) {
   const { locale } = useI18n();
+  const [updatePending, startUpdateTransition] = useTransition();
+  const [seed, addOptimisticPatch] = useOptimistic<ModelSeed, Partial<ModelSeed>>(confirmedSeed, (current, patch) => ({ ...current, ...patch }));
   const meta = roleMeta[seed.role];
   const lockedByMe = accessMode === "owner" && owner?.id === me.id;
   const lockedByOther = !!owner && !lockedByMe;
@@ -105,44 +107,44 @@ export function ModelSeedCard({ seed, width, descriptionHeight, selected, relati
     if (titleEditingRef.current || descriptionEditingRef.current) onEditingChange(seed.id, false);
   }, [onEditingChange, seed.id]);
 
-  const handlePointerDown = useCallback(
-    (event: PointerEvent<HTMLElement>) => {
-      onPointerDown(event, seed);
-    },
-    [onPointerDown, seed]
-  );
+  function commitPatch(patch: Partial<ModelSeed>) {
+    return new Promise<boolean>((resolve) => {
+      startUpdateTransition(async () => {
+        addOptimisticPatch(patch);
+        resolve(await onUpdate(confirmedSeed.id, patch));
+      });
+    });
+  }
 
-  const handleLockPointerDown = useCallback((event: PointerEvent<HTMLButtonElement>) => {
+  function handlePointerDown(event: PointerEvent<HTMLElement>) {
+    onPointerDown(event, seed);
+  }
+
+  function handleLockPointerDown(event: PointerEvent<HTMLButtonElement>) {
     event.stopPropagation();
-  }, []);
+  }
 
-  const handleUnlock = useCallback(() => {
+  function handleUnlock() {
     if (lockedByMe) onUnlock(seed.id);
-  }, [lockedByMe, onUnlock, seed.id]);
+  }
 
-  const handleRelationshipPointerDown = useCallback(
-    (event: PointerEvent<HTMLButtonElement>) => {
-      onRelationshipPointerDown(event, seed);
-    },
-    [onRelationshipPointerDown, seed]
-  );
+  function handleRelationshipPointerDown(event: PointerEvent<HTMLButtonElement>) {
+    onRelationshipPointerDown(event, seed);
+  }
 
-  const handleTitleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setTitleDraft(event.target.value);
-    },
-    []
-  );
+  function handleTitleChange(event: ChangeEvent<HTMLInputElement>) {
+    setTitleDraft(event.target.value);
+  }
 
-  const handleTitleFocus = useCallback(() => {
+  function handleTitleFocus() {
     if (!lockedByMe) return;
     titleEditingRef.current = true;
     titleCancelRef.current = false;
     setTitleDraft(editableBusinessTitle);
     onEditingChange(seed.id, true);
-  }, [editableBusinessTitle, lockedByMe, onEditingChange, seed.id]);
+  }
 
-  const handleTitleBlur = useCallback((event: FocusEvent<HTMLInputElement>) => {
+  async function handleTitleBlur(event: FocusEvent<HTMLInputElement>) {
     if (!titleEditingRef.current) return;
     titleEditingRef.current = false;
     if ((event.relatedTarget as HTMLElement | null)?.dataset.modelTextEditor !== seed.id) onEditingChange(seed.id, false);
@@ -151,33 +153,33 @@ export function ModelSeedCard({ seed, width, descriptionHeight, selected, relati
       setTitleDraft(editableBusinessTitle);
       return;
     }
-    if (event.currentTarget.value !== editableBusinessTitle) onUpdate(seed.id, { names: updateNameSet(seed.title, seed.names, "business", event.currentTarget.value), vocabularyBinding: undefined });
-  }, [editableBusinessTitle, onEditingChange, onUpdate, seed.id, seed.names, seed.title]);
+    if (event.currentTarget.value !== editableBusinessTitle) {
+      const saved = await commitPatch({ names: updateNameSet(seed.title, seed.names, "business", event.currentTarget.value), vocabularyBinding: undefined });
+      if (!saved) setTitleDraft(editableBusinessTitle);
+    }
+  }
 
-  const handleTitleKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
+  function handleTitleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") event.currentTarget.blur();
     if (event.key === "Escape") {
       titleCancelRef.current = true;
       setTitleDraft(editableBusinessTitle);
       event.currentTarget.blur();
     }
-  }, [editableBusinessTitle]);
+  }
 
-  const handleDescriptionChange = useCallback(
-    (event: ChangeEvent<HTMLTextAreaElement>) => {
-      setDescriptionDraft(event.target.value);
-    },
-    []
-  );
+  function handleDescriptionChange(event: ChangeEvent<HTMLTextAreaElement>) {
+    setDescriptionDraft(event.target.value);
+  }
 
-  const handleDescriptionFocus = useCallback(() => {
+  function handleDescriptionFocus() {
     if (!lockedByMe) return;
     descriptionEditingRef.current = true;
     descriptionCancelRef.current = false;
     onEditingChange(seed.id, true);
-  }, [lockedByMe, onEditingChange, seed.id]);
+  }
 
-  const handleDescriptionBlur = useCallback((event: FocusEvent<HTMLTextAreaElement>) => {
+  async function handleDescriptionBlur(event: FocusEvent<HTMLTextAreaElement>) {
     if (!descriptionEditingRef.current) return;
     descriptionEditingRef.current = false;
     if ((event.relatedTarget as HTMLElement | null)?.dataset.modelTextEditor !== seed.id) onEditingChange(seed.id, false);
@@ -186,64 +188,58 @@ export function ModelSeedCard({ seed, width, descriptionHeight, selected, relati
       setDescriptionDraft(seed.description);
       return;
     }
-    if (event.currentTarget.value !== seed.description) onUpdate(seed.id, { description: event.currentTarget.value });
-  }, [onEditingChange, onUpdate, seed.description, seed.id]);
+    if (event.currentTarget.value !== seed.description) {
+      const saved = await commitPatch({ description: event.currentTarget.value });
+      if (!saved) setDescriptionDraft(confirmedSeed.description);
+    }
+  }
 
-  const handleDescriptionKeyDown = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
+  function handleDescriptionKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== "Escape") return;
     descriptionCancelRef.current = true;
     setDescriptionDraft(seed.description);
     event.currentTarget.blur();
-  }, [seed.description]);
+  }
 
-  const handleOpenFieldList = useCallback(() => {
+  function handleOpenFieldList() {
     setFieldListOpen(true);
-  }, []);
+  }
 
-  const handleCloseFieldList = useCallback(() => {
+  function handleCloseFieldList() {
     setFieldListOpen(false);
-  }, []);
+  }
 
-  const handleOpenModelEdit = useCallback(() => {
+  function handleOpenModelEdit() {
     setModelEditOpen(true);
-  }, []);
+  }
 
-  const handleCloseModelEdit = useCallback(() => {
+  function handleCloseModelEdit() {
     setModelEditOpen(false);
-  }, []);
+  }
 
-  const handleSaveModelEdit = useCallback((patch: Partial<ModelSeed>) => {
+  async function handleSaveModelEdit(patch: Partial<ModelSeed>) {
+    const saved = await commitPatch(patch);
+    if (!saved) return false;
     if (patch.description !== undefined) setDescriptionDraft(patch.description);
-    onUpdate(seed.id, patch);
     setModelEditOpen(false);
-  }, [onUpdate, seed.id]);
+    return true;
+  }
 
-  const handleFieldsChange = useCallback(
-    (nextFields: ModelField[]) => {
-      onUpdate(seed.id, { fields: nextFields });
-    },
-    [onUpdate, seed.id]
-  );
-  const handleModelDefinitionChange = useCallback(
-    (patch: Partial<ModelSeed>) => {
-      onUpdate(seed.id, patch);
-    },
-    [onUpdate, seed.id]
-  );
+  async function handleFieldsChange(nextFields: ModelField[]) {
+    await commitPatch({ fields: nextFields });
+  }
 
-  const handleOpenDomainDictionary = useCallback(
-    (fieldId?: string) => {
-      onOpenDomainDictionary(seed.id, fieldId);
-    },
-    [onOpenDomainDictionary, seed.id]
-  );
+  async function handleModelDefinitionChange(patch: Partial<ModelSeed>) {
+    await commitPatch(patch);
+  }
 
-  const handleEditablePointerDown = useCallback(
-    (event: PointerEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      if (lockedByMe) event.stopPropagation();
-    },
-    [lockedByMe]
-  );
+  function handleOpenDomainDictionary(fieldId?: string) {
+    onOpenDomainDictionary(seed.id, fieldId);
+  }
+
+  function handleEditablePointerDown(event: PointerEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    if (lockedByMe) event.stopPropagation();
+  }
 
   return (
     <article
@@ -258,6 +254,7 @@ export function ModelSeedCard({ seed, width, descriptionHeight, selected, relati
         transform: `rotate(${seed.rotation}deg)`
       }}
       onPointerDown={handlePointerDown}
+      aria-busy={updatePending}
     >
       <RoughShape
         width={width}

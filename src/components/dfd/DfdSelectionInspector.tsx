@@ -19,7 +19,7 @@ type Props = {
   externalDefinitions: Array<{ id: string; name: string }>;
   onUpdateNode: (patch: Partial<DfdNode>) => void;
   onUpdateFlow: (patch: Partial<DfdFlow>) => void;
-  onUpdateModel: (patch: Partial<ModelSeed>) => void;
+  onUpdateModel: (patch: Partial<ModelSeed>) => Promise<boolean>;
   onUngroup: () => void;
   onDelete: () => void;
 };

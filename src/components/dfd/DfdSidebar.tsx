@@ -14,7 +14,7 @@ type Props = {
   onOpenModelPicker: () => void;
   onUpdateNode: (patch: Partial<DfdNode>) => void;
   onUpdateFlow: (patch: Partial<DfdFlow>) => void;
-  onUpdateModel: (patch: Partial<ModelSeed>) => void;
+  onUpdateModel: (patch: Partial<ModelSeed>) => Promise<boolean>;
   onUngroup: () => void; onDeleteSelected: () => void; onFocusWarning: (warning: DfdWarning) => void;
 };
 

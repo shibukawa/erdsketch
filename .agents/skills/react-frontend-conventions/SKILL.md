@@ -1,6 +1,6 @@
 ---
 name: react-frontend-conventions
-description: Enforce this repository's React Compiler-first React and TypeScript frontend structure and hook conventions. Use when creating, editing, reviewing, or refactoring React pages, components, hooks, event handlers, effects, memoization, diagram UI, or other files under src/; especially use when splitting large components, removing or adding useMemo/useCallback, introducing asynchronous or expensive UI work, or changing useEffect logic.
+description: Enforce this repository's React 19, React Compiler-first TypeScript frontend conventions. Use when creating, editing, reviewing, or refactoring files under src/, especially components, hooks, durable form edits, optimistic persistence, rollback and toast behavior, import/export coordination, asynchronous updates, effects, memoization, or diagram UI.
 ---
 
 # React Frontend Conventions
@@ -92,6 +92,55 @@ Use `useTransition` when the UI needs an `isPending` state. Keep controlled-inpu
 
 If a state update occurs after an `await`, place that update in its own `startTransition` call unless the installed React version explicitly guarantees the desired async Action semantics.
 
+## Make Durable Edits Transactional and Observable
+
+Treat persisted project data as confirmed state, not as ordinary local component state. Every durable edit must have one explicit commit boundary, return a result, and expose failure to the user.
+
+- Keep controlled keystrokes in urgent local draft state. Do not wrap each `onChange` in a transition.
+- Commit on an intentional boundary such as blur, form submit, or an explicit debounced autosave. Document which boundary the control uses.
+- Make mutation functions return `Promise<boolean>` or a typed result. Never discard them with `void` when correctness depends on persistence.
+- Do not update canonical local stores before persistence succeeds. In particular, do not use `setLocal(next); void save(next)` for durable data.
+- Let the persistence/collaboration layer publish the accepted canonical state before resolving success.
+- Use one app-level toast queue or provider for mutation feedback. Emit one contextual error toast at the mutation owner; avoid `window.alert` and duplicate notifications in child and parent layers.
+
+Use `useOptimistic` for the visible committed value while a durable mutation is pending. Start the optimistic mutation inside a React 19 Transition Action so React restores the confirmed base value automatically when the Action fails or completes without a matching canonical update:
+
+```tsx
+const [isPending, startTransition] = useTransition();
+const [optimisticModel, addOptimisticPatch] = useOptimistic(
+  model,
+  (current, patch: Partial<ModelSeed>) => ({ ...current, ...patch })
+);
+
+function commitDescription(description: string) {
+  const patch = { description };
+  startTransition(async () => {
+    addOptimisticPatch(patch);
+    try {
+      if (!(await onSave(patch))) {
+        toast.error("The note could not be saved. Your last confirmed value was restored.");
+      }
+    } catch (error) {
+      toast.error(toMutationError(error, "The note could not be saved. Your last confirmed value was restored."));
+    }
+  });
+}
+```
+
+Render the pending committed value from `optimisticModel`. Keep a separate draft only while the user is actively typing; after commit, synchronize that draft from the optimistic/confirmed value without overwriting a newly focused edit. Use `isPending` for subtle progress and duplicate-submit prevention, not for blocking unrelated input.
+
+If edits can overlap, serialize them per entity or attach a mutation/version identifier so an older completion cannot replace a newer edit. Test rejection, thrown errors, delayed success, and out-of-order completion.
+
+### Coordinate Drafts, Navigation, and Export
+
+Do not depend on browser blur/click ordering to persist data.
+
+- Before export, project switching, or another action that snapshots canonical data, explicitly flush the active draft and await all pending durable mutations.
+- Abort the snapshot/action and show an error toast when a required flush fails.
+- Make dialog semantics explicit: Save awaits persistence; Cancel discards the draft. Warn before silently closing a dirty dialog when loss would be surprising.
+- Prefer controlled durable fields over `defaultValue` plus `onBlur`; uncontrolled DOM values cannot participate reliably in rollback or pending-state UI.
+- Keep export and save operations behind the same mutation barrier or queue so snapshots cannot observe an older confirmed state.
+
 ## Separate Effect Triggers from Latest Values
 
 Use React 19 `useEffectEvent` for logic called by an Effect that must read the latest props or state without causing the Effect to re-synchronize.
@@ -121,6 +170,9 @@ Before finishing, verify that:
 - React Compiler remains enabled and the production build compiles successfully.
 - Edited components avoid routine `useCallback` and `useMemo`; any retained manual memoization has a correctness or measured-performance justification.
 - Expensive or asynchronous non-urgent state updates use transitions, while urgent local interactions do not.
+- Durable edits use confirmed base state plus `useOptimistic`; failed saves visibly roll back and emit one error toast.
+- No correctness-sensitive save promise is discarded, and canonical stores are not updated before acceptance.
+- Export, project switching, and dialog close behavior account for dirty drafts and pending durable mutations.
 - Effects depend only on true synchronization triggers, with latest-value reads isolated through `useEffectEvent` where appropriate.
 - React API usage matches the installed runtime and types.
 - The build, typecheck, lint, and relevant tests pass.

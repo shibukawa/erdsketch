@@ -22,7 +22,7 @@ type SidebarProps = {
   modelNames: string[];
   onAddSeed: (name: string) => Promise<void>;
   onAddSeeds: (names: string[]) => Promise<void>;
-  onUpdateSeed: (seedId: string, patch: Partial<ModelSeed>) => void;
+  onUpdateSeed: (seedId: string, patch: Partial<ModelSeed>) => Promise<boolean>;
   onRemoveSelected: (seedId: string) => Promise<boolean>;
   onOpenDomainDictionary: (seedId?: string, fieldId?: string) => void;
   onOpenVocabulary: (matchKey?: string) => void;

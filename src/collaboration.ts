@@ -15,6 +15,7 @@ import { ensureStateTimestamps, MonotonicTimer, timestampDurableOperation } from
 import { LocalTabSession } from "./collaboration/localTabSession";
 import { projectAlreadyOpenId } from "./persistence/persistenceClient";
 import { normalizePlacementOwnership } from "./features/modeling/placements";
+import { waitForStablePending } from "./collaboration/pending";
 
 export type { Collaborator } from "./collaboration/types";
 
@@ -625,6 +626,11 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     return result;
   }, []);
 
+  const waitForPendingDurableOperations = useCallback(async () => {
+    await waitForStablePending(() => commitQueueRef.current);
+    return !durableWritesBlockedRef.current;
+  }, []);
+
   const failProjectTask = useCallback((error: unknown) => {
     startTransition(() => setRecoveryStatus((status) => ({ ...status, error: error instanceof Error ? error.message : String(error) })));
     return false;
@@ -870,6 +876,7 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
     try {
       const persistence = persistenceRef.current;
       if (!persistence) throw new Error("Recovery storage is not ready");
+      if (!(await waitForPendingDurableOperations())) throw new Error("Pending project changes could not be saved. Export was cancelled.");
       await persistence.checkpoint(durableState(confirmedStateRef.current));
       const projectId = activeProjectRef.current?.projectId;
       if (!projectId) throw new Error("Active OPFS project is not ready");
@@ -879,13 +886,14 @@ export function useCollaboration<T extends { id: string; x?: number; y?: number 
       setRecoveryStatus((status) => ({ ...status, error: error instanceof Error ? error.message : String(error) }));
       return false;
     }
-  }, []);
+  }, [waitForPendingDurableOperations]);
 
-  const createExportSnapshot = useCallback(() => {
+  const createExportSnapshot = useCallback(async () => {
+    if (!(await waitForPendingDurableOperations())) throw new Error("Pending project changes could not be saved. Export was cancelled.");
     const projectId = activeProjectRef.current?.projectId;
     if (!projectId) throw new Error("Active project is not ready");
     return JSON.stringify({ formatVersion: 1, projectId, documents: { "project.json": JSON.stringify(durableState(confirmedStateRef.current)) } });
-  }, []);
+  }, [waitForPendingDurableOperations]);
 
   const importProject = useCallback(async (file: File) => {
     if (roleRef.current !== "host") return false;
